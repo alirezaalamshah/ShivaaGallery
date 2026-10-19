@@ -1,0 +1,42 @@
+.price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.price small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.price s {
+  color: var(--muted);
+  font-weight: 400;
+  margin-inline-start: 4px;
+}
+
+.md {
+  font-size: 15.5px;
+}
+
+.md small {
+  font-size: 11.5px;
+}
+
+.md s {
+  font-size: 12.5px;
+}
+
+.lg {
+  font-size: 24px;
+}
+
+.lg small {
+  font-size: 14px;
+}
+
+.lg s {
+  font-size: 15px;
+}
