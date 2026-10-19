@@ -394,6 +394,36 @@
   cursor: pointer;
 }
 
+/* stock log: the whole row is green for stock coming in and red for stock going out */
+.table tbody tr.rowIn {
+  --row: #2f8a55;
+}
+
+.table tbody tr.rowOut {
+  --row: var(--sale);
+}
+
+.table tbody tr:is(.rowIn, .rowOut) {
+  background: color-mix(in oklab, var(--row) 12%, transparent);
+}
+
+.table tbody tr:is(.rowIn, .rowOut):hover {
+  background: color-mix(in oklab, var(--row) 20%, transparent);
+}
+
+.table tbody tr:is(.rowIn, .rowOut) td {
+  border-bottom-color: color-mix(in oklab, var(--row) 22%, transparent);
+}
+
+.table tbody tr:is(.rowIn, .rowOut) td:first-child {
+  box-shadow: inset -4px 0 0 var(--row);
+}
+
+.delta {
+  color: var(--row);
+  font-weight: 700;
+}
+
 .thumb {
   width: 46px;
   height: 58px;

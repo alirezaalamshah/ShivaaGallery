@@ -59,11 +59,11 @@ export function Inventory() {
               <thead><tr><th>زمان</th><th>محصول</th><th>رنگ / سایز</th><th>تغییر</th><th>موجودی بعد</th><th>علت</th><th>مرجع</th><th>توسط</th></tr></thead>
               <tbody>
                 {data.results.map((m) => (
-                  <tr key={m.id}>
+                  <tr key={m.id} className={m.delta > 0 ? s.rowIn : s.rowOut}>
                     <td className="muted">{faDateTime(m.created_at)}</td>
                     <td>{m.product}</td>
-                    <td>{m.color} · <span className="num">{m.size}</span></td>
-                    <td className="num" style={{ color: m.delta > 0 ? "#22663e" : "var(--sale)", fontWeight: 700 }} dir="ltr">{m.delta > 0 ? "+" : ""}{faNum(m.delta)}</td>
+                    <td>{m.color}، سایز <span className="num">{m.size}</span></td>
+                    <td className={`num ${s.delta}`} dir="ltr">{m.delta > 0 ? "+" : ""}{faNum(m.delta)}</td>
                     <td className="num">{faNum(m.balance)}</td>
                     <td>{m.reason_label}{m.note ? <small className="muted" style={{ display: "block" }}>{m.note}</small> : null}</td>
                     <td className="num" dir="ltr">{m.reference ? `#${toFaDigits(m.reference)}` : "—"}</td>
