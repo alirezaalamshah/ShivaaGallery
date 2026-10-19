@@ -1,0 +1,46 @@
+.toast {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, calc(100% + 120px));
+  visibility: hidden;
+  background: var(--deep);
+  color: var(--on-deep);
+  padding: 10px 12px 10px 18px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13.5px;
+  max-width: calc(100% - 32px);
+  width: max-content;
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.45);
+  transition: transform 0.55s var(--ease-spring), visibility 0s 0.55s;
+}
+
+.on {
+  transform: translate(-50%, 0);
+  visibility: visible;
+  transition: transform 0.55s var(--ease-spring);
+}
+
+.toast > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-hi);
+  flex: none;
+}
+
+.toast a {
+  color: var(--accent-hi);
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px 6px;
+}
+
+@media (max-width: 899px) {
+  .toast {
+    bottom: calc(var(--bnav) + 14px + env(safe-area-inset-bottom, 0px));
+  }
+}
