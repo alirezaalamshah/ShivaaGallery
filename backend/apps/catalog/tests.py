@@ -1,10 +1,14 @@
+import shutil
+import tempfile
+
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 
 from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
 
-from .models import Category, Color, Product, Size, SizeSystem, Variant
+from .models import Category, Color, Product, ProductImage, Size, SizeSystem, Variant
 
 GUIDE = {"columns": ["سایز", "دور سینه"], "rows": [["S", "۸۶"], ["M", "۹۰"]]}
 
@@ -115,6 +119,18 @@ class ProductApiTests(CatalogFixture):
         self.assertTrue(row["in_stock"])
         self.assertEqual([c["name"] for c in row["colors"]], ["مشکی", "بژ"])
         self.assertEqual(row["category"]["slug"], self.manto.slug)
+
+    def test_list_has_a_photo_for_each_color(self):
+        media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media, ignore_errors=True)
+        with override_settings(MEDIA_ROOT=media):
+            for i, color in enumerate([None, self.beige, self.black, self.beige]):
+                ProductImage.objects.create(product=self.coat, color=color, sort=i, image=SimpleUploadedFile(f"{i}.webp", b"x"))
+            row = next(r for r in self.client.get("/api/products/").json()["results"] if r["name"] == "مانتو کتان")
+        self.assertTrue(row["image"].endswith("0.webp"))
+        self.assertEqual(set(row["color_images"]), {str(self.black.pk), str(self.beige.pk)})
+        self.assertTrue(row["color_images"][str(self.beige.pk)].endswith("1.webp"))
+        self.assertTrue(row["color_images"][str(self.black.pk)].endswith("2.webp"))
 
     def test_list_prices_come_from_the_cheapest_variant(self):
         Variant.objects.filter(pk=self.coat_black_m.pk).update(price_override=3_000_000, sale_price=2_700_000)

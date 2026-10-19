@@ -40,6 +40,8 @@ export type ProductSummary = {
   current_price: number;
   discount_percent: number;
   image: string | null;
+  /** The first photo marked for each color, keyed by color id. */
+  color_images: Record<string, string>;
   colors: Color[];
   in_stock: boolean;
   is_featured: boolean;

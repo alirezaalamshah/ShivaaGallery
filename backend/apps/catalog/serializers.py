@@ -65,6 +65,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     current_price = serializers.SerializerMethodField()
     discount_percent = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
+    color_images = serializers.SerializerMethodField()
     colors = serializers.SerializerMethodField()
     in_stock = serializers.SerializerMethodField()
 
@@ -72,7 +73,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "slug", "name", "category", "price", "sale_price", "current_price",
-            "discount_percent", "image", "colors", "in_stock", "is_featured", "created_at",
+            "discount_percent", "image", "color_images", "colors", "in_stock", "is_featured", "created_at",
         ]
 
     def get_price(self, obj):
@@ -91,13 +92,22 @@ class ProductListSerializer(serializers.ModelSerializer):
         v = _cheapest(obj)
         return v.discount_percent if v else 0
 
-    def get_image(self, obj):
-        images = list(obj.images.all())
-        if not images:
-            return None
+    def _url(self, image):
         request = self.context.get("request")
-        url = images[0].image.url
+        url = image.image.url
         return request.build_absolute_uri(url) if request else url
+
+    def get_image(self, obj):
+        first = next(iter(obj.images.all()), None)
+        return self._url(first) if first else None
+
+    def get_color_images(self, obj):
+        """The first photo the admin marked for each color, so a card can switch photos with its swatches."""
+        out = {}
+        for im in obj.images.all():
+            if im.color_id is not None and str(im.color_id) not in out:
+                out[str(im.color_id)] = self._url(im)
+        return out
 
     def get_colors(self, obj):
         return ColorSerializer(_colors(obj), many=True).data

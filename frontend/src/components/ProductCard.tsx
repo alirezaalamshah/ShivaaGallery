@@ -14,14 +14,17 @@ const NEW_DAYS = 14;
 
 export function ProductCard({ product, priority = false }: { product: ProductSummary; priority?: boolean }) {
   const [colorIdx, setColorIdx] = useState(0);
+  const [picked, setPicked] = useState(false);
   const color = product.colors[colorIdx];
+  // The cover photo until a swatch is clicked; then that color's own photo, if it has one.
+  const image = (picked && color && product.color_images?.[color.id]) || product.image;
   const href = `/p/${product.slug}${color && product.colors.length > 1 ? `?color=${color.id}` : ""}`;
   const isNew = Date.now() - new Date(product.created_at).getTime() < NEW_DAYS * 864e5;
 
   return (
     <article className={styles.card}>
       <Link href={href} className={styles.media}>
-        <ProductMedia image={product.image} alt={product.name} hex={color?.hex} priority={priority} />
+        <ProductMedia image={image} alt={color && picked ? `${product.name}، رنگ ${color.name}` : product.name} hex={color?.hex} priority={priority} />
         {product.discount_percent > 0 ? (
           <span className={`${styles.badge} num`}>{faNum(product.discount_percent)}٪ تخفیف</span>
         ) : (
@@ -45,7 +48,7 @@ export function ProductCard({ product, priority = false }: { product: ProductSum
                 aria-label={c.name}
                 title={c.name}
                 aria-pressed={i === colorIdx}
-                onClick={() => setColorIdx(i)}
+                onClick={() => { setColorIdx(i); setPicked(true); }}
               />
             ))}
           </div>
