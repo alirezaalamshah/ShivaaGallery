@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# فرانت‌اند (Next.js)
 
-## Getting Started
+سایت مشتری، با رندر سمت سرور برای سئو. همه‌ی داده‌ها و برند (اسم، لوگو، سه رنگ اصلی، متن صفحه‌ی اصلی) از API بک‌اند می‌آید؛ هیچ چیز مخصوص یک فروشگاه در کد نیست.
 
-First, run the development server:
+## راه‌اندازی
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+اول بک‌اند را روی پورت ۸۰۰۰ اجرا کنید (راهنمای `backend/README.md`). بعد:
+
+```powershell
+cd frontend
+npm install
+copy .env.example .env.local
+npm run dev          # http://localhost:3100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+نسخه‌ی production: `npm run build` و بعد `npm start`. هنگام build هم بک‌اند باید در دسترس باشد.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+پورت ۳۱۰۰ انتخاب شده تا با پروژه‌های دیگری که روی ۳۰۰۰ اجرا می‌شوند تداخل نداشته باشد.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ساختار
 
-## Learn More
+| مسیر | صفحه |
+|---|---|
+| `/` | صفحه‌ی اصلی: حلقه‌ی طلایی متحرک، نوار دسته‌ها، تازه‌ها، محصول ویژه |
+| `/shop` | همه‌ی محصولات با فیلتر رنگ، سایز، قیمت، حراج، موجودی و مرتب‌سازی |
+| `/c/<slug>` | محصولات یک دسته (شامل زیردسته‌ها) |
+| `/p/<slug>` | صفحه‌ی محصول: گالری وابسته به رنگ، انتخاب سایز با وضعیت موجودی، جدول سایز |
+| `/categories`، `/search`، `/cart`، `/returns` | دسته‌ها، جستجو، سبد خرید، قوانین مرجوعی |
 
-To learn more about Next.js, take a look at the following resources:
+## سیستم طراحی
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/globals.css`: سه رنگ فروشگاه (`--ink`، `--accent`، `--ground`) از API روی `<html>` قرار می‌گیرند و بقیه‌ی رنگ‌ها با `color-mix` از آن‌ها ساخته می‌شوند. فروشگاه دیگر با سه رنگ خودش پالت هماهنگ می‌گیرد.
+- فونت‌ها (وزیرمتن، ریم کوفی، ایتالیانا؛ هر سه OFL) داخل پروژه هستند، چون Google Fonts از ایران قابل اعتماد نیست. هر فونت بر اساس خط تقسیم شده تا صفحه‌ی فارسی فقط بخش فارسی را دانلود کند.
+- عکس محصولات در قاب ثابت ۳:۴ برش می‌خورند تا عکس تن مدل و عکس ساده کنار هم مرتب باشند. محصول بدون عکس یک طاق با رنگ همان محصول نشان می‌دهد.
+- سبد خرید مهمان در مرورگر نگه داشته می‌شود و موقع تسویه‌حساب سمت سرور دوباره قیمت و موجودی‌اش بررسی می‌شود.
