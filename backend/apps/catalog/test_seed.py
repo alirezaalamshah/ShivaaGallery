@@ -24,7 +24,8 @@ class SeedDemoTests(TestCase):
         self.assertTrue(StoreSettings.load().logo.name.startswith("store/"))
         self.assertEqual(Product.objects.count(), 9)
         self.assertTrue(Category.objects.filter(name="مانتو مجلسی", parent__name="مانتو").exists())
-        sold_out = Variant.objects.get(product__name="مانتو اداری کتان «نسیم»", color__name="بژ", size__label="XXL")
+        sold_out = Variant.objects.get(product__name="مانتو اداری بلند «نسیم»", color__name="خردلی", size__label="XXL")
+        self.assertEqual(Product.objects.get(name="مانتو اداری بلند «نسیم»").images.count(), 3)
         self.assertEqual(sold_out.stock, 0)
         with self.assertRaises(CommandError):
             call_command("seed_demo")

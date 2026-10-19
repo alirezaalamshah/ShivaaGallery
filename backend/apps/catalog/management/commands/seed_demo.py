@@ -6,7 +6,7 @@ from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.catalog.models import Category, Color, Product, Size, SizeSystem, Variant
+from apps.catalog.models import Category, Color, Product, ProductImage, Size, SizeSystem, Variant
 from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
@@ -71,6 +71,13 @@ class Command(BaseCommand):
                 sale_price=p.get("sale_price"), is_featured=p.get("featured", False),
                 details=p.get("details", []),
             )
+            for i, im in enumerate(p.get("images", [])):
+                photo = Path(opts["file"]).parent / "photos" / im["file"]
+                with photo.open("rb") as fh:
+                    ProductImage(
+                        product=product, sort=i, alt=product.name,
+                        color=colors.get(im.get("color")) if im.get("color") else None,
+                    ).image.save(f"{product.pk}-{im['file']}", File(fh), save=True)
             system = cat_system[p["category"]]
             for color in p["colors"]:
                 for label in p["sizes"]:
