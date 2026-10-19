@@ -33,7 +33,7 @@ export function Header({ store, categories }: { store: Store; categories: Catego
           <Link href="/account" className={`icon-btn ${styles.desk}`} aria-label="حساب کاربری">
             <Icon name="user" />
           </Link>
-          <Link href="/cart" className={`icon-btn ${styles.desk}`} aria-label="سبد خرید">
+          <Link href="/cart" className={`icon-btn ${styles.desk}`} aria-label="سبد خرید" data-cart-target="top">
             <Icon name="bag" />
             <CartBadge />
           </Link>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useCart } from "@/components/cart/CartProvider";
+import { flyToCart } from "@/components/cart/fly";
 import { Icon } from "@/components/Icon";
 import { Price } from "@/components/Price";
 import { ProductMedia } from "@/components/ProductMedia";
@@ -44,13 +45,14 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
     if (!stillOk && !singleSize) setSizeId(undefined);
   };
 
-  const add = () => {
+  const add = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!variant || !variant.in_stock || !color) {
       setWarn(true);
       setShakeKey((k) => k + 1);
       return;
     }
-    cart.add({
+    const from = e.currentTarget.getBoundingClientRect();
+    const item = {
       variantId: variant.id,
       slug: product.slug,
       name: product.name,
@@ -59,8 +61,11 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
       size: variant.size,
       price: variant.price,
       image: images[0]?.image ?? null,
+    };
+    flyToCart(from, color.hex, () => {
+      cart.add(item);
+      toast({ text: "به سبد خرید اضافه شد", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
     });
-    toast({ text: "به سبد خرید اضافه شد", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
   };
 
   const guide = product.size_guide;
@@ -191,7 +196,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
         </p>
 
         {(product.description || product.details.length > 0) && (
-          <section className={styles.desc}>
+          <section className={styles.desc} data-reveal>
             <h2>درباره‌ی این مدل</h2>
             {product.description && <p>{product.description}</p>}
             {product.details.length > 0 && (

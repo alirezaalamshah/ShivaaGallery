@@ -23,7 +23,7 @@ export function BottomNav() {
         const on = item.match(path);
         return (
           <Link key={item.href} href={item.href} className={on ? styles.on : undefined} aria-current={on ? "page" : undefined}>
-            <span className={styles.ico}>
+            <span className={styles.ico} data-cart-target={item.href === "/cart" ? "bottom" : undefined}>
               <Icon name={item.icon} />
               {item.href === "/cart" && <CartBadge />}
             </span>
