@@ -1,5 +1,8 @@
 /* marquee */
+/* The band is laid out left-to-right so its double-width track is anchored at
+   the left edge; sliding it by half its width then loops without a gap. */
 .marquee {
+  direction: ltr;
   background: var(--deep);
   border-block: 1px solid color-mix(in oklab, var(--accent), transparent 78%);
   overflow: hidden;
