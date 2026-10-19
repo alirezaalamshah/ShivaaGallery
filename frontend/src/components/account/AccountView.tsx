@@ -50,11 +50,7 @@ export function AccountView() {
         <div className={styles.loginCard}>
           <span className={styles.ring} aria-hidden="true" />
           <h1>ورود به {store.name}</h1>
-          <p>با شماره موبایل وارد شو تا سفارش‌ها و آدرس‌هایت را ببینی. ثبت‌نام جدا لازم نیست.</p>
           <PhoneLogin />
-          <p className="hint">
-            سفارشت را بدون ورود هم می‌توانی <Link href="/track" style={{ textDecoration: "underline" }}>پیگیری کنی</Link>.
-          </p>
         </div>
       </div>
     );
@@ -111,7 +107,7 @@ export function AccountView() {
             {addresses.map((a) => (
               <li key={a.id}>
                 <span>
-                  <b>{a.receiver_name} · {a.city}</b>
+                  <b>{a.receiver_name} · {a.province ? `${a.province}، ` : ""}{a.city}</b>
                   <small>{a.address}</small>
                 </span>
                 <button

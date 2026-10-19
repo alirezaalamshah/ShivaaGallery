@@ -96,7 +96,7 @@ export function PhoneLogin({ onDone, compact = false }: { onDone?: (me: Me) => v
           }}
         >
           <label className="field">
-            <span className="label">شماره موبایل؛ ثبت‌نام و رمز عبور لازم نیست</span>
+            <span className="label">شماره موبایل</span>
             <span key={shake} className={`${styles.inline} ${shake ? "shake" : ""}`}>
               <input
                 id="login-phone"

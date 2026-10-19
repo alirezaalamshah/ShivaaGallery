@@ -192,7 +192,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
         </button>
         <p className={styles.assure}>
           <Icon name="ret" />
-          {store.returns.enabled ? `${faNum(store.returns.days)} روز مهلت مرجوعی · ` : ""}خرید بدون ثبت‌نام
+          {store.returns.enabled ? `${faNum(store.returns.days)} روز مهلت مرجوعی` : "ارسال به سراسر ایران"}
         </p>
 
         {(product.description || product.details.length > 0) && (

@@ -8,7 +8,7 @@ import styles from "@/components/home/Home.module.css";
 import { Icon } from "@/components/Icon";
 import { ProductCard } from "@/components/ProductCard";
 import { api } from "@/lib/api";
-import { faNum, splitHighlight } from "@/lib/format";
+import { faNum, splitHighlight, toFaDigits } from "@/lib/format";
 import type { CategoryNode } from "@/lib/types";
 
 /** Show the most specific shopping entry points: a root's children if it has any, else the root. */
@@ -56,7 +56,6 @@ export default async function HomePage() {
             </div>
             <div className={heroStyles.trust}>
               {store.city && <span>فروشگاه حضوری در {store.city}</span>}
-              <span>خرید بدون ثبت‌نام</span>
               {store.returns.enabled && <span>{faNum(store.returns.days)} روز مهلت مرجوعی</span>}
             </div>
           </div>
@@ -123,15 +122,15 @@ export default async function HomePage() {
               <span className={styles.svcIc}><Icon name="ret" /></span>
               <div>
                 <h3>{faNum(store.returns.days)} روز مهلت مرجوعی</h3>
-                <p>{store.returns.type === "exchange" ? "اندازه نبود؟ سایزش را عوض کن" : "اندازه نبود؟ تعویض یا بازگشت وجه"}</p>
+                <p>{store.returns.type === "exchange" ? "اگر مشکلی داشت، تعویضش می‌کنیم" : "اگر مشکلی داشت، تعویض یا بازگشت وجه"}</p>
               </div>
             </div>
           )}
           <div className={styles.svcItem}>
             <span className={styles.svcIc}><Icon name="shield" /></span>
             <div>
-              <h3>خرید بدون ثبت‌نام</h3>
-              <p>فقط موقع پرداخت، شماره موبایل و یک کد پیامکی</p>
+              <h3>مشاوره قبل از خرید</h3>
+              <p>{store.phone ? <>سؤال درباره‌ی سایز یا پارچه؟ <a href={`tel:${store.phone}`} className="num" dir="ltr">{toFaDigits(store.phone)}</a></> : "سؤال درباره‌ی سایز یا پارچه را از ما بپرس"}</p>
             </div>
           </div>
           <div className={styles.svcItem}>

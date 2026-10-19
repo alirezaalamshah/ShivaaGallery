@@ -79,8 +79,7 @@ export function CartView() {
             {faNum(cart.subtotal)} {currency_label}
           </span>
         </div>
-        <p className={styles.note}>ثبت‌نام لازم نیست. در صفحه‌ی بعد با شماره موبایل وارد می‌شوی و هزینه‌ی ارسال را می‌بینی.</p>
-        <Link href="/checkout" className="btn btn-ink" style={{ width: "100%", borderRadius: 14 }}>
+        <Link href="/checkout" className="btn btn-ink" style={{ width: "100%", borderRadius: 14, marginTop: 14 }}>
           ادامه‌ی خرید <Icon name="arrow" />
         </Link>
       </div>
