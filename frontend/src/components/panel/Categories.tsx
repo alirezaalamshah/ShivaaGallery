@@ -93,10 +93,9 @@ export function Categories() {
               <thead><tr><th>دسته</th><th>سایزبندی</th><th>جدول سایز</th><th>محصولات</th><th>ترتیب</th><th>فعال</th><th /></tr></thead>
               <tbody>
                 {rows.map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.id} className={c.depth > 0 ? s.childRow : undefined}>
                     <td>
-                      <span className={s.nameCell} style={{ paddingInlineStart: c.depth * 34 }}>
-                        {c.depth > 0 && <span className={s.treeLine} aria-hidden="true" />}
+                      <span className={s.nameCell}>
                         <span className={s.thumb} style={{ width: 40, height: 40, borderRadius: "50%", position: "relative", background: "var(--band)" }}>
                           {c.image && <Image src={c.image} alt="" fill sizes="40px" style={{ objectFit: "cover" }} />}
                         </span>

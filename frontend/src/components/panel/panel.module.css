@@ -420,16 +420,13 @@
   font-size: 12px;
 }
 
-/* the corner that joins a subcategory to the category above it */
-.treeLine {
-  width: 14px;
-  height: 22px;
-  margin-top: -22px;
-  margin-inline-end: -4px;
-  border-inline-start: 1.5px solid var(--line);
-  border-bottom: 1.5px solid var(--line);
-  border-end-start-radius: 8px;
-  flex: none;
+/* A subcategory row: a strip down its right edge ties it to the category above. */
+.childRow {
+  background: color-mix(in oklab, var(--band), transparent 55%);
+}
+
+.childRow td:first-child {
+  box-shadow: inset -3px 0 0 color-mix(in oklab, var(--accent), transparent 45%);
 }
 
 .cellStack {
