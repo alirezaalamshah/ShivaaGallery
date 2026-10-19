@@ -48,6 +48,7 @@
 
 ## فایل‌ها
 
-- `docs/style-sample/shiva-gallery.html` — نمونه‌ی زنده‌ی استایل (آنلاین: https://claude.ai/artifact/2DwULr8wYnqAvFBAR42DvM)
-- `docs/style-sample/shiva-style.src.html` — سورس همان نمونه بدون تصاویر جاسازی‌شده
+- `docs/style-sample/shiva-light.html` — نمونه‌ی استایل روشن با پیش‌نمایش تسویه‌حساب یک‌صفحه‌ای (آنلاین: https://claude.ai/artifact/6m2T9u4eBZgmZ3jU9ZVnSd) — منتظر تأیید
+- `docs/style-sample/shiva-light.src.html` — سورس همان نمونه بدون تصاویر جاسازی‌شده
+- `docs/style-sample/shiva-gallery.html` و `shiva-style.src.html` — نمونه‌ی اول با تم تیره (آنلاین: https://claude.ai/artifact/2DwULr8wYnqAvFBAR42DvM)
 - `docs/brand/` — لوگو و عکس‌های نمونه از ریپوی قبلی

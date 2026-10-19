@@ -7,5 +7,6 @@
 در مرحله‌ی تعریف نیازمندی‌ها و طراحی.
 
 - [تصمیم‌ها و نیازمندی‌ها](docs/decisions.md)
-- [نمونه‌ی زنده‌ی استایل](docs/style-sample/shiva-gallery.html)
+- [نقشه‌ی صفحه‌ها و مسیر خرید](docs/page-map.md)
+- [نمونه‌ی استایل روشن](docs/style-sample/shiva-light.html)
 - [لوگو و تصاویر برند](docs/brand/)
