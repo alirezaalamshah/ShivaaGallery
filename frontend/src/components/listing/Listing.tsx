@@ -71,7 +71,7 @@ export async function Listing({
       <FilterBar facets={facets} count={page.count} />
 
       {page.results.length ? (
-        <div className="grid">
+        <div className="grid" data-reveal-group>
           {page.results.map((p, i) => (
             <ProductCard key={p.id} product={p} priority={i < 2} />
           ))}

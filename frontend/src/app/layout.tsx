@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import type { CSSProperties } from "react";
 
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { BottomNav } from "@/components/BottomNav";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { ToastProvider } from "@/components/Toast";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { StoreProvider } from "@/components/StoreProvider";
 import { api } from "@/lib/api";
 
@@ -39,14 +41,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="fa" dir="rtl" style={theme}>
       <body>
         <StoreProvider store={store}>
+          <AuthProvider>
           <CartProvider>
             <ToastProvider>
               <Header store={store} categories={categories} />
               <main id="main">{children}</main>
               <Footer store={store} categories={categories} />
               <BottomNav />
+              <ScrollReveal />
             </ToastProvider>
           </CartProvider>
+          </AuthProvider>
         </StoreProvider>
       </body>
     </html>
