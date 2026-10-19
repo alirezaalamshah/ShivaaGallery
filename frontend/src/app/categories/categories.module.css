@@ -1,0 +1,54 @@
+.page {
+  padding-block: 28px 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.list li {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.root svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-ink);
+}
+
+.count {
+  margin-inline-start: auto;
+  font-family: var(--f-body);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.sale {
+  color: var(--sale);
+}
+
+.sale svg {
+  margin-inline-start: auto;
+}
