@@ -29,6 +29,14 @@ export function Categories() {
   const [toCrop, setToCrop] = useState<File[] | null>(null);
 
   const rows = cats ? categoryOptions(cats).map((o) => ({ ...cats.find((c) => c.id === o.id)!, depth: o.label.split(" › ").length - 1 })) : [];
+  const byId = (id: number | null) => cats?.find((c) => c.id === id);
+
+  /** The nearest category up the tree (itself included) that sets the given field. */
+  const source = (c: AdminCategory, has: (x: AdminCategory) => boolean) => {
+    let node: AdminCategory | undefined = c;
+    while (node && !has(node)) node = byId(node.parent);
+    return node;
+  };
 
   const save = async () => {
     if (!draft) return;
@@ -87,16 +95,32 @@ export function Categories() {
                 {rows.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <span className={s.nameCell} style={{ paddingInlineStart: c.depth * 28 }}>
-                        {c.depth > 0 && <span className="muted">└</span>}
+                      <span className={s.nameCell} style={{ paddingInlineStart: c.depth * 34 }}>
+                        {c.depth > 0 && <span className={s.treeLine} aria-hidden="true" />}
                         <span className={s.thumb} style={{ width: 40, height: 40, borderRadius: "50%", position: "relative", background: "var(--band)" }}>
                           {c.image && <Image src={c.image} alt="" fill sizes="40px" style={{ objectFit: "cover" }} />}
                         </span>
-                        <b>{c.name}</b>
+                        <span>
+                          <b>{c.name}</b>
+                          {c.depth > 0 && <small>زیرمجموعه‌ی {byId(c.parent)?.name}</small>}
+                        </span>
                       </span>
                     </td>
-                    <td className="muted">{systems?.find((x) => x.id === c.size_system)?.name ?? "از دسته‌ی بالاتر"}</td>
-                    <td className="muted">{c.size_guide?.rows?.length ? `${faNum(c.size_guide.rows.length)} ردیف` : "—"}</td>
+                    <td className={s.cellStack}>
+                      {(() => {
+                        const from = source(c, (x) => !!x.size_system);
+                        const name = systems?.find((x) => x.id === from?.size_system)?.name;
+                        if (!name) return <span className="muted">—</span>;
+                        return <>{name}{from!.id !== c.id && <small>از {from!.name}</small>}</>;
+                      })()}
+                    </td>
+                    <td className={s.cellStack}>
+                      {(() => {
+                        const from = source(c, (x) => !!x.size_guide?.rows?.length);
+                        if (!from) return <span className="muted">—</span>;
+                        return <>{faNum(from.size_guide.rows!.length)} ردیف{from.id !== c.id && <small>از {from.name}</small>}</>;
+                      })()}
+                    </td>
                     <td className="num">{faNum(c.product_count)}</td>
                     <td className="num">{faNum(c.sort)}</td>
                     <td><Switch checked={c.is_active} onChange={(v) => toggle(c, v)} label={`فعال بودن ${c.name}`} /></td>

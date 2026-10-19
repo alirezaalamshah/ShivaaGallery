@@ -420,6 +420,28 @@
   font-size: 12px;
 }
 
+/* the corner that joins a subcategory to the category above it */
+.treeLine {
+  width: 14px;
+  height: 22px;
+  margin-top: -22px;
+  margin-inline-end: -4px;
+  border-inline-start: 1.5px solid var(--line);
+  border-bottom: 1.5px solid var(--line);
+  border-end-start-radius: 8px;
+  flex: none;
+}
+
+.cellStack {
+  white-space: nowrap;
+}
+
+.cellStack small {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
 .muted {
   color: var(--muted);
 }
