@@ -75,7 +75,8 @@ class PanelTests(TestCase):
         self.assertEqual(res.status_code, 200, res.content)
         img = product.images.get()
         with Image.open(img.image.path) as im:
-            self.assertEqual(im.size, (2000, 1500))  # 3000×4000 rotated 90° then capped at 2000
+            self.assertEqual(im.format, "WEBP")
+            self.assertEqual(im.size, (1200, 1600))  # rotated by EXIF, then cropped to the 3:4 frame
             self.assertNotIn(0x0112, im.getexif())
         self.assertEqual(img.color, self.red)
 

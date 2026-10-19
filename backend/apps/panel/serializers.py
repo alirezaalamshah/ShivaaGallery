@@ -7,6 +7,8 @@ from apps.inventory.models import StockMovement
 from apps.orders.models import DiscountCode, Order, ShippingMethod
 from apps.orders.serializers import OrderSerializer
 
+from .images import prepare_photo
+
 
 class ColorSerializer(serializers.ModelSerializer):
     in_use = serializers.SerializerMethodField()
@@ -79,6 +81,9 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "parent", "name", "slug", "description", "image", "size_system", "size_guide", "sort", "is_active", "product_count"]
         extra_kwargs = {"slug": {"required": False}}
+
+    def validate_image(self, value):
+        return prepare_photo(value) if value else value
 
     def validate(self, attrs):
         node = attrs.get("parent", getattr(self.instance, "parent", None))

@@ -18,7 +18,7 @@ from apps.orders.models import DiscountCode, Order, ShippingMethod
 from apps.orders.services import CheckoutError, change_status
 
 from . import serializers as s
-from .images import prepare_photo
+from .images import LOGO_SIZE, prepare_photo
 
 LOW_STOCK = 2
 
@@ -250,7 +250,7 @@ def store_settings(request):
         ser.is_valid(raise_exception=True)
         store = ser.save()
         if logo:
-            content = prepare_photo(logo)
+            content = prepare_photo(logo, LOGO_SIZE)
             store.logo.save(content.name, content, save=True)
         elif request.data.get("logo") == "":
             store.logo.delete(save=True)
