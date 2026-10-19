@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
-import { splitHighlight } from "@/lib/format";
+import { splitHighlight, toFaDigits } from "@/lib/format";
 import type { ProductSummary, Store } from "@/lib/types";
 
 import styles from "./StoreStory.module.css";
@@ -40,6 +40,12 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
               <li>
                 <Icon name="pin" />
                 <span>{store.address}</span>
+              </li>
+            )}
+            {store.phone && (
+              <li>
+                <Icon name="phone" />
+                <a href={`tel:${store.phone}`} className="num" dir="ltr">{toFaDigits(store.phone)}</a>
               </li>
             )}
             {store.instagram && (

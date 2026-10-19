@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { toFaDigits } from "@/lib/format";
 import type { CategoryNode, Store } from "@/lib/types";
 
 import { BackToTop } from "./BackToTop";
@@ -66,7 +67,7 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
                 <li><Icon name="pin" /><span>{store.address}</span></li>
               )}
               {store.phone && (
-                <li><Icon name="phone" /><span className="num" dir="ltr">{store.phone}</span></li>
+                <li><Icon name="phone" /><a href={`tel:${store.phone}`} className="num" dir="ltr">{toFaDigits(store.phone)}</a></li>
               )}
               {store.city && !store.address && (
                 <li><Icon name="pin" /><span>{store.city}</span></li>
