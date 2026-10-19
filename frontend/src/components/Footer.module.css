@@ -1,13 +1,80 @@
 .ftr {
+  position: relative;
+  overflow: hidden;
   background: var(--deep);
   color: var(--on-deep-muted);
-  padding-block: 56px 28px;
+  padding-block: 40px 22px;
   font-size: 13.5px;
 }
 
+.glow {
+  position: absolute;
+  inset: -40% -10% auto;
+  height: 520px;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent), transparent 86%), transparent);
+  pointer-events: none;
+}
+
+/* giant gold wordmark with a slow sheen */
+.top {
+  position: relative;
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.word {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(3.2rem, 13vw, 10rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  background: linear-gradient(100deg, color-mix(in oklab, var(--accent), var(--deep) 55%) 0%, var(--accent) 30%, var(--accent-hi) 48%, var(--accent) 62%, color-mix(in oklab, var(--accent), var(--deep) 55%) 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sheen 9s ease-in-out infinite;
+  opacity: 0.9;
+}
+
+@keyframes sheen {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0 0;
+  }
+}
+
+/* dotted gold line that draws itself when it scrolls in */
+.dots {
+  width: 100%;
+  height: 24px;
+  margin-top: 6px;
+}
+
+.dots path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 10;
+  opacity: 0.75;
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 2.2s var(--ease-out) 0.3s;
+}
+
+:global(.in) .dots path,
+:global(html:not(.reveal-on)) .dots path {
+  clip-path: inset(0 0 0 0);
+}
+
 .grid {
+  position: relative;
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1.4fr;
+  grid-template-columns: 1.5fr 1fr 1fr 1.3fr;
   gap: 32px;
 }
 
@@ -15,7 +82,18 @@
   color: var(--on-deep);
   font-size: 14px;
   font-weight: 600;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ftr h2::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .ftr ul {
@@ -23,11 +101,21 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 9px;
 }
 
-.ftr a:hover {
+.ftr nav a {
+  position: relative;
+  transition: color 0.3s, padding 0.35s var(--ease-out);
+}
+
+.ftr nav a:hover {
   color: var(--accent-hi);
+  padding-inline-start: 6px;
+}
+
+.sale {
+  color: color-mix(in oklab, var(--sale), #fff 45%);
 }
 
 .brand {
@@ -35,9 +123,71 @@
 }
 
 .brand p {
-  margin: 14px 0 0;
-  max-width: 32ch;
+  margin: 14px 0 18px;
+  max-width: 34ch;
   color: var(--on-deep-muted);
+}
+
+.insta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 330px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--accent), transparent 70%);
+  background: color-mix(in oklab, var(--deep), #fff 4%);
+  color: var(--on-deep);
+  transition: border-color 0.3s, transform 0.4s var(--ease-out);
+}
+
+.insta:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.insta > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.insta b {
+  display: block;
+  font-size: 13.5px;
+}
+
+.insta small {
+  display: block;
+  color: var(--on-deep-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.insta > svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  transition: transform 0.35s var(--ease-out);
+}
+
+.insta:hover > svg {
+  transform: translateX(-4px);
+}
+
+.instaIc {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f9ce34, #ee2a7b 55%, #6228d7);
+  color: #fff;
+  flex: none;
+}
+
+.instaIc svg {
+  width: 22px;
+  height: 22px;
 }
 
 .contact li {
@@ -55,24 +205,97 @@
 }
 
 .bottom {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
   flex-wrap: wrap;
-  border-top: 1px solid color-mix(in oklab, var(--accent), transparent 82%);
+  border-top: 1px solid color-mix(in oklab, var(--accent), transparent 84%);
   margin-top: 40px;
   padding-top: 18px;
   font-size: 12px;
+}
+
+.credit {
+  margin-inline-start: auto;
+  color: var(--on-deep-muted);
+  transition: color 0.3s;
+}
+
+.credit b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.credit:hover,
+.credit:hover b {
+  color: var(--accent-hi);
+}
+
+.top2 {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: var(--on-deep);
+  border-radius: 50%;
+  transition: transform 0.4s var(--ease-spring);
+}
+
+.top2:hover {
+  transform: translateY(-3px);
+}
+
+.top2 > svg:last-child {
+  width: 18px;
+  height: 18px;
+  transform: rotate(90deg);
+}
+
+.top2 > svg:first-child {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.track,
+.progress {
+  fill: none;
+  stroke-width: 2;
+}
+
+.track {
+  stroke: color-mix(in oklab, var(--accent), transparent 80%);
+}
+
+.progress {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 113;
+  stroke-dashoffset: 113;
+  transition: stroke-dashoffset 0.15s linear;
 }
 
 @media (max-width: 899px) {
   .grid {
     grid-template-columns: 1fr 1fr;
   }
+
+  .brand {
+    grid-column: 1 / -1;
+  }
 }
 
-@media (max-width: 540px) {
-  .grid {
-    grid-template-columns: 1fr;
+@media (max-width: 480px) {
+  .bottom {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .credit {
+    margin-inline-start: 0;
   }
 }

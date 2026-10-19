@@ -2,79 +2,85 @@ import Link from "next/link";
 
 import type { CategoryNode, Store } from "@/lib/types";
 
+import { BackToTop } from "./BackToTop";
 import { Icon } from "./Icon";
 import { Logo } from "./Logo";
 import styles from "./Footer.module.css";
+
+const DEVELOPER = { name: "هوشیوا", url: "https://houshiva.ir" };
 
 export function Footer({ store, categories }: { store: Store; categories: CategoryNode[] }) {
   const year = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date());
   return (
     <footer className={styles.ftr}>
+      <div className={styles.glow} aria-hidden="true" />
       <div className="wrap">
-        <div className={styles.grid}>
+        <div className={styles.top} data-reveal>
+          <p className={styles.word} aria-hidden="true">{store.name}</p>
+          <svg className={styles.dots} viewBox="0 0 1200 24" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 12 Q 300 0 600 12 T 1200 12" />
+          </svg>
+        </div>
+
+        <div className={styles.grid} data-reveal-group>
           <div className={styles.brand}>
-            <Logo store={store} size={64} />
+            <Logo store={store} size={60} />
             {store.tagline && <p>{store.tagline}</p>}
+            {store.instagram && (
+              <a className={styles.insta} href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer">
+                <span className={styles.instaIc}><Icon name="insta" /></span>
+                <span>
+                  <b>ما را در اینستاگرام دنبال کن</b>
+                  <small dir="ltr">@{store.instagram}</small>
+                </span>
+                <Icon name="arrow" />
+              </a>
+            )}
           </div>
-          <div>
+
+          <nav aria-label="دسته‌ها">
             <h2>خرید</h2>
             <ul>
+              <li><Link href="/shop">تازه‌ها</Link></li>
               {categories.map((c) => (
-                <li key={c.id}>
-                  <Link href={`/c/${c.slug}`}>{c.name}</Link>
-                </li>
+                <li key={c.id}><Link href={`/c/${c.slug}`}>{c.name}</Link></li>
               ))}
-              <li>
-                <Link href="/shop?on_sale=true">حراج</Link>
-              </li>
+              <li><Link href="/shop?on_sale=true" className={styles.sale}>حراج</Link></li>
             </ul>
-          </div>
-          <div>
+          </nav>
+
+          <nav aria-label="راهنما">
             <h2>راهنما</h2>
             <ul>
-              <li>
-                <Link href="/track">پیگیری سفارش</Link>
-              </li>
-              {store.returns.enabled && (
-                <li>
-                  <Link href="/returns">قوانین مرجوعی</Link>
-                </li>
-              )}
-              <li>
-                <Link href="/account">حساب من</Link>
-              </li>
+              <li><Link href="/track">پیگیری سفارش</Link></li>
+              <li><Link href="/account">حساب من</Link></li>
+              {store.returns.enabled && <li><Link href="/returns">قوانین مرجوعی</Link></li>}
+              <li><Link href="/cart">سبد خرید</Link></li>
             </ul>
-          </div>
+          </nav>
+
           <div>
             <h2>فروشگاه حضوری</h2>
             <ul className={styles.contact}>
               {store.address && (
-                <li>
-                  <Icon name="pin" />
-                  <span>{store.address}</span>
-                </li>
+                <li><Icon name="pin" /><span>{store.address}</span></li>
               )}
               {store.phone && (
-                <li>
-                  <Icon name="phone" />
-                  <span className="num" dir="ltr">{store.phone}</span>
-                </li>
+                <li><Icon name="phone" /><span className="num" dir="ltr">{store.phone}</span></li>
               )}
-              {store.instagram && (
-                <li>
-                  <Icon name="insta" />
-                  <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" dir="ltr">
-                    @{store.instagram}
-                  </a>
-                </li>
+              {store.city && !store.address && (
+                <li><Icon name="pin" /><span>{store.city}</span></li>
               )}
             </ul>
           </div>
         </div>
+
         <div className={styles.bottom}>
-          <span>
-            © {year} {store.name}
-          </span>
+          <span>© {year} {store.name} · همه‌ی حقوق محفوظ است</span>
+          <a className={styles.credit} href={DEVELOPER.url} target="_blank" rel="noopener">
+            طراحی و توسعه: <b>{DEVELOPER.name}</b>
+          </a>
+          <BackToTop />
         </div>
       </div>
     </footer>
