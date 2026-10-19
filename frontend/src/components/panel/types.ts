@@ -49,6 +49,8 @@ export type AdminVariant = {
   size_label: string;
   sku: string;
   price_override: number | null;
+  sale_price: number | null;
+  regular_price: number;
   price: number;
   stock: number;
   is_active: boolean;
@@ -62,7 +64,6 @@ export type AdminProduct = {
   description: string;
   details: string[];
   price: number;
-  sale_price: number | null;
   is_active: boolean;
   is_featured: boolean;
   created_at: string;
@@ -77,7 +78,7 @@ export type AdminProductRow = {
   category: number;
   category_name: string;
   price: number;
-  sale_price: number | null;
+  sale_count: number;
   is_active: boolean;
   is_featured: boolean;
   thumb: string | null;

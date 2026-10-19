@@ -98,7 +98,8 @@ export function ProductsList() {
                       </span>
                     </td>
                     <td className="num">
-                      {p.sale_price != null ? (<><b>{faNum(p.sale_price)}</b> <s className="muted">{faNum(p.price)}</s></>) : faNum(p.price)}
+                      {faNum(p.price)}
+                      {p.sale_count > 0 && <small className={s.danger} style={{ display: "block", fontSize: 11.5 }}>حراج در {faNum(p.sale_count)} تنوع</small>}
                     </td>
                     <td className="num">
                       {faNum(p.total_stock)} عدد

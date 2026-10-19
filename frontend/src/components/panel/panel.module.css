@@ -635,6 +635,14 @@
   background: var(--band);
 }
 
+.cellNote {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--sale);
+}
+
 .bulkPrice {
   display: flex;
   flex-wrap: wrap;
