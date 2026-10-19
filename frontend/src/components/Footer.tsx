@@ -81,8 +81,7 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
 
         <div className={styles.bottom}>
           <span>
-            © {year} · تمامی حقوق این وب‌سایت متعلق به{" "}
-            <a href={DEVELOPER.url} target="_blank" rel="noopener" className={styles.owner}>{DEVELOPER.name}</a> است.
+            تمامی حقوق این وب‌سایت متعلق به <b className={styles.owner}>{store.name}</b> است. © {year}
           </span>
           <a className={styles.credit} href={DEVELOPER.url} target="_blank" rel="noopener">
             طراحی و توسعه: <b>{DEVELOPER.name}</b>
