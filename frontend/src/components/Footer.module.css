@@ -216,6 +216,15 @@
   font-size: 12px;
 }
 
+.owner {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.owner:hover {
+  color: var(--accent-hi);
+}
+
 .credit {
   margin-inline-start: auto;
   color: var(--on-deep-muted);
