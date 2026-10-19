@@ -388,3 +388,144 @@ h3 {
     scroll-behavior: auto !important;
   }
 }
+
+/* forms (shared by checkout, account and the admin panel) */
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 15px;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent), transparent 80%);
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--sale);
+}
+
+.input.ltr {
+  direction: ltr;
+  text-align: right;
+}
+
+textarea.input {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+select.input {
+  padding-inline-end: 34px;
+}
+
+.err {
+  font-size: 12.5px;
+  color: var(--sale);
+  margin: 0;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.hint b {
+  color: var(--accent-ink);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .row2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--band);
+  color: var(--muted);
+}
+
+.pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pill[data-status="awaiting_payment"] {
+  background: color-mix(in oklab, #c58a19 16%, var(--surface));
+  color: #8a5d07;
+}
+
+.pill[data-status="paid"],
+.pill[data-status="processing"] {
+  background: color-mix(in oklab, #2f6fae 14%, var(--surface));
+  color: #23578a;
+}
+
+.pill[data-status="shipped"] {
+  background: color-mix(in oklab, var(--accent) 22%, var(--surface));
+  color: var(--accent-ink);
+}
+
+.pill[data-status="delivered"] {
+  background: color-mix(in oklab, #2e7d4f 14%, var(--surface));
+  color: #22663e;
+}
+
+.pill[data-status="cancelled"] {
+  background: var(--sale-soft);
+  color: var(--sale);
+}
+
+/* reveal on scroll (see ScrollReveal.tsx); hidden only once the script is running */
+.reveal-on [data-reveal]:not(.in) {
+  opacity: 0;
+  transform: translateY(26px) scale(0.985);
+}
+
+.reveal-on [data-reveal] {
+  transition: opacity 0.9s var(--ease-out), transform 1s var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+html {
+  scroll-behavior: smooth;
+}
