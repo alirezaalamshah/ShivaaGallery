@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from django.conf import settings
+from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -28,8 +29,14 @@ class Command(BaseCommand):
         data = json.loads(Path(opts["file"]).read_text(encoding="utf-8"))
 
         store = StoreSettings.load()
-        for field, value in data.get("store", {}).items():
+        store_data = dict(data.get("store", {}))
+        logo = store_data.pop("logo", None)
+        for field, value in store_data.items():
             setattr(store, field, value)
+        if logo:
+            logo_path = Path(opts["file"]).parent / logo
+            with logo_path.open("rb") as fh:
+                store.logo.save(logo_path.name, File(fh), save=False)
         store.save()
 
         systems, sizes = {}, {}
