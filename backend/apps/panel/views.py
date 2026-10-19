@@ -127,20 +127,27 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def matrix(self, request, pk=None):
-        """Set which colors × sizes are sold and the stock of each. Missing combinations are deactivated, never deleted."""
+        """Set which colors × sizes are sold, with the stock and price of each. Missing combinations are deactivated, never deleted."""
         product = self.get_object()
         m = s.MatrixSerializer(data=request.data)
         m.is_valid(raise_exception=True)
         colors, sizes, stock = m.validated_data["colors"], m.validated_data["sizes"], m.validated_data.get("stock", {})
+        prices = m.validated_data.get("prices")
         with transaction.atomic():
             wanted = set()
             for color in colors:
                 for size in sizes:
                     v, _ = Variant.objects.get_or_create(product=product, color=color, size=size)
                     wanted.add(v.pk)
+                    changed = []
                     if not v.is_active:
                         v.is_active = True
-                        v.save(update_fields=["is_active"])
+                        changed.append("is_active")
+                    if prices is not None and prices.get(f"{color.pk}-{size.pk}") != v.price_override:
+                        v.price_override = prices.get(f"{color.pk}-{size.pk}")
+                        changed.append("price_override")
+                    if changed:
+                        v.save(update_fields=changed)
                     target = stock.get(f"{color.pk}-{size.pk}")
                     if target is not None and target != v.stock:
                         move_stock(v, target - v.stock, StockMovement.Reason.ADJUST, note="جدول تنوع‌ها", user=request.user)

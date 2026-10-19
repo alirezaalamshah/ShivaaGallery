@@ -123,6 +123,14 @@ class ProductApiTests(CatalogFixture):
         self.assertEqual(stock[(self.beige.pk, "S")], (False, False))
         self.assertNotIn("stock", data["variants"][0])
 
+    def test_variant_prices_in_detail(self):
+        self.variant(self.dress, self.black, self.m, stock=1)
+        Variant.objects.filter(product=self.dress, color=self.black).update(price_override=5_100_000)
+        data = self.client.get(f"/api/products/{self.dress.slug}/").json()
+        prices = {v["color"]: (v["price"], v["regular_price"]) for v in data["variants"]}
+        self.assertEqual(prices[self.beige.pk], (3_990_000, 4_750_000))
+        self.assertEqual(prices[self.black.pk], (5_100_000, 5_100_000))
+
     def test_inactive_product_detail_is_404(self):
         self.assertEqual(self.client.get(f"/api/products/{self.hidden.slug}/").status_code, 404)
 

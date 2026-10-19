@@ -155,11 +155,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class MatrixSerializer(serializers.Serializer):
-    """The full set of colors × sizes a product is sold in, with the stock of each combination."""
+    """The full set of colors × sizes a product is sold in, with the stock and own price of each combination."""
 
     colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True)
     sizes = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True)
     stock = serializers.DictField(child=serializers.IntegerField(min_value=0), required=False)
+    # A missing or empty price means the combination sells at the product's price.
+    prices = serializers.DictField(child=serializers.IntegerField(min_value=1, allow_null=True), required=False)
 
 
 class StockSetSerializer(serializers.Serializer):

@@ -29,10 +29,15 @@ class VariantSerializer(serializers.ModelSerializer):
     in_stock = serializers.BooleanField()
     low_stock = serializers.SerializerMethodField()
     price = serializers.IntegerField()
+    regular_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Variant
-        fields = ["id", "sku", "color", "size_id", "size", "price", "in_stock", "low_stock"]
+        fields = ["id", "sku", "color", "size_id", "size", "price", "regular_price", "in_stock", "low_stock"]
+
+    def get_regular_price(self, obj):
+        """The price shown struck through when this variant is on sale; a variant with its own price is never on sale."""
+        return obj.price_override if obj.price_override is not None else obj.product.price
 
     def get_low_stock(self, obj):
         return obj.in_stock and obj.stock <= LOW_STOCK
