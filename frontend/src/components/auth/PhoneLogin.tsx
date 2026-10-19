@@ -11,7 +11,7 @@ import styles from "./PhoneLogin.module.css";
 const LEN = 5;
 
 /** Phone number → SMS code → signed in. No registration, no password. */
-export function PhoneLogin({ onDone, compact = false }: { onDone?: (me: Me) => void; compact?: boolean }) {
+export function PhoneLogin({ onDone, compact = false, stacked = false }: { onDone?: (me: Me) => void; compact?: boolean; stacked?: boolean }) {
   const { setMe } = useAuth();
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -86,7 +86,7 @@ export function PhoneLogin({ onDone, compact = false }: { onDone?: (me: Me) => v
   };
 
   return (
-    <div className={`${styles.box} ${compact ? styles.compact : ""}`}>
+    <div className={`${styles.box} ${compact ? styles.compact : ""} ${stacked ? styles.stacked : ""}`}>
       {step === "phone" ? (
         <form
           className={styles.form}
