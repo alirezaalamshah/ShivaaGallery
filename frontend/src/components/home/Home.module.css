@@ -10,7 +10,8 @@
   display: flex;
   width: max-content;
   direction: ltr;
-  animation: mq 46s linear infinite;
+  /* Runs left-to-right, in the reading direction of the Persian names. */
+  animation: mq 46s linear infinite reverse;
 }
 
 .marquee:hover .track {
@@ -109,10 +110,12 @@
 @media (max-width: 699px) {
   .cats {
     display: flex;
+    gap: 14px;
     overflow-x: auto;
-    scroll-snap-type: x mandatory;
     scrollbar-width: none;
     padding-bottom: 8px;
+    margin-inline: -16px;
+    padding-inline: 16px;
   }
 
   .cats::-webkit-scrollbar {
@@ -120,123 +123,14 @@
   }
 
   .cat {
-    flex: 0 0 136px;
-    scroll-snap-align: start;
+    flex: 0 0 138px;
   }
 }
 
-/* spotlight */
-.spot {
-  background: var(--deep);
-  color: var(--on-deep);
-  overflow: hidden;
-}
-
-.spotGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 56px;
-  align-items: center;
-  padding-block: 80px;
-}
-
-.spotVisual {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  margin-inline: auto;
-  border-radius: 220px 220px 24px 24px;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent), transparent 65%), 0 40px 70px -40px rgb(0 0 0 / 0.6);
-}
-
-.spotVisual::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent-hi), transparent 76%), transparent 75%);
-  clip-path: polygon(42% 0, 58% 0, 96% 100%, 4% 100%);
-  animation: beam 5s ease-in-out infinite;
-}
-
-@keyframes beam {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.spotCopy {
-  min-width: 0;
-}
-
-.spotCopy .latin {
-  display: block;
-  font-size: 11px;
-  color: var(--accent);
-}
-
-.spotCopy h2 {
-  font-family: var(--f-display);
-  font-weight: 600;
-  font-size: clamp(2rem, 4.4vw, 3.3rem);
-  line-height: 1.3;
-  margin: 8px 0 14px;
-}
-
-.spotCopy p {
-  color: var(--on-deep-muted);
-  max-width: 46ch;
-  margin: 0;
-}
-
-.feat {
-  list-style: none;
-  padding: 0;
-  margin: 22px 0 24px;
-  display: grid;
-  gap: 10px;
-  font-size: 14px;
-}
-
-.feat li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.feat li::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex: none;
-}
-
-.spotPrice {
-  margin-bottom: 22px;
-}
-
-.spotPrice > div {
-  color: var(--accent-hi);
-}
-
-.spotPrice small,
-.spotPrice s {
-  color: var(--on-deep-muted) !important;
-}
-
-@media (max-width: 899px) {
-  .spotGrid {
-    grid-template-columns: 1fr;
-    padding-block: 52px;
-    gap: 30px;
+/* The duplicate set exists only for the phone drift loop. */
+@media (min-width: 700px) {
+  .dup {
+    display: none;
   }
 }
 

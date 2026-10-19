@@ -1,12 +1,12 @@
 import Link from "next/link";
 
+import { CategoryRail } from "@/components/home/CategoryRail";
 import { HeroStage } from "@/components/home/HeroStage";
+import { StoreStory } from "@/components/home/StoreStory";
 import heroStyles from "@/components/home/Hero.module.css";
 import styles from "@/components/home/Home.module.css";
 import { Icon } from "@/components/Icon";
-import { Price } from "@/components/Price";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductMedia } from "@/components/ProductMedia";
 import { api } from "@/lib/api";
 import { faNum, splitHighlight } from "@/lib/format";
 import type { CategoryNode } from "@/lib/types";
@@ -22,7 +22,7 @@ export default async function HomePage() {
     api.products({ featured: true }),
   ]);
   const heroProducts = (featured.results.length >= 3 ? featured.results : latest.results).slice(0, 3);
-  const spotlight = featured.results[0] ?? latest.results[0];
+  const storyProducts = [...featured.results, ...latest.results].filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i);
   const title = splitHighlight(store.hero_title || store.name);
   let wordIndex = 0;
 
@@ -78,29 +78,19 @@ export default async function HomePage() {
 
       <section className="sec">
         <div className="wrap">
-          <div className="sec-head">
+          <div className="sec-head" data-reveal>
             <div>
               <span className="latin">Collections</span>
               <h2>دسته‌ها را بگرد</h2>
             </div>
           </div>
-          <div className={styles.cats}>
-            {shelves(categories).map((c) => (
-              <Link key={c.id} href={`/c/${c.slug}`} className={styles.cat}>
-                <div className={styles.arch}>
-                  <ProductMedia image={c.image} alt={c.name} sizes="160px" />
-                </div>
-                <h3>{c.name}</h3>
-                <p className="num">{faNum(c.product_count)} مدل</p>
-              </Link>
-            ))}
-          </div>
+          <CategoryRail categories={shelves(categories)} />
         </div>
       </section>
 
       <section className="sec" style={{ paddingTop: 0 }}>
         <div className="wrap">
-          <div className="sec-head">
+          <div className="sec-head" data-reveal>
             <div>
               <span className="latin">New In</span>
               <h2>تازه‌ها</h2>
@@ -109,7 +99,7 @@ export default async function HomePage() {
               همه‌ی محصولات <Icon name="arrow" />
             </Link>
           </div>
-          <div className="grid">
+          <div className="grid" data-reveal-group>
             {latest.results.slice(0, 8).map((p, i) => (
               <ProductCard key={p.id} product={p} priority={i < 2} />
             ))}
@@ -117,37 +107,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {spotlight && (
-        <section className={styles.spot}>
-          <div className={`wrap ${styles.spotGrid}`}>
-            <Link href={`/p/${spotlight.slug}`} className={styles.spotVisual}>
-              <ProductMedia image={spotlight.image} alt={spotlight.name} hex={spotlight.colors[0]?.hex} sizes="420px" />
-            </Link>
-            <div className={styles.spotCopy}>
-              <span className="latin">In the spotlight</span>
-              <h2>{spotlight.name}</h2>
-              <p>{spotlight.category.name}</p>
-              {spotlight.colors.length > 0 && (
-                <ul className={styles.feat}>
-                  <li>
-                    {faNum(spotlight.colors.length)} رنگ: {spotlight.colors.map((c) => c.name).join("، ")}
-                  </li>
-                  <li>جدول سایز سانتی‌متری در صفحه‌ی محصول</li>
-                </ul>
-              )}
-              <div className={styles.spotPrice}>
-                <Price price={spotlight.price} salePrice={spotlight.sale_price} size="lg" />
-              </div>
-              <Link href={`/p/${spotlight.slug}`} className="btn btn-gold">
-                انتخاب سایز و رنگ <Icon name="arrow" />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+      <StoreStory store={store} products={storyProducts} />
 
       <div className={styles.svcBand}>
-        <div className={`wrap ${styles.svc}`}>
+        <div className={`wrap ${styles.svc}`} data-reveal-group>
           <div className={styles.svcItem}>
             <span className={styles.svcIc}><Icon name="truck" /></span>
             <div>
