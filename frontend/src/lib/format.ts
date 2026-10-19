@@ -17,3 +17,11 @@ export function splitHighlight(text: string): [string, boolean][] {
 
 /** A soft tint of a product color over the page ground, for image backdrops. */
 export const tintOf = (hex: string) => `color-mix(in oklab, ${hex} 16%, var(--surface))`;
+
+const jalali = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "long", day: "numeric" });
+const jalaliTime = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/** "۲۷ مهر ۱۴۰۵" */
+export const faDate = (iso: string) => jalali.format(new Date(iso));
+/** "۲۷ مهر، ۱۴:۰۵" */
+export const faDateTime = (iso: string) => jalaliTime.format(new Date(iso));

@@ -5,6 +5,8 @@ export type Store = {
   logo: string | null;
   hero_title: string;
   hero_text: string;
+  about_title: string;
+  about_text: string;
   color_ink: string;
   color_accent: string;
   color_background: string;
@@ -22,6 +24,7 @@ export type CategoryBrief = { id: number; name: string; slug: string };
 export type CategoryNode = CategoryBrief & {
   description: string;
   image: string | null;
+  cover: string | null;
   product_count: number;
   children: CategoryNode[];
 };
@@ -70,4 +73,57 @@ export type Page<T> = { count: number; next: string | null; previous: string | n
 export type Facets = {
   colors: Color[];
   size_systems: { id: number; name: string; sizes: { id: number; label: string }[] }[];
+};
+
+export type ShippingMethod = { id: number; name: string; description: string; fee: number; only_city: string };
+export type Address = { id: number; receiver_name: string; city: string; address: string; postal_code: string };
+
+export type OrderStatus = "awaiting_payment" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export type OrderItem = {
+  product_slug: string;
+  product_name: string;
+  color_name: string;
+  size_label: string;
+  sku: string;
+  image: string;
+  unit_price: number;
+  qty: number;
+  line_total: number;
+};
+
+export type Order = {
+  number: string;
+  status: OrderStatus;
+  status_label: string;
+  created_at: string;
+  receiver_name: string;
+  phone: string;
+  city: string;
+  address?: string;
+  postal_code?: string;
+  note?: string;
+  shipping_name: string;
+  shipping_fee: number;
+  subtotal: number;
+  discount_code: string;
+  discount_amount: number;
+  total: number;
+  tracking_code: string;
+  items: OrderItem[];
+  events: { status: OrderStatus; label: string; note: string; created_at: string }[];
+};
+
+export type OrderSummary = Pick<Order, "number" | "status" | "status_label" | "created_at" | "total"> & {
+  item_count: number;
+  first_image: string | null;
+};
+
+export type Quote = {
+  lines: { variant: number; qty: number; available: number; unit_price: number; ok: boolean }[];
+  subtotal: number;
+  shipping_fee: number;
+  discount: number;
+  total: number;
+  discount_error?: string | null;
 };

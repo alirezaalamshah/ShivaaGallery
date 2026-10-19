@@ -1,0 +1,310 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useAuth } from "@/components/auth/AuthProvider";
+import { PhoneLogin } from "@/components/auth/PhoneLogin";
+import { useCart } from "@/components/cart/CartProvider";
+import { Icon } from "@/components/Icon";
+import { ProductMedia } from "@/components/ProductMedia";
+import { useStore } from "@/components/StoreProvider";
+import { ApiError, call, fieldErrors } from "@/lib/client";
+import { faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
+
+import styles from "./Checkout.module.css";
+
+type Form = { receiver_name: string; city: string; address: string; postal_code: string; note: string };
+
+export function Checkout() {
+  const store = useStore();
+  const cart = useCart();
+  const { me } = useAuth();
+  const router = useRouter();
+  const signedIn = !!me?.authenticated && !me.is_staff;
+
+  const [methods, setMethods] = useState<ShippingMethod[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addressId, setAddressId] = useState<number | "new">("new");
+  const [form, setForm] = useState<Form>({ receiver_name: "", city: store.city || "", address: "", postal_code: "", note: "" });
+  const [shipping, setShipping] = useState<number | null>(null);
+  const [codeInput, setCodeInput] = useState("");
+  const [code, setCode] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [banner, setBanner] = useState("");
+  const [placing, setPlacing] = useState(false);
+  const [sumOpen, setSumOpen] = useState(false);
+  const refs = { login: useRef<HTMLElement>(null), address: useRef<HTMLElement>(null), shipping: useRef<HTMLElement>(null) };
+
+  const lines = useMemo(() => cart.lines.map((l) => ({ variant: l.variantId, qty: l.qty })), [cart.lines]);
+  const chosen = addressId === "new" ? form : addresses.find((a) => a.id === addressId) ?? form;
+  const city = chosen.city.trim();
+
+  useEffect(() => {
+    call<ShippingMethod[]>("/shipping-methods").then(setMethods).catch(() => setBanner("روش‌های ارسال دریافت نشد. صفحه را دوباره باز کن."));
+  }, []);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    call<Address[]>("/addresses").then((list) => {
+      setAddresses(list);
+      if (list.length) setAddressId(list[0].id);
+    }).catch(() => {});
+  }, [signedIn]);
+
+  // Pick the first method that serves the chosen city, and drop one that no longer does.
+  useEffect(() => {
+    const ok = (m: ShippingMethod) => !m.only_city || m.only_city === city;
+    const current = methods.find((m) => m.id === shipping);
+    if (!current || !ok(current)) setShipping(methods.find(ok)?.id ?? null);
+  }, [methods, city, shipping]);
+
+  const refreshQuote = useCallback(async () => {
+    if (!lines.length) return;
+    try {
+      setQuote(await call<Quote>("/checkout/quote", { method: "POST", body: { lines, city, shipping_method: shipping, discount_code: code } }));
+    } catch {
+      /* the summary keeps the last good numbers */
+    }
+  }, [lines, city, shipping, code]);
+
+  useEffect(() => {
+    const t = setTimeout(refreshQuote, 200);
+    return () => clearTimeout(t);
+  }, [refreshQuote]);
+
+  const unavailable = quote?.lines.filter((l) => !l.ok) ?? [];
+  const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm({ ...form, [k]: k === "postal_code" ? toEnDigits(e.target.value).replace(/\D/g, "").slice(0, 10) : e.target.value });
+    setErrors((er) => ({ ...er, [k]: "" }));
+  };
+
+  const applyCode = async () => {
+    const c = codeInput.trim().toUpperCase();
+    if (!c) return;
+    const q = await call<Quote>("/checkout/quote", { method: "POST", body: { lines, city, shipping_method: shipping, discount_code: c } }).catch(() => null);
+    if (q?.discount_error) setErrors((er) => ({ ...er, discount_code: q.discount_error! }));
+    else if (q) {
+      setCode(c);
+      setQuote(q);
+    }
+  };
+
+  const focus = (ref: React.RefObject<HTMLElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    ref.current?.classList.remove("shake");
+    void ref.current?.offsetWidth;
+    ref.current?.classList.add("shake");
+  };
+
+  const place = async () => {
+    setBanner("");
+    if (!signedIn) return focus(refs.login);
+    const errs: Record<string, string> = {};
+    if (chosen.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
+    if (!city) errs.city = "شهر را بنویس.";
+    if (chosen.address.trim().length < 10) errs.address = "آدرس را کامل‌تر بنویس (خیابان، کوچه، پلاک).";
+    if (chosen.postal_code && chosen.postal_code.length !== 10) errs.postal_code = "کد پستی باید ۱۰ رقم باشد.";
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      if (addressId !== "new") setAddressId("new");
+      return focus(refs.address);
+    }
+    if (!shipping) return focus(refs.shipping);
+    setPlacing(true);
+    try {
+      const order = await call<Order>("/orders", {
+        method: "POST",
+        body: { lines, ...chosen, note: form.note, shipping_method: shipping, discount_code: code, save_address: addressId === "new" },
+      });
+      cart.clear();
+      router.push(`/account/orders/${order.number}?new=1`);
+    } catch (e) {
+      setErrors(fieldErrors(e));
+      setBanner(e instanceof Error ? e.message : "ثبت سفارش ممکن نشد.");
+      if (e instanceof ApiError && e.status === 409) refreshQuote();
+      setPlacing(false);
+    }
+  };
+
+  if (!cart.ready) return <div className={styles.page} aria-busy="true" />;
+  if (!cart.lines.length) {
+    return (
+      <div className={`${styles.page} ${styles.empty}`}>
+        <h1 className="page-title">سبد خرید خالی است</h1>
+        <Link href="/shop" className="btn btn-ink">دیدن محصولات</Link>
+      </div>
+    );
+  }
+
+  const total = quote?.total ?? cart.subtotal;
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.head}>
+        <Link href="/cart" className="icon-btn" aria-label="بازگشت به سبد">
+          <Icon name="back" />
+        </Link>
+        <h1>تسویه‌حساب</h1>
+        <span className={styles.secure}>
+          <Icon name="lock" /> اتصال امن
+        </span>
+      </header>
+
+      {banner && <div className={styles.banner} role="alert">{banner}</div>}
+      {unavailable.length > 0 && (
+        <div className={styles.banner} role="alert">
+          موجودی {faNum(unavailable.length)} کالا کمتر از تعداد سبد است.{" "}
+          <Link href="/cart">ویرایش سبد</Link>
+        </div>
+      )}
+
+      <section ref={refs.login} className={`${styles.sec} ${signedIn ? styles.done : ""}`}>
+        <h2><span className={styles.n}>{signedIn ? <Icon name="check" /> : "۱"}</span>ورود با موبایل</h2>
+        {signedIn ? (
+          <p className={styles.verified}>
+            <Icon name="check" /> وارد شدی با <b className="num" dir="ltr">{toFaDigits(me?.phone ?? "")}</b>
+          </p>
+        ) : me?.is_staff ? (
+          <p className="err">با حساب مدیر نمی‌شود خرید کرد. از پنل خارج شو و با شماره موبایل وارد شو.</p>
+        ) : (
+          <PhoneLogin compact />
+        )}
+      </section>
+
+      <section ref={refs.address} className={styles.sec}>
+        <h2><span className={styles.n}>{"۲"}</span>آدرس تحویل</h2>
+        {addresses.length > 0 && (
+          <div className={styles.opts} role="radiogroup" aria-label="آدرس‌های قبلی">
+            {addresses.map((a) => (
+              <label key={a.id} className={styles.opt}>
+                <input type="radio" name="address" checked={addressId === a.id} onChange={() => setAddressId(a.id)} />
+                <span className={styles.dot} />
+                <span>
+                  <b>{a.receiver_name} · {a.city}</b>
+                  <small>{a.address}</small>
+                </span>
+              </label>
+            ))}
+            <label className={styles.opt}>
+              <input type="radio" name="address" checked={addressId === "new"} onChange={() => setAddressId("new")} />
+              <span className={styles.dot} />
+              <span><b>آدرس جدید</b></span>
+            </label>
+          </div>
+        )}
+        {addressId === "new" && (
+          <div className={styles.fields}>
+            <label className="field">
+              <span className="label">نام تحویل‌گیرنده</span>
+              <input id="co-name" className="input" autoComplete="name" value={form.receiver_name} onChange={set("receiver_name")} aria-invalid={!!errors.receiver_name} placeholder="مثلاً مریم احمدی" />
+              {errors.receiver_name && <span className="err">{errors.receiver_name}</span>}
+            </label>
+            <div className="row2">
+              <label className="field">
+                <span className="label">شهر</span>
+                <input id="co-city" className="input" list="cities" value={form.city} onChange={set("city")} aria-invalid={!!errors.city} />
+                <datalist id="cities">
+                  {[store.city, "اهواز", "اندیمشک", "شوشتر", "تهران", "اصفهان", "شیراز", "مشهد", "تبریز"].filter(Boolean).map((c) => <option key={c} value={c} />)}
+                </datalist>
+                {errors.city && <span className="err">{errors.city}</span>}
+              </label>
+              <label className="field">
+                <span className="label">کد پستی (اختیاری)</span>
+                <input id="co-postal" className="input ltr num" inputMode="numeric" value={toFaDigits(form.postal_code)} onChange={set("postal_code")} aria-invalid={!!errors.postal_code} placeholder="۱۰ رقم" />
+                {errors.postal_code && <span className="err">{errors.postal_code}</span>}
+              </label>
+            </div>
+            <label className="field">
+              <span className="label">آدرس کامل</span>
+              <textarea id="co-address" className="input" autoComplete="street-address" value={form.address} onChange={set("address")} aria-invalid={!!errors.address} placeholder="خیابان، کوچه، پلاک، واحد" />
+              {errors.address && <span className="err">{errors.address}</span>}
+            </label>
+          </div>
+        )}
+      </section>
+
+      <section ref={refs.shipping} className={`${styles.sec} ${shipping ? styles.done : ""}`}>
+        <h2><span className={styles.n}>{shipping ? <Icon name="check" /> : "۳"}</span>روش ارسال</h2>
+        <div className={styles.opts} role="radiogroup" aria-label="روش ارسال">
+          {methods.map((m) => {
+            const off = !!m.only_city && m.only_city !== city;
+            return (
+              <label key={m.id} className={`${styles.opt} ${off ? styles.off : ""}`}>
+                <input type="radio" name="shipping" disabled={off} checked={shipping === m.id} onChange={() => setShipping(m.id)} />
+                <span className={styles.dot} />
+                <span>
+                  <b>{m.name}</b>
+                  <small>{off ? `فقط برای ${m.only_city}` : m.description}</small>
+                </span>
+                <span className={`${styles.fee} num`}>{faNum(m.fee)} {store.currency_label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={`${styles.sec} ${code ? styles.done : ""}`}>
+        <h2><span className={styles.n}>{code ? <Icon name="check" /> : "٪"}</span>کد تخفیف <small>اختیاری</small></h2>
+        {code ? (
+          <p className={styles.verified}>
+            <Icon name="check" /> کد <b dir="ltr">{code}</b> اعمال شد · <span className="num">{faNum(quote?.discount ?? 0)}</span> {store.currency_label} تخفیف
+            <button type="button" className={styles.link} onClick={() => { setCode(""); setCodeInput(""); }}>حذف</button>
+          </p>
+        ) : (
+          <>
+            <div className={styles.inline}>
+              <input id="co-code" className="input ltr" value={codeInput} onChange={(e) => { setCodeInput(e.target.value); setErrors((er) => ({ ...er, discount_code: "" })); }} onKeyDown={(e) => e.key === "Enter" && applyCode()} placeholder="کد تخفیف" aria-invalid={!!errors.discount_code} />
+              <button type="button" className="btn btn-ink" onClick={applyCode}>اعمال</button>
+            </div>
+            {errors.discount_code && <p className="err">{errors.discount_code}</p>}
+          </>
+        )}
+      </section>
+
+      <section className={styles.sec}>
+        <h2><span className={styles.n}><Icon name="card" /></span>پرداخت</h2>
+        <div className={styles.payNote}>
+          <Icon name="card" />
+          <span>پرداخت آنلاین به‌زودی فعال می‌شود. بعد از ثبت سفارش، فروشگاه برای هماهنگی پرداخت با شما تماس می‌گیرد و موجودی سفارش برایتان نگه داشته می‌شود.</span>
+        </div>
+        <label className="field" style={{ marginTop: 12 }}>
+          <span className="label">یادداشت برای فروشگاه (اختیاری)</span>
+          <input id="co-note" className="input" value={form.note} onChange={set("note")} maxLength={300} />
+        </label>
+      </section>
+
+      <div className={styles.foot}>
+        <div className={styles.footIn}>
+          <button type="button" className={styles.sumToggle} aria-expanded={sumOpen} onClick={() => setSumOpen(!sumOpen)}>
+            <span>جمع کل · <span className="num">{faNum(cart.count)}</span> کالا <Icon name="chev" /></span>
+            <span className={`${styles.total} num`}>{faNum(total)} {store.currency_label}</span>
+          </button>
+          <div className={`${styles.sum} ${sumOpen ? styles.sumOn : ""}`}>
+            <div>
+              <ul className={styles.lines}>
+                {cart.lines.map((l) => (
+                  <li key={l.variantId}>
+                    <span className={styles.th}><ProductMedia image={l.image} alt={l.name} hex={l.colorHex} sizes="44px" /></span>
+                    <span><b>{l.name}</b><small>{l.colorName} · سایز <span className="num">{l.size}</span> · <span className="num">{faNum(l.qty)}</span> عدد</small></span>
+                    <span className="num">{faNum(l.price * l.qty)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className={styles.row}><span>جمع کالاها</span><b className="num">{faNum(quote?.subtotal ?? cart.subtotal)}</b></div>
+              <div className={styles.row}><span>هزینه‌ی ارسال</span><b className="num">{faNum(quote?.shipping_fee ?? 0)}</b></div>
+              {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>تخفیف</span><b className="num">{faNum(quote.discount)}−</b></div>}
+            </div>
+          </div>
+          <button type="button" className={styles.place} onClick={place} disabled={placing}>
+            <Icon name="lock" />
+            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش · <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول با موبایل وارد شو"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
