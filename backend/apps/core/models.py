@@ -20,7 +20,10 @@ class StoreSettings(models.Model):
 
     color_ink = models.CharField("رنگ اصلی (متن و دکمه)", max_length=7, default="#14110E", validators=[hex_color])
     color_accent = models.CharField("رنگ تأکید", max_length=7, default="#C9A24C", validators=[hex_color])
-    color_background = models.CharField("رنگ زمینه", max_length=7, default="#FAF6EF", validators=[hex_color])
+    color_background = models.CharField("رنگ زمینه", max_length=7, default="#EEE5D6", validators=[hex_color])
+
+    hero_title = models.CharField("تیتر صفحه‌ی اصلی", max_length=80, blank=True, help_text="کلمه‌ای که بین * و * بیاید طلایی نمایش داده می‌شود، مثلاً: درخشش، *به سبک تو*")
+    hero_text = models.CharField("متن صفحه‌ی اصلی", max_length=240, blank=True)
 
     phone = models.CharField("تلفن", max_length=20, blank=True)
     instagram = models.CharField("اینستاگرام", max_length=60, blank=True, help_text="فقط نام کاربری، بدون @")
