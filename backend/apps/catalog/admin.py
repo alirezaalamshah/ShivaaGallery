@@ -44,14 +44,14 @@ class VariantForm(forms.ModelForm):
 
     class Meta:
         model = Variant
-        fields = ["color", "size", "sku", "price_override", "is_active"]
+        fields = ["color", "size", "sku", "price_override", "sale_price", "is_active"]
 
 
 class VariantInline(admin.TabularInline):
     model = Variant
     form = VariantForm
     extra = 0
-    fields = ["color", "size", "sku", "price_override", "is_active", "stock", "new_stock"]
+    fields = ["color", "size", "sku", "price_override", "sale_price", "is_active", "stock", "new_stock"]
     readonly_fields = ["stock"]
 
 
@@ -72,14 +72,14 @@ class ProductAdminForm(forms.ModelForm):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
-    list_display = ["name", "category", "price", "sale_price", "total_stock", "is_active", "is_featured"]
+    list_display = ["name", "category", "price", "total_stock", "is_active", "is_featured"]
     list_editable = ["is_active", "is_featured"]
     list_filter = ["is_active", "is_featured", "category"]
     search_fields = ["name", "variants__sku"]
     inlines = [ProductImageInline, VariantInline]
     fieldsets = [
         (None, {"fields": ["category", "name", "slug", "description", "details"]}),
-        ("قیمت", {"fields": ["price", "sale_price"]}),
+        ("قیمت", {"fields": ["price"]}),
         ("نمایش", {"fields": ["is_active", "is_featured"]}),
         ("ساخت سریع تنوع‌ها", {"fields": ["gen_colors", "gen_sizes"], "classes": ["collapse"]}),
     ]

@@ -74,6 +74,7 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
                 total_stock=Coalesce(Sum("variants__stock", filter=Q(variants__is_active=True)), 0),
                 variant_count=Count("variants", filter=Q(variants__is_active=True), distinct=True),
                 out_count=Count("variants", filter=Q(variants__is_active=True, variants__stock=0), distinct=True),
+                sale_count=Count("variants", filter=Q(variants__is_active=True, variants__sale_price__isnull=False), distinct=True),
             ).prefetch_related("images")
             p = self.request.query_params
             if p.get("category"):
@@ -127,12 +128,22 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def matrix(self, request, pk=None):
-        """Set which colors × sizes are sold, with the stock and price of each. Missing combinations are deactivated, never deleted."""
+        """Set which colors × sizes are sold, with the stock and prices of each. Missing combinations are deactivated, never deleted."""
         product = self.get_object()
         m = s.MatrixSerializer(data=request.data)
         m.is_valid(raise_exception=True)
         colors, sizes, stock = m.validated_data["colors"], m.validated_data["sizes"], m.validated_data.get("stock", {})
-        prices = m.validated_data.get("prices")
+        prices, sales = m.validated_data.get("prices"), m.validated_data.get("sale_prices")
+        if prices is not None and sales is not None:
+            for color in colors:
+                for size in sizes:
+                    k = f"{color.pk}-{size.pk}"
+                    regular = prices.get(k) or product.price
+                    if sales.get(k) is not None and sales[k] >= regular:
+                        return Response(
+                            {"sale_prices": f"قیمت حراج {color.name} سایز {size.label} باید کمتر از قیمت آن باشد."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
         with transaction.atomic():
             wanted = set()
             for color in colors:
@@ -143,9 +154,13 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
                     if not v.is_active:
                         v.is_active = True
                         changed.append("is_active")
-                    if prices is not None and prices.get(f"{color.pk}-{size.pk}") != v.price_override:
-                        v.price_override = prices.get(f"{color.pk}-{size.pk}")
+                    k = f"{color.pk}-{size.pk}"
+                    if prices is not None and prices.get(k) != v.price_override:
+                        v.price_override = prices.get(k)
                         changed.append("price_override")
+                    if sales is not None and sales.get(k) != v.sale_price:
+                        v.sale_price = sales.get(k)
+                        changed.append("sale_price")
                     if changed:
                         v.save(update_fields=changed)
                     target = stock.get(f"{color.pk}-{size.pk}")

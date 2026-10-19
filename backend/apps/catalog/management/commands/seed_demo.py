@@ -69,7 +69,7 @@ class Command(BaseCommand):
         for p in data["products"]:
             product = Product.objects.create(
                 category=cats[p["category"]], name=p["name"], price=p["price"],
-                sale_price=p.get("sale_price"), is_featured=p.get("featured", False),
+                is_featured=p.get("featured", False),
                 details=p.get("details", []),
             )
             for i, im in enumerate(p.get("images", [])):
@@ -82,7 +82,7 @@ class Command(BaseCommand):
             system = cat_system[p["category"]]
             for color in p["colors"]:
                 for label in p["sizes"]:
-                    v = Variant.objects.create(product=product, color=colors[color], size=sizes[(system, label)])
+                    v = Variant.objects.create(product=product, color=colors[color], size=sizes[(system, label)], sale_price=p.get("sale_price"))
                     if label not in p.get("out", []):
                         move_stock(v, DEMO_STOCK, StockMovement.Reason.RECEIVE, note="داده‌ی نمونه")
 

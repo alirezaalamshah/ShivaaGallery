@@ -1,7 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Count, F, Prefetch
-from django.db.models.functions import Coalesce
+from django.db.models import Count, Prefetch
 from rest_framework import viewsets
 from rest_framework.response import Response
 
@@ -22,7 +21,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         variants = Variant.objects.select_related("color", "size")
         return (
             Product.objects.published()
-            .annotate(current=Coalesce(F("sale_price"), F("price")))
+            .with_prices()
             .select_related("category__parent")
             .prefetch_related(Prefetch("variants", queryset=variants), "images")
         )

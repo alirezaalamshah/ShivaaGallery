@@ -65,23 +65,31 @@ class PanelTests(TestCase):
         self.assertEqual(Variant.objects.filter(product_id=pid).count(), 4)
 
     def test_matrix_sets_price_of_each_variant(self):
-        product = Product.objects.create(category=self.cat, name="x", price=2_000_000, sale_price=1_800_000)
+        product = Product.objects.create(category=self.cat, name="x", price=2_000_000)
         url = f"/api/admin/products/{product.pk}/matrix/"
         body = {"colors": [self.black.pk, self.red.pk], "sizes": [self.s.pk, self.m.pk]}
-        res = self.client.post(url, {**body, "prices": {f"{self.black.pk}-{self.s.pk}": 2_500_000, f"{self.red.pk}-{self.m.pk}": None}}, content_type="application/json")
-        prices = {(v["color_name"], v["size_label"]): v["price"] for v in res.json()["variants"]}
-        self.assertEqual(prices, {("مشکی", "S"): 2_500_000, ("مشکی", "M"): 1_800_000, ("قرمز", "S"): 1_800_000, ("قرمز", "M"): 1_800_000})
+        res = self.client.post(url, {
+            **body,
+            "prices": {f"{self.black.pk}-{self.s.pk}": 2_500_000, f"{self.red.pk}-{self.m.pk}": None},
+            "sale_prices": {f"{self.black.pk}-{self.s.pk}": 2_200_000, f"{self.red.pk}-{self.s.pk}": 1_800_000},
+        }, content_type="application/json")
+        prices = {(v["color_name"], v["size_label"]): (v["price"], v["regular_price"]) for v in res.json()["variants"]}
+        self.assertEqual(prices, {
+            ("مشکی", "S"): (2_200_000, 2_500_000), ("مشکی", "M"): (2_000_000, 2_000_000),
+            ("قرمز", "S"): (1_800_000, 2_000_000), ("قرمز", "M"): (2_000_000, 2_000_000),
+        })
+        # A sale price must be below the price of that color and size.
+        bad = self.client.post(url, {**body, "prices": {}, "sale_prices": {f"{self.red.pk}-{self.m.pk}": 2_000_000}}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("sale_prices", bad.json())
+        self.assertEqual(Variant.objects.get(product=product, color=self.red, size=self.s).sale_price, 1_800_000)
         # Saving without prices leaves them alone; an empty map clears them.
         self.client.post(url, body, content_type="application/json")
         self.assertEqual(Variant.objects.get(product=product, color=self.black, size=self.s).price_override, 2_500_000)
-        self.client.post(url, {**body, "prices": {}}, content_type="application/json")
+        self.client.post(url, {**body, "prices": {}, "sale_prices": {}}, content_type="application/json")
         self.assertFalse(Variant.objects.filter(product=product, price_override__isnull=False).exists())
+        self.assertFalse(Variant.objects.filter(product=product, sale_price__isnull=False).exists())
         self.assertEqual(self.client.post(url, {**body, "prices": {f"{self.black.pk}-{self.s.pk}": 0}}, content_type="application/json").status_code, 400)
-
-    def test_sale_price_validation(self):
-        res = self.client.post("/api/admin/products/", {"name": "x", "category": self.cat.pk, "price": 100, "sale_price": 100}, content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("sale_price", res.json())
 
     def test_photo_upload_is_rotated_resized_and_stripped(self):
         product = Product.objects.create(category=self.cat, name="عکس", price=1)

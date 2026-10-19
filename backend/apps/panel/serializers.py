@@ -106,10 +106,11 @@ class VariantSerializer(serializers.ModelSerializer):
     color_hex = serializers.CharField(source="color.hex", read_only=True)
     size_label = serializers.CharField(source="size.label", read_only=True)
     price = serializers.IntegerField(read_only=True)
+    regular_price = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Variant
-        fields = ["id", "color", "color_name", "color_hex", "size", "size_label", "sku", "price_override", "price", "stock", "is_active"]
+        fields = ["id", "color", "color_name", "color_hex", "size", "size_label", "sku", "price_override", "sale_price", "regular_price", "price", "stock", "is_active"]
         read_only_fields = ["color", "size", "stock"]
 
 
@@ -119,10 +120,11 @@ class ProductListSerializer(serializers.ModelSerializer):
     total_stock = serializers.IntegerField()
     variant_count = serializers.IntegerField()
     out_count = serializers.IntegerField()
+    sale_count = serializers.IntegerField()
 
     class Meta:
         model = Product
-        fields = ["id", "name", "slug", "category", "category_name", "price", "sale_price", "is_active", "is_featured", "thumb", "total_stock", "variant_count", "out_count", "created_at"]
+        fields = ["id", "name", "slug", "category", "category_name", "price", "sale_count", "is_active", "is_featured", "thumb", "total_stock", "variant_count", "out_count", "created_at"]
 
     def get_thumb(self, obj):
         first = next(iter(obj.images.all()), None)
@@ -138,7 +140,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["id", "name", "slug", "category", "description", "details", "price", "sale_price", "is_active", "is_featured", "created_at", "images", "variants"]
+        fields = ["id", "name", "slug", "category", "description", "details", "price", "is_active", "is_featured", "created_at", "images", "variants"]
         read_only_fields = ["slug", "created_at"]
 
     def validate_details(self, value):
@@ -146,22 +148,17 @@ class ProductSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("مشخصات باید فهرستی از متن باشد.")
         return [x.strip() for x in value if x.strip()]
 
-    def validate(self, attrs):
-        price = attrs.get("price", getattr(self.instance, "price", None))
-        sale = attrs.get("sale_price", getattr(self.instance, "sale_price", None))
-        if sale is not None and price is not None and sale >= price:
-            raise serializers.ValidationError({"sale_price": "قیمت حراج باید کمتر از قیمت اصلی باشد."})
-        return attrs
-
 
 class MatrixSerializer(serializers.Serializer):
-    """The full set of colors × sizes a product is sold in, with the stock and own price of each combination."""
+    """The full set of colors × sizes a product is sold in, with the stock, own price and sale price of each combination."""
 
     colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True)
     sizes = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True)
     stock = serializers.DictField(child=serializers.IntegerField(min_value=0), required=False)
     # A missing or empty price means the combination sells at the product's price.
     prices = serializers.DictField(child=serializers.IntegerField(min_value=1, allow_null=True), required=False)
+    # A missing or empty sale price means the combination is not on sale.
+    sale_prices = serializers.DictField(child=serializers.IntegerField(min_value=1, allow_null=True), required=False)
 
 
 class StockSetSerializer(serializers.Serializer):

@@ -29,15 +29,11 @@ class VariantSerializer(serializers.ModelSerializer):
     in_stock = serializers.BooleanField()
     low_stock = serializers.SerializerMethodField()
     price = serializers.IntegerField()
-    regular_price = serializers.SerializerMethodField()
+    regular_price = serializers.IntegerField()
 
     class Meta:
         model = Variant
         fields = ["id", "sku", "color", "size_id", "size", "price", "regular_price", "in_stock", "low_stock"]
-
-    def get_regular_price(self, obj):
-        """The price shown struck through when this variant is on sale; a variant with its own price is never on sale."""
-        return obj.price_override if obj.price_override is not None else obj.product.price
 
     def get_low_stock(self, obj):
         return obj.in_stock and obj.stock <= LOW_STOCK
@@ -56,10 +52,18 @@ def _colors(product):
     return out
 
 
+def _cheapest(product):
+    return min(_active_variants(product), key=lambda v: (v.price, v.regular_price), default=None)
+
+
 class ProductListSerializer(serializers.ModelSerializer):
+    """`price` and `sale_price` belong to the cheapest variant, so a card shows the lowest price the product sells at."""
+
     category = CategoryBriefSerializer()
-    current_price = serializers.IntegerField()
-    discount_percent = serializers.IntegerField()
+    price = serializers.SerializerMethodField()
+    sale_price = serializers.SerializerMethodField()
+    current_price = serializers.SerializerMethodField()
+    discount_percent = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     colors = serializers.SerializerMethodField()
     in_stock = serializers.SerializerMethodField()
@@ -70,6 +74,22 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id", "slug", "name", "category", "price", "sale_price", "current_price",
             "discount_percent", "image", "colors", "in_stock", "is_featured", "created_at",
         ]
+
+    def get_price(self, obj):
+        v = _cheapest(obj)
+        return v.regular_price if v else obj.price
+
+    def get_sale_price(self, obj):
+        v = _cheapest(obj)
+        return v.price if v and v.price < v.regular_price else None
+
+    def get_current_price(self, obj):
+        v = _cheapest(obj)
+        return v.price if v else obj.price
+
+    def get_discount_percent(self, obj):
+        v = _cheapest(obj)
+        return v.discount_percent if v else 0
 
     def get_image(self, obj):
         images = list(obj.images.all())

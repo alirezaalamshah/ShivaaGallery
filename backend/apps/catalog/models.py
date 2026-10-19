@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F, Min, Q
+from django.db.models.functions import Coalesce, Least
 from django.utils.text import slugify
 
 from apps.core.validators import hex_color
@@ -130,6 +132,12 @@ class ProductQuerySet(models.QuerySet):
     def published(self):
         return self.filter(is_active=True, category__is_active=True)
 
+    def with_prices(self):
+        """Adds `current`: the lowest price any active variant sells at (the product price when it has none)."""
+        regular = Coalesce("variants__price_override", "price")
+        selling = Least(Coalesce("variants__sale_price", regular), regular)
+        return self.annotate(current=Coalesce(Min(selling, filter=Q(variants__is_active=True)), F("price")))
+
 
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products", verbose_name="دسته")
@@ -137,8 +145,7 @@ class Product(models.Model):
     slug = models.SlugField("نامک", max_length=140, unique=True, allow_unicode=True, blank=True)
     description = models.TextField("توضیحات", blank=True)
     details = models.JSONField("مشخصات", default=list, blank=True, help_text='فهرست مشخصات، مثلاً ["جنس: کتان", "قد: ۱۱۰ سانتی‌متر"]')
-    price = models.PositiveBigIntegerField("قیمت")
-    sale_price = models.PositiveBigIntegerField("قیمت حراج", null=True, blank=True)
+    price = models.PositiveBigIntegerField("قیمت", help_text="قیمت رنگ‌ها و سایزهایی که قیمت جدا ندارند")
     is_active = models.BooleanField("نمایش در سایت", default=True)
     is_featured = models.BooleanField("ویژه", default=False)
     created_at = models.DateTimeField("تاریخ ثبت", auto_now_add=True)
@@ -155,24 +162,10 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-    def clean(self):
-        if self.sale_price is not None and self.sale_price >= self.price:
-            raise ValidationError({"sale_price": "قیمت حراج باید کمتر از قیمت اصلی باشد."})
-
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slug(self, self.name)
         super().save(*args, **kwargs)
-
-    @property
-    def current_price(self):
-        return self.sale_price if self.sale_price is not None else self.price
-
-    @property
-    def discount_percent(self):
-        if self.sale_price is None or not self.price:
-            return 0
-        return round((1 - self.sale_price / self.price) * 100)
 
 
 class ProductImage(models.Model):
@@ -198,7 +191,8 @@ class Variant(models.Model):
     color = models.ForeignKey(Color, on_delete=models.PROTECT, verbose_name="رنگ")
     size = models.ForeignKey(Size, on_delete=models.PROTECT, verbose_name="سایز")
     sku = models.CharField("کد انبار", max_length=40, unique=True, blank=True)
-    price_override = models.PositiveBigIntegerField("قیمت ویژه‌ی این تنوع", null=True, blank=True)
+    price_override = models.PositiveBigIntegerField("قیمت این تنوع", null=True, blank=True, help_text="خالی یعنی قیمت محصول")
+    sale_price = models.PositiveBigIntegerField("قیمت حراج این تنوع", null=True, blank=True)
     stock = models.IntegerField("موجودی", default=0, editable=False, help_text="فقط از راه دفتر موجودی تغییر می‌کند")
     is_active = models.BooleanField("فعال", default=True)
 
@@ -214,14 +208,29 @@ class Variant(models.Model):
     def __str__(self):
         return f"{self.product} · {self.color} · {self.size}"
 
+    def clean(self):
+        if self.sale_price is not None and self.product_id and self.sale_price >= self.regular_price:
+            raise ValidationError({"sale_price": "قیمت حراج باید کمتر از قیمت این تنوع باشد."})
+
     def save(self, *args, **kwargs):
         if not self.sku:
             self.sku = f"P{self.product_id}-C{self.color_id}-S{self.size_id}"
         super().save(*args, **kwargs)
 
     @property
+    def regular_price(self):
+        return self.price_override if self.price_override is not None else self.product.price
+
+    @property
     def price(self):
-        return self.price_override if self.price_override is not None else self.product.current_price
+        """What the customer pays. A sale price that is no longer below the regular price is ignored."""
+        regular = self.regular_price
+        return min(self.sale_price, regular) if self.sale_price is not None else regular
+
+    @property
+    def discount_percent(self):
+        regular = self.regular_price
+        return round((1 - self.price / regular) * 100) if regular else 0
 
     @property
     def in_stock(self):

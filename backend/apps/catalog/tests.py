@@ -22,16 +22,16 @@ class CatalogFixture(TestCase):
         self.shoes = Category.objects.create(name="کفش")
 
         self.coat = Product.objects.create(category=self.manto, name="مانتو کتان", price=3_200_000)
-        self.dress = Product.objects.create(category=self.clothes, name="پیراهن", price=4_750_000, sale_price=3_990_000)
+        self.dress = Product.objects.create(category=self.clothes, name="پیراهن", price=4_750_000)
         self.heel = Product.objects.create(category=self.shoes, name="کفش پاشنه‌بلند", price=2_000_000)
         self.hidden = Product.objects.create(category=self.manto, name="مانتو پیش‌نویس", price=1_000_000, is_active=False)
 
         self.coat_black_m = self.variant(self.coat, self.black, self.m, stock=3)
         self.variant(self.coat, self.beige, self.s, stock=0)
-        self.variant(self.dress, self.beige, self.s, stock=2)
+        self.dress_beige_s = self.variant(self.dress, self.beige, self.s, stock=2, sale_price=3_990_000)
 
-    def variant(self, product, color, size, stock):
-        v = Variant.objects.create(product=product, color=color, size=size)
+    def variant(self, product, color, size, stock, **fields):
+        v = Variant.objects.create(product=product, color=color, size=size, **fields)
         if stock:
             move_stock(v, stock, StockMovement.Reason.RECEIVE)
         return v
@@ -42,17 +42,20 @@ class CatalogFixture(TestCase):
 
 class ModelTests(CatalogFixture):
     def test_prices(self):
-        self.assertEqual(self.dress.current_price, 3_990_000)
-        self.assertEqual(self.dress.discount_percent, 16)
-        self.assertEqual(self.coat.current_price, 3_200_000)
-        self.assertEqual(self.coat.discount_percent, 0)
-        self.coat_black_m.price_override = 2_900_000
-        self.assertEqual(self.coat_black_m.price, 2_900_000)
+        v = self.dress_beige_s
+        self.assertEqual((v.price, v.regular_price, v.discount_percent), (3_990_000, 4_750_000, 16))
+        v = self.coat_black_m
+        self.assertEqual((v.price, v.regular_price, v.discount_percent), (3_200_000, 3_200_000, 0))
+        v.price_override, v.sale_price = 2_900_000, 2_500_000
+        self.assertEqual((v.price, v.regular_price), (2_500_000, 2_900_000))
+        # A sale price left above a lowered price is ignored.
+        v.price_override = 2_000_000
+        self.assertEqual(v.price, 2_000_000)
 
     def test_sale_price_must_be_lower(self):
-        self.coat.sale_price = 3_200_000
+        self.coat_black_m.sale_price = 3_200_000
         with self.assertRaises(ValidationError):
-            self.coat.full_clean()
+            self.coat_black_m.full_clean()
 
     def test_persian_slugs_are_unique(self):
         twin = Product.objects.create(category=self.manto, name="مانتو کتان", price=1)
@@ -113,6 +116,14 @@ class ProductApiTests(CatalogFixture):
         self.assertEqual([c["name"] for c in row["colors"]], ["مشکی", "بژ"])
         self.assertEqual(row["category"]["slug"], self.manto.slug)
 
+    def test_list_prices_come_from_the_cheapest_variant(self):
+        Variant.objects.filter(pk=self.coat_black_m.pk).update(price_override=3_000_000, sale_price=2_700_000)
+        rows = {r["name"]: r for r in self.client.get("/api/products/").json()["results"]}
+        coat, dress = rows["مانتو کتان"], rows["پیراهن"]
+        self.assertEqual((coat["price"], coat["sale_price"], coat["current_price"], coat["discount_percent"]), (3_000_000, 2_700_000, 2_700_000, 10))
+        self.assertEqual((dress["price"], dress["sale_price"], dress["discount_percent"]), (4_750_000, 3_990_000, 16))
+        self.assertEqual(self.names("?max_price=2800000"), {"مانتو کتان", "کفش پاشنه‌بلند"})
+
     def test_detail(self):
         data = self.client.get(f"/api/products/{self.coat.slug}/").json()
         self.assertEqual(data["sizes"], [{"id": self.s.pk, "label": "S"}, {"id": self.m.pk, "label": "M"}])
@@ -124,8 +135,7 @@ class ProductApiTests(CatalogFixture):
         self.assertNotIn("stock", data["variants"][0])
 
     def test_variant_prices_in_detail(self):
-        self.variant(self.dress, self.black, self.m, stock=1)
-        Variant.objects.filter(product=self.dress, color=self.black).update(price_override=5_100_000)
+        self.variant(self.dress, self.black, self.m, stock=1, price_override=5_100_000)
         data = self.client.get(f"/api/products/{self.dress.slug}/").json()
         prices = {v["color"]: (v["price"], v["regular_price"]) for v in data["variants"]}
         self.assertEqual(prices[self.beige.pk], (3_990_000, 4_750_000))
