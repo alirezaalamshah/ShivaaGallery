@@ -197,3 +197,9 @@
     width: min(100%, 380px);
   }
 }
+
+.phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}

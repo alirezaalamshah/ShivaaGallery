@@ -11,7 +11,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
         fields = [
             "name", "name_latin", "tagline", "logo", "hero_title", "hero_text", "about_title", "about_text",
             "color_ink", "color_accent", "color_background",
-            "phone", "instagram", "city", "address",
+            "phone", "landline", "instagram", "city", "address",
             "currency_label", "returns",
         ]
 

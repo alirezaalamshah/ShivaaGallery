@@ -235,7 +235,7 @@ type Settings = {
   name: string; name_latin: string; tagline: string; logo: string | null;
   hero_title: string; hero_text: string; about_title: string; about_text: string;
   color_ink: string; color_accent: string; color_background: string;
-  phone: string; instagram: string; city: string; address: string; currency_label: string;
+  phone: string; landline: string; instagram: string; city: string; address: string; currency_label: string;
   returns_enabled: boolean; returns_type: "refund" | "exchange"; returns_days: number; returns_policy: string;
 };
 
@@ -320,7 +320,8 @@ export function StoreSettings() {
           </Card>
           <Card title="تماس و فروشگاه حضوری">
             <div className={s.formGrid}>
-              {text("phone", "تلفن", { ltr: true })}
+              {text("phone", "موبایل", { ltr: true })}
+              {text("landline", "تلفن ثابت", { ltr: true })}
               {text("instagram", "اینستاگرام (بدون @)", { ltr: true })}
               {text("city", "شهر")}
               {text("currency_label", "واحد پول")}

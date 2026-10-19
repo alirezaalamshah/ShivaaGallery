@@ -69,6 +69,9 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
               {store.phone && (
                 <li><Icon name="phone" /><a href={`tel:${store.phone}`} className="num" dir="ltr">{toFaDigits(store.phone)}</a></li>
               )}
+              {store.landline && (
+                <li><Icon name="phone" /><a href={`tel:${store.landline}`} className="num" dir="ltr">{toFaDigits(store.landline)}</a></li>
+              )}
               {store.city && !store.address && (
                 <li><Icon name="pin" /><span>{store.city}</span></li>
               )}

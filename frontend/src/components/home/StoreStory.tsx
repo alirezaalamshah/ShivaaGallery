@@ -42,10 +42,14 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
                 <span>{store.address}</span>
               </li>
             )}
-            {store.phone && (
+            {(store.phone || store.landline) && (
               <li>
                 <Icon name="phone" />
-                <a href={`tel:${store.phone}`} className="num" dir="ltr">{toFaDigits(store.phone)}</a>
+                <span className={styles.phones}>
+                  {[store.phone, store.landline].filter(Boolean).map((n) => (
+                    <a key={n} href={`tel:${n}`} className="num" dir="ltr">{toFaDigits(n)}</a>
+                  ))}
+                </span>
               </li>
             )}
             {store.instagram && (

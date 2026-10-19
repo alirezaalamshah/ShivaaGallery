@@ -11,6 +11,7 @@ export type Store = {
   color_accent: string;
   color_background: string;
   phone: string;
+  landline: string;
   instagram: string;
   city: string;
   address: string;

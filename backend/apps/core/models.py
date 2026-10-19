@@ -27,7 +27,8 @@ class StoreSettings(models.Model):
     about_title = models.CharField("تیتر معرفی فروشگاه", max_length=80, blank=True)
     about_text = models.TextField("متن معرفی فروشگاه", blank=True, help_text="در بخش معرفی صفحه‌ی اصلی نمایش داده می‌شود")
 
-    phone = models.CharField("تلفن", max_length=20, blank=True)
+    phone = models.CharField("موبایل", max_length=20, blank=True)
+    landline = models.CharField("تلفن ثابت", max_length=20, blank=True)
     instagram = models.CharField("اینستاگرام", max_length=60, blank=True, help_text="فقط نام کاربری، بدون @")
     city = models.CharField("شهر فروشگاه", max_length=60, blank=True)
     address = models.TextField("آدرس فروشگاه حضوری", blank=True)
