@@ -10,6 +10,7 @@ import { useCart } from "@/components/cart/CartProvider";
 import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
+import { navStart } from "@/components/NavProgress";
 import { ApiError, call, fieldErrors } from "@/lib/client";
 import { faNum, toEnDigits, toFaDigits } from "@/lib/format";
 import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
@@ -124,6 +125,7 @@ export function Checkout() {
         body: { lines, ...chosen, note: form.note, shipping_method: shipping, discount_code: code, save_address: addressId === "new" },
       });
       cart.clear();
+      navStart();
       router.push(`/account/orders/${order.number}?new=1`);
     } catch (e) {
       setErrors(fieldErrors(e));

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
+import { navStart } from "@/components/NavProgress";
 import { faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
@@ -108,7 +109,7 @@ export function Dashboard() {
                   </thead>
                   <tbody>
                     {data.recent_orders.map((o) => (
-                      <tr key={o.id} className={s.rowLink} onClick={() => router.push(`/panel/orders/${o.id}`)}>
+                      <tr key={o.id} className={s.rowLink} onClick={() => { navStart(); router.push(`/panel/orders/${o.id}`); }}>
                         <td className="num" dir="ltr">#{toFaDigits(o.number)}</td>
                         <td>{o.receiver_name}</td>
                         <td>{o.city}</td>

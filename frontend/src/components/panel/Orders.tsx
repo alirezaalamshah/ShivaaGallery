@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
+import { navStart } from "@/components/NavProgress";
 import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, useAdmin } from "./hooks";
@@ -65,7 +66,7 @@ export function OrdersList() {
               </thead>
               <tbody>
                 {data.results.map((o) => (
-                  <tr key={o.id} className={s.rowLink} onClick={() => router.push(`/panel/orders/${o.id}`)}>
+                  <tr key={o.id} className={s.rowLink} onClick={() => { navStart(); router.push(`/panel/orders/${o.id}`); }}>
                     <td className="num" dir="ltr"><Link href={`/panel/orders/${o.id}`}>#{toFaDigits(o.number)}</Link></td>
                     <td>{o.receiver_name}</td>
                     <td className="num" dir="ltr">{toFaDigits(o.phone)}</td>

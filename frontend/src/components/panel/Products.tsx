@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
+import { navStart } from "@/components/NavProgress";
 import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
@@ -87,7 +88,7 @@ export function ProductsList() {
               </thead>
               <tbody>
                 {data.results.map((p) => (
-                  <tr key={p.id} className={s.rowLink} onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) router.push(`/panel/products/${p.id}`); }}>
+                  <tr key={p.id} className={s.rowLink} onClick={(e) => { if (!(e.target as HTMLElement).closest("button,a")) { navStart(); router.push(`/panel/products/${p.id}`); } }}>
                     <td>
                       <span className={s.nameCell}>
                         <span className={s.thumb}><ProductMedia image={p.thumb} alt={p.name} sizes="46px" /></span>

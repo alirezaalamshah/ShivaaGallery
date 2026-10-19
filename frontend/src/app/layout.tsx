@@ -7,6 +7,7 @@ import { CartProvider } from "@/components/cart/CartProvider";
 import { ToastProvider } from "@/components/Toast";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NavProgress } from "@/components/NavProgress";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               >
                 {children}
               </SiteChrome>
+              <NavProgress />
               <ScrollReveal />
               <SmoothScroll />
             </ToastProvider>

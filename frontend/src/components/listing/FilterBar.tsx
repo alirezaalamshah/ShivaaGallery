@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Icon } from "@/components/Icon";
+import { navStart } from "@/components/NavProgress";
 import { faNum, toEnDigits } from "@/lib/format";
 import type { Facets } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export function FilterBar({ facets, count }: { facets: Facets; count: number }) 
   const push = (next: URLSearchParams) => {
     next.delete("page");
     const qs = next.toString();
+    navStart();
     startTransition(() => router.push(qs ? `${path}?${qs}` : path, { scroll: false }));
   };
   const set = (key: string, value: string | null) => {
