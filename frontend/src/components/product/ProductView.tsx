@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCart } from "@/components/cart/CartProvider";
 import { flyToCart } from "@/components/cart/fly";
@@ -15,6 +15,8 @@ import { faNum } from "@/lib/format";
 import type { ProductDetail } from "@/lib/types";
 
 import styles from "./Product.module.css";
+
+const SLIDE_MS = 4000;
 
 export function ProductView({ product, initialColor }: { product: ProductDetail; initialColor?: number }) {
   const store = useStore();
@@ -30,6 +32,8 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
   const [warn, setWarn] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [slide, setSlide] = useState(0);
+  const [held, setHeld] = useState(false);
+  const slidesRef = useRef<HTMLDivElement>(null);
 
   const variant = variants.find((v) => v.size_id === sizeId);
   const images = useMemo(() => {
@@ -37,6 +41,26 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
     const shared = product.images.filter((im) => im.color === null);
     return own.length ? [...own, ...shared] : shared.length ? shared : product.images;
   }, [product.images, colorId]);
+
+  /** Scrolls the gallery to photo `i`; in RTL the scroll offset runs negative. */
+  const goTo = (i: number, smooth = true) => {
+    const el = slidesRef.current;
+    if (!el) return;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    el.scrollTo({ left: (rtl ? -1 : 1) * i * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
+  };
+
+  // A new color brings its own photos; start from the first.
+  useEffect(() => {
+    goTo(0, false);
+  }, [images]);
+
+  // Move to the next photo every few seconds. Any change of photo, by hand or not, restarts the wait.
+  useEffect(() => {
+    if (images.length < 2 || held || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setTimeout(() => goTo((slide + 1) % images.length), SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [slide, held, images.length]);
 
   const pickColor = (id: number) => {
     setColorId(id);
@@ -77,10 +101,18 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
   return (
     <div className={styles.layout}>
       <div className={styles.gallery}>
-        <div className={styles.slides} onScroll={(e) => {
-          const el = e.currentTarget;
-          setSlide(Math.round(Math.abs(el.scrollLeft) / el.clientWidth));
-        }}>
+        <div
+          ref={slidesRef}
+          className={styles.slides}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            setSlide(Math.round(Math.abs(el.scrollLeft) / el.clientWidth));
+          }}
+          onPointerEnter={(e) => { if (e.pointerType === "mouse") setHeld(true); }}
+          onPointerLeave={(e) => { if (e.pointerType === "mouse") setHeld(false); }}
+          onTouchStart={() => setHeld(true)}
+          onTouchEnd={() => setHeld(false)}
+        >
           {images.length ? (
             images.map((im, i) => (
               <div key={im.image} className={styles.slide}>
@@ -96,9 +128,9 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
           )}
         </div>
         {images.length > 1 && (
-          <div className={styles.dots} aria-hidden="true">
+          <div className={styles.dots}>
             {images.map((im, i) => (
-              <i key={im.image} className={i === slide ? styles.dotOn : undefined} />
+              <button key={im.image} type="button" className={i === slide ? styles.dotOn : undefined} aria-label={`عکس ${faNum(i + 1)}`} aria-current={i === slide} onClick={() => goTo(i)} />
             ))}
           </div>
         )}
