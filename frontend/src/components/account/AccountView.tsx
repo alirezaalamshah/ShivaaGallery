@@ -48,9 +48,18 @@ export function AccountView() {
     return (
       <div className={styles.page}>
         <div className={styles.loginCard}>
-          <span className={styles.ring} aria-hidden="true" />
-          <h1>ورود به {store.name}</h1>
-          <PhoneLogin />
+          <div className={styles.seal} aria-hidden="true">
+            <span className={styles.ring} />
+            {store.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- small brand mark
+              <img src={store.logo} alt="" />
+            ) : (
+              <span className={styles.mono}>{store.name.charAt(0)}</span>
+            )}
+          </div>
+          <h1>ورود به حساب</h1>
+          <p className={styles.sub}>کد تأیید به شماره‌ات پیامک می‌شود.</p>
+          <PhoneLogin stacked />
         </div>
       </div>
     );
@@ -86,7 +95,7 @@ export function AccountView() {
                   </span>
                   <span className={styles.meta}>
                     <b className="num" dir="ltr">#{toFaDigits(o.number)}</b>
-                    <small>{faDate(o.created_at)} · <span className="num">{faNum(o.item_count)}</span> قلم</small>
+                    <small>{faDate(o.created_at)}، <span className="num">{faNum(o.item_count)}</span> قلم</small>
                   </span>
                   <span className={styles.end}>
                     <span className="pill" data-status={o.status}>{o.status_label}</span>

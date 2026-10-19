@@ -294,7 +294,7 @@ export function Checkout() {
         <h2><span className={styles.n}>{code ? <Icon name="check" /> : "٪"}</span>کد تخفیف <small>اختیاری</small></h2>
         {code ? (
           <p className={styles.verified}>
-            <Icon name="check" /> کد <b dir="ltr">{code}</b> اعمال شد · <span className="num">{faNum(quote?.discount ?? 0)}</span> {store.currency_label} تخفیف
+            <Icon name="check" /> کد <b dir="ltr">{code}</b> اعمال شد: <span className="num">{faNum(quote?.discount ?? 0)}</span> {store.currency_label} تخفیف
             <button type="button" className={styles.link} onClick={() => { setCode(""); setCodeInput(""); }}>حذف</button>
           </p>
         ) : (
@@ -323,7 +323,7 @@ export function Checkout() {
       <div className={styles.foot}>
         <div className={styles.footIn}>
           <button type="button" className={styles.sumToggle} aria-expanded={sumOpen} onClick={() => setSumOpen(!sumOpen)}>
-            <span>جمع کل · <span className="num">{faNum(cart.count)}</span> کالا <Icon name="chev" /></span>
+            <span>جمع کل (<span className="num">{faNum(cart.count)}</span> کالا) <Icon name="chev" /></span>
             <span className={`${styles.total} num`}>{faNum(total)} {store.currency_label}</span>
           </button>
           <div className={`${styles.sum} ${sumOpen ? styles.sumOn : ""}`}>
@@ -332,7 +332,7 @@ export function Checkout() {
                 {cart.lines.map((l) => (
                   <li key={l.variantId}>
                     <span className={styles.th}><ProductMedia image={l.image} alt={l.name} hex={l.colorHex} sizes="44px" /></span>
-                    <span><b>{l.name}</b><small>{l.colorName} · سایز <span className="num">{l.size}</span> · <span className="num">{faNum(l.qty)}</span> عدد</small></span>
+                    <span><b>{l.name}</b><small>{l.colorName}، سایز <span className="num">{l.size}</span>، <span className="num">{faNum(l.qty)}</span> عدد</small></span>
                     <span className="num">{faNum(l.price * l.qty)}</span>
                   </li>
                 ))}
@@ -344,7 +344,7 @@ export function Checkout() {
           </div>
           <button type="button" className={styles.place} onClick={place} disabled={placing}>
             <Icon name="lock" />
-            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش · <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول وارد شو"}
+            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش — <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول وارد شو"}
           </button>
         </div>
       </div>

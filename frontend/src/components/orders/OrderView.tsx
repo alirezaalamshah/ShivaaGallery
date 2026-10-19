@@ -96,7 +96,7 @@ export function OrderView({ order, celebrate = false }: { order: Order; celebrat
               <span>
                 <b>{it.product_name}</b>
                 <small>
-                  {it.color_name} · سایز <span className="num">{it.size_label}</span> · <span className="num">{faNum(it.qty)}</span> عدد
+                  {it.color_name}، سایز <span className="num">{it.size_label}</span>، <span className="num">{faNum(it.qty)}</span> عدد
                 </small>
               </span>
               <span className="num">{faNum(it.line_total)}</span>

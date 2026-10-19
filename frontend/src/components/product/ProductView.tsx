@@ -188,7 +188,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
 
         <button type="button" className={`${styles.add} ${variant?.in_stock ? "" : styles.wait}`} onClick={add}>
           <Icon name="bag" />
-          {variant?.in_stock ? <>افزودن به سبد · <span className="num">{faNum(price)}</span> {store.currency_label}</> : "افزودن به سبد"}
+          {variant?.in_stock ? <>افزودن به سبد — <span className="num">{faNum(price)}</span> {store.currency_label}</> : "افزودن به سبد"}
         </button>
         <p className={styles.assure}>
           <Icon name="ret" />

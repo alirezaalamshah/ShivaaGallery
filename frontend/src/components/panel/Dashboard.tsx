@@ -134,7 +134,7 @@ export function Dashboard() {
                   <i style={{ width: 14, height: 14, borderRadius: "50%", background: v.color_hex, boxShadow: "inset 0 0 0 1px rgb(0 0 0 / .15)", flex: "none" }} />
                   <Link href={`/panel/products/${v.product_id}`} style={{ flex: 1, minWidth: 0, fontSize: 13.5 }}>
                     <b style={{ display: "block", fontWeight: 600 }}>{v.product}</b>
-                    <small className="muted">{v.color} · سایز {v.size} · <span className={v.stock ? "" : s.danger}>{v.stock ? `${faNum(v.stock)} عدد` : "تمام شده"}</span></small>
+                    <small className="muted">{v.color}، سایز {v.size}، <span className={v.stock ? "" : s.danger}>{v.stock ? `${faNum(v.stock)} عدد` : "تمام شده"}</span></small>
                   </Link>
                   <input
                     aria-label={`موجودی جدید ${v.product}`}
