@@ -46,7 +46,8 @@ if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off.")
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+# The storefront proxies /api to Django, so browser requests carry the site's origin.
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:3100,http://127.0.0.1:3100")
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:3100,http://127.0.0.1:3100")
 
 INSTALLED_APPS = [
@@ -62,6 +63,9 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.catalog",
     "apps.inventory",
+    "apps.accounts",
+    "apps.orders",
+    "apps.panel",
 ]
 
 MIDDLEWARE = [
@@ -144,7 +148,24 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 24,
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.core.auth.CsrfSessionAuthentication"],
+    "DEFAULT_THROTTLE_RATES": {"auth": env("THROTTLE_AUTH", "20/hour"), "track": env("THROTTLE_TRACK", "30/hour")},
 }
+
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # customers stay signed in for a month
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+
+# SMS: "console" prints messages to the server log; "melipayamak" sends them.
+SMS_BACKEND = env("SMS_BACKEND", "console")
+SMS_USERNAME = env("SMS_USERNAME", "")
+SMS_PASSWORD = env("SMS_PASSWORD", "")
+SMS_PATTERN_OTP = env("SMS_PATTERN_OTP", "")
+SMS_PATTERN_ORDER_PLACED = env("SMS_PATTERN_ORDER_PLACED", "")
+SMS_PATTERN_ORDER_STATUS = env("SMS_PATTERN_ORDER_STATUS", "")
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 30 * 1024 * 1024
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
