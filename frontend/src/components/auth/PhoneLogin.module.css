@@ -1,0 +1,86 @@
+.box {
+  display: grid;
+  gap: 10px;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  animation: up 0.45s var(--ease-out);
+}
+
+.inline {
+  display: flex;
+  gap: 8px;
+}
+
+.inline .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.inline .btn {
+  height: 48px;
+  border-radius: 12px;
+  padding-inline: 18px;
+  flex: none;
+}
+
+.otp {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.digit {
+  width: 52px;
+  height: 60px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  transition: border-color 0.25s, transform 0.3s var(--ease-spring), box-shadow 0.3s;
+}
+
+.digit:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent), transparent 80%);
+}
+
+.filled {
+  border-color: var(--ink);
+  transform: translateY(-3px);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.link {
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.compact .digit {
+  width: 46px;
+  height: 54px;
+}
+
+@media (max-width: 400px) {
+  .digit {
+    width: 46px;
+    height: 54px;
+  }
+}
