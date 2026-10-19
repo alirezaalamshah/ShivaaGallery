@@ -1,0 +1,78 @@
+.ftr {
+  background: var(--deep);
+  color: var(--on-deep-muted);
+  padding-block: 56px 28px;
+  font-size: 13.5px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.4fr;
+  gap: 32px;
+}
+
+.ftr h2 {
+  color: var(--on-deep);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.ftr ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ftr a:hover {
+  color: var(--accent-hi);
+}
+
+.brand {
+  color: var(--on-deep);
+}
+
+.brand p {
+  margin: 14px 0 0;
+  max-width: 32ch;
+  color: var(--on-deep-muted);
+}
+
+.contact li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.contact svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  flex: none;
+  margin-top: 3px;
+}
+
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid color-mix(in oklab, var(--accent), transparent 82%);
+  margin-top: 40px;
+  padding-top: 18px;
+  font-size: 12px;
+}
+
+@media (max-width: 899px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 540px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,41 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.mark,
+.mono {
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent), transparent 40%);
+  object-fit: cover;
+}
+
+.mono {
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--accent-hi);
+  font-family: var(--f-display);
+  font-size: 20px;
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.name strong {
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.name small {
+  font-size: 9.5px;
+  letter-spacing: 0.42em;
+  color: var(--accent-ink);
+  text-align: right;
+}
