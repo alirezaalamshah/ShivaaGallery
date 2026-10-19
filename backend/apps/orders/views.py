@@ -71,7 +71,7 @@ def orders(request):
     if d["save_address"]:
         Address.objects.update_or_create(
             user=request.user, receiver_name=d["receiver_name"], address=d["address"],
-            defaults={"city": d["city"], "postal_code": d.get("postal_code", "")},
+            defaults={"province": d.get("province", ""), "city": d["city"], "postal_code": d.get("postal_code", "")},
         )
     return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data, status=status.HTTP_201_CREATED)
 

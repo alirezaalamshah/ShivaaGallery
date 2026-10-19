@@ -111,7 +111,7 @@ def place_order(user, data):
             with transaction.atomic():
                 order = Order.objects.create(
                     user=user, phone=user.username,
-                    receiver_name=data["receiver_name"], city=data["city"], address=data["address"],
+                    receiver_name=data["receiver_name"], province=data.get("province", ""), city=data["city"], address=data["address"],
                     postal_code=data.get("postal_code", ""), note=data.get("note", ""),
                     shipping_method=method, shipping_name=method.name, shipping_fee=method.fee,
                     subtotal=subtotal, discount_code=discount_code, discount_amount=discount_amount,

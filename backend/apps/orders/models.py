@@ -107,6 +107,7 @@ class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders", verbose_name="مشتری")
     phone = models.CharField("موبایل", max_length=11)
     receiver_name = models.CharField("نام تحویل‌گیرنده", max_length=80)
+    province = models.CharField("استان", max_length=40, blank=True)
     city = models.CharField("شهر", max_length=60)
     address = models.TextField("آدرس")
     postal_code = models.CharField("کد پستی", max_length=10, blank=True)

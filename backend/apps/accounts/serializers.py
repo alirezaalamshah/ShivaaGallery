@@ -42,7 +42,7 @@ class StaffLoginSerializer(serializers.Serializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ["id", "receiver_name", "city", "address", "postal_code"]
+        fields = ["id", "receiver_name", "province", "city", "address", "postal_code"]
 
     def validate_postal_code(self, value):
         value = normalize_digits(value)

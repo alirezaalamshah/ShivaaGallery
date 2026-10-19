@@ -28,6 +28,7 @@ class QuoteSerializer(CartSerializer):
 
 class CheckoutSerializer(CartSerializer):
     receiver_name = serializers.CharField(max_length=80, min_length=3)
+    province = serializers.CharField(max_length=40, required=False, allow_blank=True)
     city = serializers.CharField(max_length=60)
     address = serializers.CharField(max_length=500, min_length=10)
     postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
@@ -67,7 +68,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            "number", "status", "status_label", "created_at", "receiver_name", "phone", "city", "address", "postal_code",
+            "number", "status", "status_label", "created_at", "receiver_name", "phone", "province", "city", "address", "postal_code",
             "note", "shipping_name", "shipping_fee", "subtotal", "discount_code", "discount_amount", "total",
             "tracking_code", "items", "events",
         ]
