@@ -9,6 +9,7 @@ import { fieldErrors } from "@/lib/client";
 import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { PhotoCropper } from "./PhotoCropper";
 import { categoryOptions } from "./Products";
 import type { AdminCategory, AdminSizeSystem } from "./types";
 import { Card, ConfirmButton, Empty, Field, Modal, PageHead, Switch, SwitchRow } from "./ui";
@@ -25,6 +26,7 @@ export function Categories() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [toCrop, setToCrop] = useState<File[] | null>(null);
 
   const rows = cats ? categoryOptions(cats).map((o) => ({ ...cats.find((c) => c.id === o.id)!, depth: o.label.split(" › ").length - 1 })) : [];
 
@@ -145,7 +147,8 @@ export function Categories() {
               <input id="c-desc" className="input" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
             </Field>
             <Field label="عکس دسته" hint="اگر عکسی نگذارید، عکس یکی از محصولات همین دسته نشان داده می‌شود." full>
-              <input id="c-image" type="file" accept="image/*" className="input" onChange={(e) => setDraft({ ...draft, file: e.target.files?.[0] ?? null })} />
+              <input id="c-image" type="file" accept="image/*" className="input" onChange={(e) => { const f = e.target.files?.[0]; if (f) setToCrop([f]); e.target.value = ""; }} />
+              {draft.file && <span className="hint">عکس جدید آماده است و با ذخیره آپلود می‌شود.</span>}
             </Field>
             <div className={s.full}>
               <SwitchRow title="فعال" hint="دسته‌ی غیرفعال در سایت دیده نمی‌شود" checked={draft.is_active} onChange={(v) => setDraft({ ...draft, is_active: v })} />
@@ -157,6 +160,9 @@ export function Categories() {
             </div>
           </div>
         </Modal>
+      )}
+      {toCrop && draft && (
+        <PhotoCropper files={toCrop} aspect={3 / 4} outWidth={900} onCancel={() => setToCrop(null)} onDone={(out) => { setToCrop(null); if (out[0]) setDraft({ ...draft, file: out[0] }); }} />
       )}
     </>
   );

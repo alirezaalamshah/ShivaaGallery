@@ -9,6 +9,7 @@ import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
+import { PhotoCropper } from "./PhotoCropper";
 import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, Switch, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
@@ -243,6 +244,7 @@ export function StoreSettings() {
   const toast = useToast();
   const { data, setData } = useAdmin<Settings>("/store");
   const [logo, setLogo] = useState<File | null>(null);
+  const [logoCrop, setLogoCrop] = useState<File[] | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   if (!data) return <PageHead title="تنظیمات فروشگاه" sub="در حال بارگذاری…" />;
@@ -305,7 +307,7 @@ export function StoreSettings() {
                 <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- current logo or local preview */}
                   {(logo || data.logo) && <img src={logo ? URL.createObjectURL(logo) : data.logo!} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", boxShadow: "0 0 0 1px var(--accent)" }} />}
-                  <input id="st-logo" type="file" accept="image/*" className="input" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
+                  <input id="st-logo" type="file" accept="image/*" className="input" onChange={(e) => { const f = e.target.files?.[0]; if (f) setLogoCrop([f]); e.target.value = ""; }} />
                 </span>
               </Field>
             </div>
@@ -364,6 +366,7 @@ export function StoreSettings() {
           <button type="button" className={s.btn} onClick={save} disabled={saving} style={{ height: 50 }}><Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره‌ی تنظیمات"}</button>
         </div>
       </div>
+      {logoCrop && <PhotoCropper files={logoCrop} aspect={1} outWidth={600} onCancel={() => setLogoCrop(null)} onDone={(out) => { setLogoCrop(null); if (out[0]) setLogo(out[0]); }} />}
     </>
   );
 }

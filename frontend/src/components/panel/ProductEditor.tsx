@@ -11,6 +11,7 @@ import { fieldErrors } from "@/lib/client";
 import { faNum, toEnDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { PhotoCropper } from "./PhotoCropper";
 import { categoryOptions } from "./Products";
 import type { AdminCategory, AdminColor, AdminProduct, AdminSizeSystem } from "./types";
 import { Card, ConfirmButton, Field, MoneyInput, PageHead, SwitchRow } from "./ui";
@@ -39,6 +40,7 @@ export function ProductEditor({ id }: { id?: string }) {
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [toCrop, setToCrop] = useState<File[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const loaded = useRef(false);
 
@@ -85,8 +87,14 @@ export function ProductEditor({ id }: { id?: string }) {
     return adminCall<AdminProduct>(`/products/${productId}/images`, { method: "POST", form: fd });
   };
 
-  const onFiles = async (files: FileList | File[]) => {
+  /** Picked photos go through the cropper first; cropped files continue below. */
+  const onFiles = (files: FileList | File[]) => {
     const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (list.length) setToCrop(list);
+  };
+
+  const onCropped = async (list: File[]) => {
+    setToCrop(null);
     if (!list.length) return;
     if (isNew || !product) {
       setPending((p) => [...p, ...list]);
@@ -218,7 +226,7 @@ export function ProductEditor({ id }: { id?: string }) {
             >
               <Icon name="plus" />
               <b>{uploading ? "در حال آپلود…" : "عکس‌ها را این‌جا بکشید یا کلیک کنید"}</b>
-              <span>چند عکس را با هم انتخاب کنید. عکس اول، عکس اصلی محصول است. عکس‌ها خودکار صاف و سبک می‌شوند.</span>
+              <span>چند عکس را با هم انتخاب کنید؛ هر عکس را در قاب سایت تنظیم می‌کنید و سبک و یک‌اندازه آپلود می‌شود. عکس اول، عکس اصلی محصول است.</span>
             </button>
             <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) onFiles(e.target.files); e.target.value = ""; }} />
             {(product?.images.length || pending.length) ? (
@@ -359,6 +367,7 @@ export function ProductEditor({ id }: { id?: string }) {
           </button>
         </div>
       </div>
+      {toCrop && <PhotoCropper files={toCrop} aspect={3 / 4} outWidth={1200} onDone={onCropped} onCancel={() => setToCrop(null)} />}
     </>
   );
 }
