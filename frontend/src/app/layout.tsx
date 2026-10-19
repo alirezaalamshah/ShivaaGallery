@@ -8,6 +8,7 @@ import { ToastProvider } from "@/components/Toast";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { SiteChrome } from "@/components/SiteChrome";
 import { StoreProvider } from "@/components/StoreProvider";
 import { api } from "@/lib/api";
 
@@ -44,10 +45,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <AuthProvider>
           <CartProvider>
             <ToastProvider>
-              <Header store={store} categories={categories} />
-              <main id="main">{children}</main>
-              <Footer store={store} categories={categories} />
-              <BottomNav />
+              <SiteChrome
+                header={<Header store={store} categories={categories} />}
+                footer={<Footer store={store} categories={categories} />}
+                nav={<BottomNav />}
+              >
+                {children}
+              </SiteChrome>
               <ScrollReveal />
             </ToastProvider>
           </CartProvider>
