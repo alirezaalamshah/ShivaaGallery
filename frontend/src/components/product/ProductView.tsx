@@ -71,7 +71,8 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
   const guide = product.size_guide;
   const hasGuide = !!guide.columns?.length && !!guide.rows?.length;
   const price = variant?.price ?? product.current_price;
-  const offPct = price < product.price ? Math.round((1 - price / product.price) * 100) : 0;
+  const regular = variant?.regular_price ?? product.price;
+  const offPct = price < regular ? Math.round((1 - price / regular) * 100) : 0;
 
   return (
     <div className={styles.layout}>
@@ -114,7 +115,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
         </nav>
         <h1 className={styles.title}>{product.name}</h1>
         <div className={styles.priceRow}>
-          <Price price={product.price} salePrice={offPct ? price : null} size="lg" />
+          <Price price={regular} salePrice={offPct ? price : null} size="lg" />
           {offPct > 0 && <span className={`${styles.off} num`}>{faNum(offPct)}٪ تخفیف</span>}
         </div>
 

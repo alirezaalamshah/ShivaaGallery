@@ -53,6 +53,7 @@ export type Variant = {
   size_id: number;
   size: string;
   price: number;
+  regular_price: number;
   in_stock: boolean;
   low_stock: boolean;
 };

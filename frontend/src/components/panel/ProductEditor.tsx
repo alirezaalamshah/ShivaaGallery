@@ -34,6 +34,8 @@ export function ProductEditor({ id }: { id?: string }) {
   const [form, setForm] = useState<Basic>(EMPTY);
   const [picked, setPicked] = useState<{ colors: number[]; sizes: number[] }>({ colors: [], sizes: [] });
   const [stock, setStock] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, number | null>>({});
+  const [bulkPrice, setBulkPrice] = useState<number | null>(null);
   const [systemId, setSystemId] = useState<number | null>(null);
   const [pending, setPending] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -55,6 +57,7 @@ export function ProductEditor({ id }: { id?: string }) {
     const live = product.variants.filter((v) => v.is_active);
     setPicked({ colors: [...new Set(live.map((v) => v.color))], sizes: [...new Set(live.map((v) => v.size))] });
     setStock(Object.fromEntries(product.variants.map((v) => [key(v.color, v.size), v.stock])));
+    setPrices(Object.fromEntries(product.variants.map((v) => [key(v.color, v.size), v.price_override])));
   }, [product]);
 
   // The size system comes from the category (or its parent), unless the admin picks another.
@@ -80,6 +83,22 @@ export function ProductEditor({ id }: { id?: string }) {
   const sizesInOrder = system?.sizes.filter((z) => picked.sizes.includes(z.id!)) ?? [];
   const colorsInOrder = colors?.filter((c) => picked.colors.includes(c.id)) ?? [];
   const totalStock = colorsInOrder.reduce((n, c) => n + sizesInOrder.reduce((m, z) => m + (stock[key(c.id, z.id!)] ?? 0), 0), 0);
+  const basePrice = form.sale_price ?? form.price;
+  const ownPrices = colorsInOrder.some((c) => sizesInOrder.some((z) => prices[key(c.id, z.id!)] != null));
+
+  /** Puts the price typed in the bulk field on every cell, or only on one color's row or one size's column. */
+  const applyPrice = (only?: { color?: number; size?: number }) =>
+    setPrices((p) => {
+      const next = { ...p };
+      for (const c of colorsInOrder) {
+        if (only?.color != null && c.id !== only.color) continue;
+        for (const z of sizesInOrder) {
+          if (only?.size != null && z.id !== only.size) continue;
+          next[key(c.id, z.id!)] = bulkPrice;
+        }
+      }
+      return next;
+    });
 
   const upload = async (productId: number, files: File[]) => {
     const fd = new FormData();
@@ -152,11 +171,15 @@ export function ProductEditor({ id }: { id?: string }) {
         saved = await upload(saved.id, pending);
         setPending([]);
       }
-      const stockBody = Object.fromEntries(colorsInOrder.flatMap((c) => sizesInOrder.map((z) => [key(c.id, z.id!), stock[key(c.id, z.id!)] ?? 0])));
+      const cells = colorsInOrder.flatMap((c) => sizesInOrder.map((z) => key(c.id, z.id!)));
+      const stockBody = Object.fromEntries(cells.map((k) => [k, stock[k] ?? 0]));
+      // A cell priced the same as the product is left empty, so it follows later changes to the product price.
+      const priceBody = Object.fromEntries(cells.map((k) => [k, prices[k] != null && prices[k] !== basePrice ? prices[k] : null]));
       saved = await adminCall<AdminProduct>(`/products/${saved.id}/matrix`, {
         method: "POST",
-        body: { colors: colorsInOrder.map((c) => c.id), sizes: sizesInOrder.map((z) => z.id), stock: stockBody },
+        body: { colors: colorsInOrder.map((c) => c.id), sizes: sizesInOrder.map((z) => z.id), stock: stockBody, prices: priceBody },
       });
+      setPrices(Object.fromEntries(saved.variants.map((v) => [key(v.color, v.size), v.price_override])));
       setProduct(saved);
       refreshSite();
       toast({ text: isNew ? "محصول ساخته شد" : "تغییرات ذخیره شد", action: { label: "مشاهده در سایت", href: `/p/${saved.slug}` } });
@@ -333,6 +356,64 @@ export function ProductEditor({ id }: { id?: string }) {
                     </tbody>
                   </table>
                   <p className="hint" style={{ marginTop: 6 }}>عدد صفر یعنی این ترکیب در سایت «ناموجود» نشان داده می‌شود. هر تغییر موجودی در بخش انبار ثبت می‌شود.</p>
+
+                  <div className="label" style={{ margin: "22px 0 8px" }}>قیمت هر رنگ و سایز (تومان)</div>
+                  <div className={s.bulkPrice}>
+                    <MoneyInput id="p-bulk-price" value={bulkPrice} onChange={setBulkPrice} placeholder="قیمت" />
+                    <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={bulkPrice == null} onClick={() => applyPrice()}>اعمال روی همه</button>
+                    {ownPrices && (
+                      <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setPrices({})}>همه به قیمت محصول</button>
+                    )}
+                  </div>
+                  <table className={`${s.matrix} ${s.priceMatrix}`}>
+                    <thead>
+                      <tr>
+                        <th />
+                        {sizesInOrder.map((z) => (
+                          <th key={z.id}>
+                            <button type="button" className={`${s.applyHead} num`} disabled={bulkPrice == null} onClick={() => applyPrice({ size: z.id! })} title={`اعمال قیمت روی سایز ${z.label}`}>
+                              {z.label}
+                            </button>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {colorsInOrder.map((c) => (
+                        <tr key={c.id}>
+                          <th>
+                            <button type="button" className={`${s.applyHead} ${s.colorHead}`} disabled={bulkPrice == null} onClick={() => applyPrice({ color: c.id })} title={`اعمال قیمت روی رنگ ${c.name}`}>
+                              <i style={{ background: c.hex }} />{c.name}
+                            </button>
+                          </th>
+                          {sizesInOrder.map((z) => {
+                            const k = key(c.id, z.id!);
+                            const v = prices[k] ?? null;
+                            return (
+                              <td key={k}>
+                                <input
+                                  aria-label={`قیمت ${c.name} سایز ${z.label}`}
+                                  className={`num ${v != null && v !== basePrice ? s.own : ""}`}
+                                  inputMode="numeric"
+                                  value={v == null ? "" : faNum(v)}
+                                  placeholder={basePrice ? faNum(basePrice) : "—"}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onChange={(e) => {
+                                    const raw = toEnDigits(e.target.value).replace(/\D/g, "");
+                                    setPrices((p) => ({ ...p, [k]: raw ? Number(raw) : null }));
+                                  }}
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="hint" style={{ marginTop: 6 }}>
+                    خانه‌ی خالی یعنی قیمت خود محصول. برای قیمت یک رنگ یا یک سایز، قیمت را بالای جدول بنویسید و روی نام آن رنگ یا سایز بزنید.
+                    {form.sale_price != null && ownPrices && " قیمت حراج فقط روی خانه‌های خالی اعمال می‌شود."}
+                  </p>
                 </div>
               ) : (
                 <p className="hint">حداقل یک رنگ و یک سایز انتخاب کنید تا جدول موجودی ظاهر شود.</p>
@@ -344,7 +425,7 @@ export function ProductEditor({ id }: { id?: string }) {
         <div className={s.stack}>
           <Card title="قیمت">
             <div style={{ display: "grid", gap: 14 }}>
-              <Field label="قیمت (تومان)" error={errors.price}>
+              <Field label="قیمت (تومان)" error={errors.price} hint="قیمت جدا برای هر رنگ و سایز را در جدول قیمت بنویسید">
                 <MoneyInput id="p-price" value={form.price} onChange={(v) => set("price", v)} />
               </Field>
               <Field label="قیمت حراج (اختیاری)" error={errors.sale_price} hint={offPct ? `${faNum(offPct)}٪ تخفیف روی کارت محصول نشان داده می‌شود` : "اگر خالی باشد، محصول حراج نیست"}>
