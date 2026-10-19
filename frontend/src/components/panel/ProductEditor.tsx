@@ -160,8 +160,7 @@ export function ProductEditor({ id }: { id?: string }) {
         setPending([]);
       }
       const stockBody = Object.fromEntries(cells.map((k) => [k, stock[k] ?? 0]));
-      // A cell priced the same as the product is left empty, so it follows later changes to the product price.
-      const priceBody = Object.fromEntries(cells.map((k) => [k, prices[k] != null && prices[k] !== form.price ? prices[k] : null]));
+      const priceBody = Object.fromEntries(cells.map((k) => [k, prices[k] ?? null]));
       const saleBody = Object.fromEntries(cells.map((k) => [k, sales[k] ?? null]));
       saved = await adminCall<AdminProduct>(`/products/${saved.id}/matrix`, {
         method: "POST",
@@ -354,7 +353,7 @@ export function ProductEditor({ id }: { id?: string }) {
                     values={prices}
                     onChange={setPrices}
                     placeholder={() => (form.price ? faNum(form.price) : "—")}
-                    mark={(_, v) => (v != null && v !== form.price ? "own" : null)}
+                    mark={(_, v) => (v != null ? "own" : null)}
                     clearLabel="همه به قیمت محصول"
                     hint="خانه‌ی خالی یعنی قیمت خود محصول. برای قیمت یک رنگ یا یک سایز، قیمت را بالای جدول بنویسید و روی نام آن رنگ یا سایز بزنید."
                   />
