@@ -197,7 +197,9 @@ class OrderViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
         if self.action == "list":
             qs = qs.annotate(item_count=Sum("items__qty"))
             st = self.request.query_params.get("status")
-            if st:
+            if st == "open":
+                qs = qs.filter(status__in=["awaiting_payment", "paid", "processing"])
+            elif st:
                 qs = qs.filter(status=st)
             return qs
         return qs.prefetch_related("items", "events")
