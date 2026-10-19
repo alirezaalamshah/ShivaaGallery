@@ -76,7 +76,7 @@ export type Facets = {
 };
 
 export type ShippingMethod = { id: number; name: string; description: string; fee: number; only_city: string };
-export type Address = { id: number; receiver_name: string; city: string; address: string; postal_code: string };
+export type Address = { id: number; receiver_name: string; province: string; city: string; address: string; postal_code: string };
 
 export type OrderStatus = "awaiting_payment" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
 
@@ -99,6 +99,7 @@ export type Order = {
   created_at: string;
   receiver_name: string;
   phone: string;
+  province?: string;
   city: string;
   address?: string;
   postal_code?: string;

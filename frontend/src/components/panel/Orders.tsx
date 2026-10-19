@@ -165,7 +165,7 @@ export function OrderDetail({ id }: { id: string }) {
             <dl className={s.kv}>
               <dt>تحویل‌گیرنده</dt><dd>{order.receiver_name}</dd>
               <dt>موبایل</dt><dd><a href={`tel:${order.phone}`} className="num" dir="ltr">{toFaDigits(order.phone)}</a></dd>
-              <dt>شهر</dt><dd>{order.city}</dd>
+              <dt>شهر</dt><dd>{order.province ? `${order.province}، ` : ""}{order.city}</dd>
               <dt>آدرس</dt><dd>{order.address}</dd>
               {order.postal_code && (<><dt>کد پستی</dt><dd className="num">{toFaDigits(order.postal_code)}</dd></>)}
               {order.note && (<><dt>یادداشت مشتری</dt><dd>{order.note}</dd></>)}

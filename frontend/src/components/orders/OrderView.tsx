@@ -116,7 +116,7 @@ export function OrderView({ order, celebrate = false }: { order: Order; celebrat
       <section className={styles.card}>
         <h2>تحویل</h2>
         <p className={styles.addr}>
-          <b>{order.receiver_name}</b> · {order.city}
+          <b>{order.receiver_name}</b> · {order.province ? `${order.province}، ` : ""}{order.city}
           {order.address && <><br />{order.address}</>}
           {order.postal_code && <><br />کد پستی: <span className="num">{toFaDigits(order.postal_code)}</span></>}
         </p>

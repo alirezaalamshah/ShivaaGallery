@@ -12,11 +12,12 @@ import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { ApiError, call, fieldErrors } from "@/lib/client";
 import { faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
 import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
 
 import styles from "./Checkout.module.css";
 
-type Form = { receiver_name: string; city: string; address: string; postal_code: string; note: string };
+type Form = { receiver_name: string; province: string; city: string; address: string; postal_code: string; note: string };
 
 export function Checkout() {
   const store = useStore();
@@ -28,7 +29,8 @@ export function Checkout() {
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressId, setAddressId] = useState<number | "new">("new");
-  const [form, setForm] = useState<Form>({ receiver_name: "", city: store.city || "", address: "", postal_code: "", note: "" });
+  const [form, setForm] = useState<Form>({ receiver_name: "", province: provinceOf(store.city), city: store.city || "", address: "", postal_code: "", note: "" });
+  const [customCity, setCustomCity] = useState(false);
   const [shipping, setShipping] = useState<number | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [code, setCode] = useState("");
@@ -105,7 +107,8 @@ export function Checkout() {
     if (!signedIn) return focus(refs.login);
     const errs: Record<string, string> = {};
     if (chosen.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
-    if (!city) errs.city = "شهر را بنویس.";
+    if (addressId === "new" && !form.province) errs.province = "استان را انتخاب کن.";
+    if (!city) errs.city = "شهر را انتخاب کن.";
     if (chosen.address.trim().length < 10) errs.address = "آدرس را کامل‌تر بنویس (خیابان، کوچه، پلاک).";
     if (chosen.postal_code && chosen.postal_code.length !== 10) errs.postal_code = "کد پستی باید ۱۰ رقم باشد.";
     if (Object.keys(errs).length) {
@@ -163,7 +166,7 @@ export function Checkout() {
       )}
 
       <section ref={refs.login} className={`${styles.sec} ${signedIn ? styles.done : ""}`}>
-        <h2><span className={styles.n}>{signedIn ? <Icon name="check" /> : "۱"}</span>ورود با موبایل</h2>
+        <h2><span className={styles.n}>{signedIn ? <Icon name="check" /> : "۱"}</span>ورود با کد پیامکی</h2>
         {signedIn ? (
           <p className={styles.verified}>
             <Icon name="check" /> وارد شدی با <b className="num" dir="ltr">{toFaDigits(me?.phone ?? "")}</b>
@@ -184,7 +187,7 @@ export function Checkout() {
                 <input type="radio" name="address" checked={addressId === a.id} onChange={() => setAddressId(a.id)} />
                 <span className={styles.dot} />
                 <span>
-                  <b>{a.receiver_name} · {a.city}</b>
+                  <b>{a.receiver_name} · {a.province ? `${a.province}، ` : ""}{a.city}</b>
                   <small>{a.address}</small>
                 </span>
               </label>
@@ -205,24 +208,64 @@ export function Checkout() {
             </label>
             <div className="row2">
               <label className="field">
+                <span className="label">استان</span>
+                <select
+                  id="co-province"
+                  className="input"
+                  value={form.province}
+                  aria-invalid={!!errors.province}
+                  onChange={(e) => {
+                    setForm({ ...form, province: e.target.value, city: "" });
+                    setCustomCity(false);
+                    setErrors((er) => ({ ...er, province: "", city: "" }));
+                  }}
+                >
+                  <option value="">انتخاب استان</option>
+                  {PROVINCE_NAMES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+                {errors.province && <span className="err">{errors.province}</span>}
+              </label>
+              <label className="field">
                 <span className="label">شهر</span>
-                <input id="co-city" className="input" list="cities" value={form.city} onChange={set("city")} aria-invalid={!!errors.city} />
-                <datalist id="cities">
-                  {[store.city, "اهواز", "اندیمشک", "شوشتر", "تهران", "اصفهان", "شیراز", "مشهد", "تبریز"].filter(Boolean).map((c) => <option key={c} value={c} />)}
-                </datalist>
+                <select
+                  id="co-city"
+                  className="input"
+                  disabled={!form.province}
+                  value={customCity ? "__other" : form.city}
+                  aria-invalid={!!errors.city}
+                  onChange={(e) => {
+                    const other = e.target.value === "__other";
+                    setCustomCity(other);
+                    setForm({ ...form, city: other ? "" : e.target.value });
+                    setErrors((er) => ({ ...er, city: "" }));
+                  }}
+                >
+                  <option value="">{form.province ? "انتخاب شهر" : "اول استان را انتخاب کن"}</option>
+                  {(PROVINCES[form.province] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+                  {form.province && <option value="__other">شهر دیگر…</option>}
+                </select>
+                {errors.city && !customCity && <span className="err">{errors.city}</span>}
+              </label>
+            </div>
+            {customCity && (
+              <label className="field">
+                <span className="label">نام شهر</span>
+                <input id="co-city-other" className="input" value={form.city} onChange={set("city")} aria-invalid={!!errors.city} autoFocus />
                 {errors.city && <span className="err">{errors.city}</span>}
               </label>
+            )}
+            <label className="field">
+              <span className="label">آدرس کامل</span>
+              <textarea id="co-address" className="input" autoComplete="street-address" value={form.address} onChange={set("address")} aria-invalid={!!errors.address} placeholder="خیابان، کوچه، پلاک، واحد" />
+              {errors.address && <span className="err">{errors.address}</span>}
+            </label>
+            <div className="row2">
               <label className="field">
                 <span className="label">کد پستی (اختیاری)</span>
                 <input id="co-postal" className="input ltr num" inputMode="numeric" value={toFaDigits(form.postal_code)} onChange={set("postal_code")} aria-invalid={!!errors.postal_code} placeholder="۱۰ رقم" />
                 {errors.postal_code && <span className="err">{errors.postal_code}</span>}
               </label>
             </div>
-            <label className="field">
-              <span className="label">آدرس کامل</span>
-              <textarea id="co-address" className="input" autoComplete="street-address" value={form.address} onChange={set("address")} aria-invalid={!!errors.address} placeholder="خیابان، کوچه، پلاک، واحد" />
-              {errors.address && <span className="err">{errors.address}</span>}
-            </label>
           </div>
         )}
       </section>
@@ -301,7 +344,7 @@ export function Checkout() {
           </div>
           <button type="button" className={styles.place} onClick={place} disabled={placing}>
             <Icon name="lock" />
-            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش · <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول با موبایل وارد شو"}
+            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش · <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول وارد شو"}
           </button>
         </div>
       </div>
