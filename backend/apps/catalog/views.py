@@ -6,7 +6,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 
 from .filters import ProductFilter
-from .models import Category, Color, Product, SizeSystem, Variant
+from .models import Category, Color, Product, ProductImage, SizeSystem, Variant
 from .serializers import CategoryTreeSerializer, ColorSerializer, ProductDetailSerializer, ProductListSerializer
 
 
@@ -49,10 +49,25 @@ class CategoryViewSet(viewsets.ViewSet):
             counts[node.pk] = direct.get(node.pk, 0) + sum(subtotal(k) for k in children[node.pk])
             return counts[node.pk]
 
+        # Cover photo: the category's own image, else the newest product photo in its subtree.
+        own_photo = {}
+        for img in ProductImage.objects.filter(product__in=Product.objects.published()).select_related("product").order_by("-product__created_at", "sort"):
+            own_photo.setdefault(img.product.category_id, img.image.url)
+        covers = {}
+
+        def cover(node):
+            found = node.image.url if node.image else own_photo.get(node.pk)
+            for kid in children[node.pk]:
+                kid_cover = cover(kid)
+                found = found or kid_cover
+            covers[node.pk] = found
+            return found
+
         roots = children[None]
         for root in roots:
             subtotal(root)
-        context = {"request": request, "children": children, "counts": counts}
+            cover(root)
+        context = {"request": request, "children": children, "counts": counts, "covers": covers}
         return Response(CategoryTreeSerializer(roots, many=True, context=context).data)
 
 

@@ -24,6 +24,8 @@ class StoreSettings(models.Model):
 
     hero_title = models.CharField("تیتر صفحه‌ی اصلی", max_length=80, blank=True, help_text="کلمه‌ای که بین * و * بیاید طلایی نمایش داده می‌شود، مثلاً: درخشش، *به سبک تو*")
     hero_text = models.CharField("متن صفحه‌ی اصلی", max_length=240, blank=True)
+    about_title = models.CharField("تیتر معرفی فروشگاه", max_length=80, blank=True)
+    about_text = models.TextField("متن معرفی فروشگاه", blank=True, help_text="در بخش معرفی صفحه‌ی اصلی نمایش داده می‌شود")
 
     phone = models.CharField("تلفن", max_length=20, blank=True)
     instagram = models.CharField("اینستاگرام", max_length=60, blank=True, help_text="فقط نام کاربری، بدون @")

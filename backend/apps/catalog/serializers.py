@@ -118,10 +118,16 @@ class ProductDetailSerializer(ProductListSerializer):
 class CategoryTreeSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
     product_count = serializers.SerializerMethodField()
+    cover = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "description", "image", "product_count", "children"]
+        fields = ["id", "name", "slug", "description", "image", "cover", "product_count", "children"]
+
+    def get_cover(self, obj):
+        url = self.context.get("covers", {}).get(obj.pk)
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if url and request else url
 
     def get_children(self, obj):
         kids = self.context["children"].get(obj.pk, [])

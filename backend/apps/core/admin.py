@@ -9,7 +9,7 @@ from .models import StoreSettings
 class StoreSettingsAdmin(admin.ModelAdmin):
     fieldsets = [
         ("هویت", {"fields": ["name", "name_latin", "tagline", "logo"]}),
-        ("صفحه‌ی اصلی", {"fields": ["hero_title", "hero_text"]}),
+        ("صفحه‌ی اصلی", {"fields": ["hero_title", "hero_text", "about_title", "about_text"]}),
         ("رنگ‌ها", {"fields": ["color_ink", "color_accent", "color_background"]}),
         ("تماس", {"fields": ["phone", "instagram", "city", "address"]}),
         ("فروش", {"fields": ["currency_label"]}),
