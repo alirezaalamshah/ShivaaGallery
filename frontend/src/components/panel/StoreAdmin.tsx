@@ -188,7 +188,7 @@ export function Discounts() {
               <tbody>
                 {data.map((d) => (
                   <tr key={d.id}>
-                    <td dir="ltr" style={{ textAlign: "right" }}><b>{d.code}</b></td>
+                    <td dir="ltr"><b>{d.code}</b></td>
                     <td className="num">{d.kind === "percent" ? `${faNum(d.value ?? 0)}٪${d.max_amount ? ` تا ${faNum(d.max_amount)}` : ""}` : `${faNum(d.value ?? 0)} تومان`}</td>
                     <td className="num">{d.min_subtotal ? faNum(d.min_subtotal) : "—"}</td>
                     <td className="num">{faNum(d.used_count ?? 0)}{d.max_uses ? ` از ${faNum(d.max_uses)}` : ""}</td>

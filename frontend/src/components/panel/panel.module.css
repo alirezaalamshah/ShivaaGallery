@@ -382,6 +382,11 @@
   vertical-align: middle;
 }
 
+/* Numbers kept left-to-right (+۲, #۱۰۲۴, phone numbers) still line up under their header on the right. */
+.table td[dir="ltr"] {
+  text-align: right;
+}
+
 .table tbody tr {
   transition: background 0.2s;
 }
