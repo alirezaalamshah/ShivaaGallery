@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { SiteChrome } from "@/components/SiteChrome";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import { StoreProvider } from "@/components/StoreProvider";
 import { api } from "@/lib/api";
 
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </SiteChrome>
               <ScrollReveal />
+              <SmoothScroll />
             </ToastProvider>
           </CartProvider>
           </AuthProvider>

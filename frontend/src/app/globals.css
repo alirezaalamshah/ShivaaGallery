@@ -540,10 +540,28 @@ select.input {
 }
 
 .reveal-on [data-reveal] {
-  transition: opacity 0.9s var(--ease-out), transform 1s var(--ease-out);
+  transition: opacity 1.1s var(--ease-out), transform 1.2s var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Lenis smooth scrolling (see SmoothScroll.tsx) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
