@@ -10,6 +10,7 @@ from apps.catalog.models import Category, Color, Product, ProductImage, Size, Si
 from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
+from apps.orders.models import DiscountCode, ShippingMethod
 
 DEFAULT_FILE = Path(settings.BASE_DIR) / "demo" / "demo_store.json"
 DEMO_STOCK = 4
@@ -84,6 +85,11 @@ class Command(BaseCommand):
                     v = Variant.objects.create(product=product, color=colors[color], size=sizes[(system, label)])
                     if label not in p.get("out", []):
                         move_stock(v, DEMO_STOCK, StockMovement.Reason.RECEIVE, note="داده‌ی نمونه")
+
+        for i, m in enumerate(data.get("shipping_methods", [])):
+            ShippingMethod.objects.get_or_create(name=m["name"], defaults={**m, "sort": i})
+        for dc in data.get("discounts", []):
+            DiscountCode.objects.get_or_create(code=dc["code"], defaults=dc)
 
         self.stdout.write(self.style.SUCCESS(
             f"Loaded {len(cats)} categories, {len(data['products'])} products, {Variant.objects.count()} variants."

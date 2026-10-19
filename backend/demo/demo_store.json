@@ -439,5 +439,31 @@
         }
       ]
     }
+  ],
+  "shipping_methods": [
+    {
+      "name": "پیک داخل شهر",
+      "description": "تحویل همان روز یا فردا",
+      "fee": 80000,
+      "only_city": "دزفول"
+    },
+    {
+      "name": "پست پیشتاز",
+      "description": "سراسر ایران · ۲ تا ۴ روز کاری",
+      "fee": 120000
+    },
+    {
+      "name": "تیپاکس",
+      "description": "سراسر ایران · ۱ تا ۲ روز کاری",
+      "fee": 180000
+    }
+  ],
+  "discounts": [
+    {
+      "code": "SHIVA10",
+      "kind": "percent",
+      "value": 10,
+      "max_amount": 500000
+    }
   ]
 }
