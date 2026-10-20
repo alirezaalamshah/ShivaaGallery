@@ -49,6 +49,10 @@
   color: var(--accent);
 }
 
+.navs {
+  display: contents;
+}
+
 .navGroup {
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -1069,27 +1073,72 @@
   .side {
     position: static;
     height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    padding: 10px;
+    padding: 12px 0 10px;
+    overflow: visible;
   }
 
   .navGroup,
-  .sideFoot {
+  .sideFoot,
+  .navOn::before {
     display: none;
   }
 
   .brand {
-    width: 100%;
-    padding-bottom: 6px;
+    padding: 0 14px 10px;
+  }
+
+  .navs {
+    display: flex;
+    gap: 4px;
+    padding-inline: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navItem {
+    flex: none;
+    height: 38px;
+    gap: 7px;
+    padding-inline: 12px;
+  }
+
+  .navBadge {
+    margin-inline-start: 2px;
   }
 
   .content {
     padding: 18px 14px;
   }
 
+  .shell {
+    position: relative;
+  }
+
+  /* the account row sits beside the brand instead of taking its own line */
   .topbar {
+    position: absolute;
+    top: 10px;
+    inset-inline-end: 0;
+    height: 44px;
     padding-inline: 14px;
+    background: none;
+    border: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .who {
+    color: var(--on-deep-muted);
+  }
+
+  .who .btnGhost {
+    color: var(--on-deep);
+    border-color: color-mix(in oklab, var(--on-deep), transparent 75%);
+    background: none;
   }
 
   .formGrid {

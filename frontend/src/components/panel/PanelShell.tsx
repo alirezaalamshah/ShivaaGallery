@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Icon, type IconName } from "@/components/Icon";
@@ -37,6 +37,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const { me, logout } = useAuth();
   const [openOrders, setOpenOrders] = useState<number | null>(null);
   const isLogin = path === "/panel/login";
+  const navs = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isLogin || !me) return;
@@ -47,6 +48,14 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     if (!me?.is_staff) return;
     adminCall<{ orders_open: number }>("/dashboard").then((d) => setOpenOrders(d.orders_open)).catch(() => {});
   }, [me, path]);
+
+  // On phones the menu is one row that scrolls sideways; keep the open page in view.
+  useEffect(() => {
+    const row = navs.current;
+    const on = row?.querySelector<HTMLElement>("[aria-current=page]");
+    if (!row || !on || row.scrollWidth <= row.clientWidth) return;
+    row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
+  }, [path, me]);
 
   if (isLogin) return <>{children}</>;
   if (!me?.is_staff) return <div className={s.login} aria-busy="true" />;
@@ -66,18 +75,20 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             <small>پنل مدیریت</small>
           </span>
         </div>
-        {NAV.map((g) => (
-          <nav key={g.group} aria-label={g.group} style={{ display: "contents" }}>
-            <div className={s.navGroup}>{g.group}</div>
-            {g.items.map((it) => (
-              <Link key={it.href} href={it.href} className={`${s.navItem} ${active(it.href) ? s.navOn : ""}`} aria-current={active(it.href) ? "page" : undefined}>
-                <Icon name={it.icon} />
-                {it.label}
-                {it.href === "/panel/orders" && !!openOrders && <span className={`${s.navBadge} num`}>{faNum(openOrders)}</span>}
-              </Link>
-            ))}
-          </nav>
-        ))}
+        <div className={s.navs} ref={navs}>
+          {NAV.map((g) => (
+            <nav key={g.group} aria-label={g.group} style={{ display: "contents" }}>
+              <div className={s.navGroup}>{g.group}</div>
+              {g.items.map((it) => (
+                <Link key={it.href} href={it.href} className={`${s.navItem} ${active(it.href) ? s.navOn : ""}`} aria-current={active(it.href) ? "page" : undefined}>
+                  <Icon name={it.icon} />
+                  {it.label}
+                  {it.href === "/panel/orders" && !!openOrders && <span className={`${s.navBadge} num`}>{faNum(openOrders)}</span>}
+                </Link>
+              ))}
+            </nav>
+          ))}
+        </div>
         <div className={s.sideFoot}>
           <a href="/" target="_blank" rel="noopener" className={s.navItem}>
             <Icon name="arrow" /> مشاهده‌ی سایت
