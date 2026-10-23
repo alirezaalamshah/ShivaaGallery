@@ -21,7 +21,6 @@ const NAV: { group: string; items: { href: string; label: string; icon: IconName
     { href: "/panel/products", label: "محصولات", icon: "grid" },
     { href: "/panel/categories", label: "دسته‌ها", icon: "filter" },
     { href: "/panel/attributes", label: "رنگ و سایز", icon: "ruler" },
-    { href: "/panel/inventory", label: "انبار", icon: "ret" },
   ] },
   { group: "فروشگاه", items: [
     { href: "/panel/shipping", label: "روش‌های ارسال", icon: "truck" },

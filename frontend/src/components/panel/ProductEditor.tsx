@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
-import { faNum, toEnDigits } from "@/lib/format";
+import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import { PhotoCropper } from "./PhotoCropper";
@@ -22,6 +22,8 @@ type Basic = { name: string; category: number | null; description: string; detai
 
 const EMPTY: Basic = { name: "", category: null, description: "", details: "", price: null, is_active: true, is_featured: false };
 const key = cellKey;
+// Quantities are hidden from the panel; "available" is stored as a stock large enough that orders never run it out.
+const IN_STOCK = 9999;
 
 export function ProductEditor({ id }: { id?: string }) {
   const router = useRouter();
@@ -83,7 +85,6 @@ export function ProductEditor({ id }: { id?: string }) {
 
   const sizesInOrder = system?.sizes.filter((z) => picked.sizes.includes(z.id!)) ?? [];
   const colorsInOrder = colors?.filter((c) => picked.colors.includes(c.id)) ?? [];
-  const totalStock = colorsInOrder.reduce((n, c) => n + sizesInOrder.reduce((m, z) => m + (stock[key(c.id, z.id!)] ?? 0), 0), 0);
   const regularOf = (k: string) => prices[k] ?? form.price;
   const cells = colorsInOrder.flatMap((c) => sizesInOrder.map((z) => key(c.id, z.id!)));
 
@@ -159,7 +160,7 @@ export function ProductEditor({ id }: { id?: string }) {
         saved = await upload(saved.id, pending);
         setPending([]);
       }
-      const stockBody = Object.fromEntries(cells.map((k) => [k, stock[k] ?? 0]));
+      const stockBody = Object.fromEntries(cells.map((k) => [k, (stock[k] ?? 0) > 0 ? IN_STOCK : 0]));
       const priceBody = Object.fromEntries(cells.map((k) => [k, prices[k] ?? null]));
       const saleBody = Object.fromEntries(cells.map((k) => [k, sales[k] ?? null]));
       saved = await adminCall<AdminProduct>(`/products/${saved.id}/matrix`, {
@@ -278,7 +279,7 @@ export function ProductEditor({ id }: { id?: string }) {
             ) : null}
           </Card>
 
-          <Card title="رنگ‌ها، سایزها و موجودی" actions={<span className="muted num">موجودی کل: {faNum(totalStock)}</span>}>
+          <Card title="رنگ‌ها، سایزها و موجودی">
             <div style={{ display: "grid", gap: 16 }}>
               <div>
                 <div className="label" style={{ marginBottom: 8 }}>رنگ‌هایی که این مدل دارد</div>
@@ -308,7 +309,7 @@ export function ProductEditor({ id }: { id?: string }) {
               </div>
               {colorsInOrder.length > 0 && sizesInOrder.length > 0 ? (
                 <div style={{ overflowX: "auto" }}>
-                  <div className="label" style={{ marginBottom: 6 }}>تعداد موجود از هر رنگ و سایز</div>
+                  <div className="label" style={{ marginBottom: 6 }}>موجود بودن هر رنگ و سایز</div>
                   <table className={s.matrix}>
                     <thead>
                       <tr>
@@ -322,20 +323,19 @@ export function ProductEditor({ id }: { id?: string }) {
                           <th><span className={s.colorHead}><i style={{ background: c.hex }} />{c.name}</span></th>
                           {sizesInOrder.map((z) => {
                             const k = key(c.id, z.id!);
-                            const v = stock[k] ?? 0;
+                            const on = (stock[k] ?? 0) > 0;
                             return (
                               <td key={k}>
-                                <input
-                                  aria-label={`موجودی ${c.name} سایز ${z.label}`}
-                                  className={`num ${v === 0 ? s.zero : ""}`}
-                                  inputMode="numeric"
-                                  value={faNum(v)}
-                                  onFocus={(e) => e.currentTarget.select()}
-                                  onChange={(e) => {
-                                    const n = Number(toEnDigits(e.target.value).replace(/\D/g, "") || 0);
-                                    setStock((st) => ({ ...st, [k]: Math.min(n, 9999) }));
-                                  }}
-                                />
+                                <button
+                                  type="button"
+                                  aria-label={`${c.name} سایز ${z.label}`}
+                                  aria-pressed={on}
+                                  className={on ? "" : s.zero}
+                                  onClick={() => setStock((st) => ({ ...st, [k]: on ? 0 : IN_STOCK }))}
+                                  style={{ width: "100%", minWidth: 64, padding: "6px 4px", border: 0, background: "transparent", cursor: "pointer", font: "inherit", fontSize: 12 }}
+                                >
+                                  {on ? "موجود" : "ناموجود"}
+                                </button>
                               </td>
                             );
                           })}
@@ -343,7 +343,7 @@ export function ProductEditor({ id }: { id?: string }) {
                       ))}
                     </tbody>
                   </table>
-                  <p className="hint" style={{ marginTop: 6 }}>عدد صفر یعنی این ترکیب در سایت «ناموجود» نشان داده می‌شود. هر تغییر موجودی در بخش انبار ثبت می‌شود.</p>
+                  <p className="hint" style={{ marginTop: 6 }}>روی هر خانه بزنید تا بین «موجود» و «ناموجود» عوض شود.</p>
 
                   <PriceMatrix
                     id="p-bulk-price"
@@ -400,9 +400,6 @@ export function ProductEditor({ id }: { id?: string }) {
               <ConfirmButton label="حذف این محصول" onConfirm={remove} />
             </Card>
           )}
-          <button type="button" className={s.btn} onClick={save} disabled={saving} style={{ height: 50 }}>
-            <Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره‌ی محصول"}
-          </button>
         </div>
       </div>
       {toCrop && <PhotoCropper files={toCrop} aspect={3 / 4} outWidth={1200} onDone={onCropped} onCancel={() => setToCrop(null)} />}

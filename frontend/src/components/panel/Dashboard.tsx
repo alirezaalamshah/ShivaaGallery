@@ -26,6 +26,7 @@ type Dash = {
 };
 
 const weekday = new Intl.DateTimeFormat("fa-IR", { weekday: "short" });
+const SHOW_QUANTITIES = false;
 
 export function Dashboard() {
   const store = useStore();
@@ -127,7 +128,7 @@ export function Dashboard() {
           </Card>
         </div>
 
-        <Card title="موجودی رو به اتمام">
+        {SHOW_QUANTITIES && <Card title="موجودی رو به اتمام">
           {data.low_stock.length ? (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
               {data.low_stock.map((v) => (
@@ -154,7 +155,7 @@ export function Dashboard() {
           ) : (
             <Empty icon="check" title="موجودی همه‌ی کالاها خوب است" />
           )}
-        </Card>
+        </Card>}
       </div>
     </>
   );
