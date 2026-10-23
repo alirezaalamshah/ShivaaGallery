@@ -1,61 +1,286 @@
-# شیوا گالری | Shiva Gallery
+<div align="center">
 
-فروشگاه اینترنتی پوشاک زنانه‌ی شیوا گالری (دزفول): مانتو مجلسی و اداری، عبا، شومیز و شلوار. سایت مشتری برای موبایل طراحی شده و پنل مدیریت برای کامپیوتر.
+<img src="docs/brand/logo.jpg" alt="Shiva Gallery logo" width="96" />
 
-هیچ چیز مخصوص شیوا گالری داخل کد نیست؛ اسم، لوگو، رنگ‌ها، متن‌ها، دسته‌ها، روش‌های ارسال و قوانین مرجوعی همه از پنل تنظیم می‌شوند، پس همین کد برای فروشگاه دیگری هم قابل نصب است.
+# Shiva Gallery
 
-## اجرا روی سیستم (ویندوز)
+**A mobile-first online store for women's fashion, with a full admin panel. Built with Django and Next.js.**
 
-پیش‌نیاز: Python 3.12 به بالا و Node.js 20 به بالا.
+Formal and office *manteaus*, *abayas*, blouses and trousers for Shiva Gallery, a boutique in Dezful, Iran.<br/>
+Fully Persian and right-to-left. Nothing in the code is specific to this shop: the name, logo, colors, categories, shipping and return rules all come from the admin panel, so the same code can run any clothing store.
 
-بار اول، یک بار:
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)
+![DRF](https://img.shields.io/badge/DRF-3.16-A30000)
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 
-```powershell
+<img src="docs/screenshots/storefront-desktop.jpg" alt="Shiva Gallery storefront home page on desktop" width="100%" />
+
+</div>
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [API overview](#api-overview)
+- [How it works](#how-it-works)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Roadmap](#roadmap)
+- [Credits](#credits)
+
+## Screenshots
+
+### Storefront (mobile)
+
+Almost all customers arrive on a phone, so the storefront is designed for mobile first and then scaled up to desktop.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/mobile-home.jpg" alt="Home page" /><br/><sub><b>Home</b>: animated hero with featured products</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/mobile-shop.jpg" alt="Product listing" /><br/><sub><b>Shop</b>: filters, sale and new badges, color swatches</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/mobile-product.jpg" alt="Product page" /><br/><sub><b>Product</b>: color and size picker, size guide, sale price</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/mobile-categories.jpg" alt="Categories" /><br/><sub><b>Categories</b>: nested categories with product counts</sub></td>
+    <td align="center"><img src="docs/screenshots/mobile-cart.jpg" alt="Cart" /><br/><sub><b>Cart</b>: guest cart, no sign-up needed</sub></td>
+    <td align="center"><img src="docs/screenshots/mobile-checkout.jpg" alt="Checkout" /><br/><sub><b>Checkout</b>: one page, sign-in with an SMS code</sub></td>
+  </tr>
+</table>
+
+### Admin panel (desktop)
+
+The shop owner works from a computer, so the panel at `/panel` is designed for desktop and still works on a phone.
+
+| Dashboard | Orders |
+|---|---|
+| ![Dashboard with today's sales, open orders and a 7-day sales chart](docs/screenshots/panel-dashboard.jpg) | ![Order list with status filters and search](docs/screenshots/panel-orders.jpg) |
+| **Order detail** | **Products** |
+| ![Order detail with items, customer, tracking code and status history](docs/screenshots/panel-order.jpg) | ![Product list with price, availability, featured and visibility toggles](docs/screenshots/panel-products.jpg) |
+| **Colors, sizes and availability** | **Store settings** |
+| ![Product editor with color and size pickers and an availability grid](docs/screenshots/panel-product-variants.jpg) | ![Store identity, brand colors with live preview and home page text](docs/screenshots/panel-settings.jpg) |
+
+## Features
+
+### For customers
+
+- **Browse and filter.** Nested categories, a full shop page, and filters for color, size, price range, in-stock and on-sale, with sorting. Filters live in the URL, so any filtered view can be shared.
+- **Product page.** A swipeable gallery that switches photos with the selected color, size buttons that show which sizes are unavailable, a per-category size chart, and the regular and sale price with the discount percentage.
+- **Search** across product names.
+- **Guest cart.** No account is needed to shop. The cart is kept in the browser, and prices and availability are checked again on the server at checkout.
+- **One-page checkout.** Sign in with a mobile number and an SMS code, with no passwords. Then pick a province and city, choose a shipping method, apply a discount code and place the order. The order summary stays pinned to the bottom of the screen.
+- **Order tracking** with an order number and mobile number, without signing in, plus an account page that lists past orders.
+- **SEO.** Pages are rendered on the server, product pages include `schema.org` product data, and private pages (cart, checkout, panel) are marked `noindex`.
+
+### For the shop owner
+
+- **Dashboard.** Today's sales and orders, open orders, out-of-stock variants, a 7-day sales chart and the latest orders.
+- **Orders.** Filter by status, search by number, phone or name, and move each order through its lifecycle. Every status change sends the customer an SMS. The owner can add a parcel tracking code and private notes and see the full status history. Cancelling an order returns its items to stock automatically.
+- **Products.** Photos are dragged in and cropped to the site's 3:4 frame in the browser, then stored on the server as WebP at a fixed 1200×1600. Each photo can be tied to a color. Each color × size variant can be marked available or unavailable, with its own price and sale price. A price can be applied to everything at once, or to one whole color or size.
+- **Categories.** A category tree with a size system and size chart per category. Subcategories inherit both.
+- **Colors and sizes.** Named color swatches and size systems (letter sizes, numeric sizes, one-size).
+- **Shipping methods** with a fixed fee per method, optionally limited to a single city (for example, local courier only within Dezful).
+- **Discount codes.** Percentage (with an optional cap) or fixed amount, with a minimum order, start and end dates and a usage limit.
+- **Store settings.** Name, logo, slogan, three brand colors with a live preview, home page text, contact details and return policy. Changes appear on the site right away.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.12+, Django 5.2, Django REST Framework, django-filter, Pillow |
+| Frontend | Next.js 15 (App Router, Turbopack), React 19, TypeScript, CSS Modules |
+| Database | SQLite in development, PostgreSQL in production |
+| SMS | Pluggable: console output in development, [Melipayamak](https://www.melipayamak.com/) in production |
+| Fonts | Vazirmatn, Reem Kufi and Italiana (all OFL), bundled with the project |
+
+There's no Docker, Celery or Redis. The project runs as two plain processes on Linux or Windows.
+
+## Getting started
+
+### Prerequisites
+
+- Python **3.12 or newer**
+- Node.js **20 or newer**
+
+### 1. Backend
+
+```bash
 cd backend
 python -m venv .venv
+
+# Windows
 .venv\Scripts\pip install -r requirements.txt
 copy .env.example .env
 .venv\Scripts\python manage.py migrate
-.venv\Scripts\python manage.py seed_demo          # داده‌ی نمونه با عکس
-.venv\Scripts\python manage.py createsuperuser    # حساب مدیر پنل
-cd ..\frontend
-npm install
-copy .env.example .env.local
+.venv\Scripts\python manage.py seed_demo          # optional: demo categories, products and photos
+.venv\Scripts\python manage.py createsuperuser    # the admin panel login
+
+# Linux / macOS: use .venv/bin/ instead of .venv\Scripts\ and cp instead of copy
 ```
 
-هر بار برای اجرا، در پوشه‌ی اصلی پروژه:
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+copy .env.example .env.local      # Linux / macOS: cp .env.example .env.local
+```
+
+### 3. Run
+
+On Windows, one script starts both servers in separate windows:
 
 ```powershell
 .\dev.ps1
 ```
 
-دو پنجره باز می‌شود (بک‌اند و سایت). بعد:
+Or start them yourself:
 
-| چه چیزی | آدرس |
+```bash
+# terminal 1
+cd backend && .venv/bin/python manage.py runserver 127.0.0.1:8000
+# terminal 2
+cd frontend && npm run dev
+```
+
+| What | URL |
 |---|---|
-| سایت مشتری | http://localhost:3100 |
-| پنل مدیریت | http://localhost:3100/panel |
-| API | http://127.0.0.1:8000/api/ |
+| Storefront | http://localhost:3100 |
+| Admin panel | http://localhost:3100/panel |
+| REST API | http://127.0.0.1:8000/api/ |
+| Django admin (backup tool) | http://127.0.0.1:8000/admin/ |
 
-## بخش‌ها
+> [!TIP]
+> In development, SMS messages are printed in the backend terminal instead of being sent. Use the code printed there to sign in at checkout.
 
-**سایت مشتری:** صفحه‌ی اصلی، دسته‌ها، فهرست محصولات با فیلتر، صفحه‌ی محصول، جستجو، سبد خرید، تسویه‌حساب یک‌صفحه‌ای با ورود پیامکی، حساب من، پیگیری سفارش.
+> [!NOTE]
+> The dev server compiles each page the first time it's opened, so the first click on a page can take a few seconds. A production build (`npm run build` and then `npm start`) doesn't have this delay.
 
-**پنل مدیریت (`/panel`):** داشبورد، سفارش‌ها و تغییر وضعیت، محصولات با برش عکس و جدول رنگ×سایز×موجودی، دسته‌ها با جدول سایز، رنگ و سایز، دفتر انبار، روش‌های ارسال، کدهای تخفیف، تنظیمات فروشگاه.
+## Configuration
 
-## مستندات
+### Backend: `backend/.env`
 
-- [تصمیم‌ها و نیازمندی‌ها](docs/decisions.md)
-- [نقشه‌ی صفحه‌ها و مسیر خرید](docs/page-map.md)
-- [بک‌اند](backend/README.md) · [فرانت‌اند](frontend/README.md)
+| Variable | Default | Description |
+|---|---|---|
+| `DJANGO_DEBUG` | `true` | Set to `false` in production. |
+| `DJANGO_SECRET_KEY` | none | Required when debug is off. |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated host names. |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | `http://localhost:3100,…` | Origins allowed to post forms, meaning the storefront's address. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3100,…` | Origins allowed to call the API from the browser. |
+| `TIME_ZONE` | `Asia/Tehran` | |
+| `DB_ENGINE` | `sqlite` | `sqlite` or `postgresql`. PostgreSQL also needs `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` and the `psycopg` driver. |
+| `MEDIA_ROOT` | `backend/media` | Where uploaded photos are stored. |
+| `SMS_BACKEND` | `console` | `console` prints messages, `melipayamak` sends them. |
+| `SMS_USERNAME`, `SMS_PASSWORD` | none | Melipayamak account. |
+| `SMS_PATTERN_OTP`, `SMS_PATTERN_ORDER_PLACED`, `SMS_PATTERN_ORDER_STATUS` | none | Approved Melipayamak pattern IDs, one for each message type. |
+| `THROTTLE_AUTH`, `THROTTLE_TRACK` | `20/hour`, `30/hour` | Rate limits for sign-in codes and order tracking. |
 
-## کارهای باقی‌مانده
+### Frontend: `frontend/.env.local`
 
-- وصل کردن درگاه پرداخت (بعد از گرفتن درگاه و اینماد)
-- وصل کردن ملی‌پیامک (فعلاً کد ورود در پنجره‌ی بک‌اند چاپ می‌شود)
-- علاقه‌مندی‌ها، «موجود شد خبرم کن»، نظر و امتیاز خریداران
-- راه‌اندازی روی سرور و دامنه
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | The API address as seen from the browser. |
+| `INTERNAL_API_URL` | The API address as seen from the Next.js server. It can be an internal address. |
 
----
+## Project structure
 
-طراحی و توسعه: [هوشیوا](https://houshiva.ir)
+```
+ShivaGallery/
+├── backend/                 Django project
+│   ├── config/              settings and URL routing
+│   ├── apps/
+│   │   ├── core/            store settings (a single row): name, brand, texts, policies
+│   │   ├── catalog/         colors, size systems, category tree, products, photos, variants
+│   │   ├── inventory/       append-only stock ledger
+│   │   ├── accounts/        phone sign-in with SMS codes, staff login, provinces and cities
+│   │   ├── orders/          shipping methods, discount codes, checkout, orders and their history
+│   │   └── panel/           admin panel API (staff only)
+│   └── demo/                demo data and photos used by `seed_demo`
+├── frontend/                Next.js app
+│   └── src/
+│       ├── app/             routes: storefront pages and /panel
+│       ├── components/      UI by area (product, listing, cart, checkout, panel, …)
+│       └── lib/             API client, types, formatting
+├── docs/                    decisions, page map, brand assets, screenshots (in Persian)
+├── tools/promo/             records story-style promo videos of the site on a phone
+└── dev.ps1                  starts both servers on Windows
+```
+
+## API overview
+
+All endpoints are under `/api/`.
+
+**Public**
+
+| Endpoint | Purpose |
+|---|---|
+| `GET store/` | Store settings and branding |
+| `GET categories/` | Category tree with product counts |
+| `GET facets/` | Colors and sizes for filters |
+| `GET products/` | Product list. Filters: `category`, `color`, `size`, `min_price`, `max_price`, `in_stock`, `on_sale`, `featured`, `search`, `ordering`, `page` |
+| `GET products/<slug>/` | Product detail with variants, sizes, size chart and category path |
+| `GET shipping-methods/` | Shipping methods and fees |
+| `POST cart/validate/` | Re-check cart prices and availability |
+| `POST checkout/quote/` | Totals including shipping and discount |
+| `GET POST orders/` | The signed-in customer's orders, or place a new order |
+| `GET orders/<number>/` | One order |
+| `POST orders/track/` | Track an order by number and phone, without signing in |
+| `POST auth/otp/request/`, `auth/otp/verify/` | Send and check an SMS sign-in code |
+| `GET auth/me/`, `POST auth/profile/`, `auth/logout/` | Session and profile |
+
+**Admin** (staff only, under `/api/admin/`)
+
+`dashboard/`, `store/`, `products/` (including photo upload and reordering, and the variant matrix), `product-images/`, `variants/`, `categories/`, `colors/`, `size-systems/`, `shipping-methods/`, `discounts/`, `orders/`, `stock-movements/`.
+
+## How it works
+
+- **Stock is a ledger.** A variant's stock is the sum of an append-only list of movements: sales, cancellations and manual changes. Every change goes through one function, which locks the variant row, so two shoppers can't buy the last item at the same time. A database constraint also stops stock from going negative. The panel currently shows only *available* and *unavailable*. The full ledger is still recorded and can be shown again.
+- **Prices are whole tomans.** Each variant can have its own price and sale price. A sale price must be lower than the regular price, and product cards show the cheapest variant.
+- **Orders keep a snapshot.** Each order stores the address, prices, product names and photos as they were at the time of purchase, so later edits to a product don't change past orders. Status changes follow a fixed set of allowed transitions and are recorded in the order's history.
+- **One store, many possible stores.** All store-specific data lives in one settings model. The frontend reads the three brand colors from the API and builds the rest of the palette from them with CSS `color-mix`, so another store gets a matching theme from its own colors.
+- **Readable Persian URLs.** Product and category slugs are in Persian, for example `/p/مانتو-مجلسی-شب`.
+- **Fonts are bundled.** Google Fonts isn't reliable from inside Iran, so the fonts ship with the project and are split by script. Persian pages download only the Persian part.
+
+## Testing
+
+```bash
+cd backend
+.venv\Scripts\python manage.py test        # Linux / macOS: .venv/bin/python manage.py test
+
+cd frontend
+npx tsc --noEmit                           # type-check
+npm run lint
+```
+
+The backend suite covers the catalog, filters, checkout, discounts, stock, orders, SMS sign-in and the admin API.
+
+## Deployment
+
+1. Use PostgreSQL. Set `DB_ENGINE=postgresql`, fill in the `DB_*` variables and run `pip install psycopg`.
+2. Set `DJANGO_DEBUG=false`, a strong `DJANGO_SECRET_KEY`, and your real domain in `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS`.
+3. Run Django behind a WSGI server such as Gunicorn, and serve `MEDIA_ROOT` through the web server.
+4. Build the frontend with `npm run build`, then run it with `npm start`. The backend must be reachable while the frontend builds.
+5. Set `SMS_BACKEND=melipayamak` with the account and pattern IDs.
+
+## Roadmap
+
+- [ ] Online payment gateway. The payment step is separate, so a gateway can be added without changing the rest of the checkout.
+- [ ] Live SMS through Melipayamak. The integration is written and only needs an account and approved patterns.
+- [ ] Wishlist and "notify me when it's back in stock".
+- [ ] Customer reviews and ratings from verified buyers, with admin approval.
+- [ ] Production server and domain.
+
+## Credits
+
+- Demo product photos come from Wikimedia Commons under CC0 and CC BY-SA 2.0. See [backend/demo/photos/CREDITS.md](backend/demo/photos/CREDITS.md) for each author and license.
+- Fonts: Vazirmatn, Reem Kufi and Italiana, under the SIL Open Font License.
+
+Designed and developed by **[Houshiva](https://houshiva.ir)** · Erfan Mohammadi
+
+All rights reserved. This repository has no open-source license.

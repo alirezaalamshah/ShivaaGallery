@@ -88,7 +88,7 @@ export function Dashboard() {
         </Link>
       </div>
 
-      <div className={s.cols}>
+      <div className={SHOW_QUANTITIES ? s.cols : undefined}>
         <div className={s.stack}>
           <Card title="فروش ۷ روز اخیر" actions={<span className="muted num">{faNum(weekTotal)} {store.currency_label}</span>}>
             <div className={s.chart}>
