@@ -363,7 +363,6 @@ export function StoreSettings() {
               </div>
             </div>
           </Card>
-          <button type="button" className={s.btn} onClick={save} disabled={saving} style={{ height: 50 }}><Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره‌ی تنظیمات"}</button>
         </div>
       </div>
       {logoCrop && <PhotoCropper files={logoCrop} aspect={1} outWidth={600} onCancel={() => setLogoCrop(null)} onDone={(out) => { setLogoCrop(null); if (out[0]) setLogo(out[0]); }} />}
