@@ -26,3 +26,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# One-time data snapshot for the first deploy (see deploy/README.md)
+!deploy/initial-data/db.sqlite3
+!deploy/initial-data/media/
