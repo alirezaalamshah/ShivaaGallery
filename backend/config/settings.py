@@ -136,6 +136,8 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", str(BASE_DIR / "media")))
+# Shared hosting has no separate web server for uploads, so Django serves them itself.
+SERVE_FILES = env_bool("DJANGO_SERVE_FILES", DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
