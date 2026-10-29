@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CategoryRail } from "@/components/home/CategoryRail";
-import { HeroStage } from "@/components/home/HeroStage";
+import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { StoreStory } from "@/components/home/StoreStory";
 import heroStyles from "@/components/home/Hero.module.css";
 import styles from "@/components/home/Home.module.css";
@@ -21,7 +21,6 @@ export default async function HomePage() {
     api.products({ ordering: "-created_at" }),
     api.products({ featured: true }),
   ]);
-  const heroProducts = (featured.results.length >= 3 ? featured.results : latest.results).slice(0, 3);
   const storyProducts = [...featured.results, ...latest.results].filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i);
   const title = splitHighlight(store.hero_title || store.name);
   let wordIndex = 0;
@@ -59,7 +58,7 @@ export default async function HomePage() {
               {store.returns.enabled && <span>{faNum(store.returns.days)} روز مهلت مرجوعی</span>}
             </div>
           </div>
-          {heroProducts.length > 0 && <HeroStage products={heroProducts} />}
+          {storyProducts.length > 0 && <HeroCarousel products={storyProducts} mark={store.name_latin || store.name} />}
         </div>
       </section>
 
