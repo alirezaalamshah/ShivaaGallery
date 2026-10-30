@@ -1174,3 +1174,161 @@
   box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--accent), transparent 30%);
   border-radius: inherit;
 }
+
+/* ---------- stock and in-store sales ---------- */
+
+.stockList {
+  display: grid;
+  gap: 14px;
+}
+
+.stockGroup {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.stockGroup header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--band);
+}
+
+.stockGroup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stockGroup li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.stockWhat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.stockWhat i {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+
+.stockCount {
+  min-width: 64px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stockBtns {
+  display: inline-flex;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .stockGroup li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .stockBtns {
+    grid-column: 1 / -1;
+  }
+
+  .stockBtns button:first-child {
+    flex: 1;
+  }
+}
+
+.inlineField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.inlineField .input {
+  width: auto;
+  min-height: 38px;
+  padding-block: 6px;
+}
+
+.reviewList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.reviewList > li {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.reviewList p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.reviewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 13.5px;
+}
+
+.reviewStars {
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.reviewStars i {
+  font-style: normal;
+  color: var(--line);
+}
+
+.reviewReply {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--band);
+}
+
+.returnItems {
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 13.5px;
+}
+
+.role {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--band);
+}
+
+.roleAdmin {
+  background: var(--ink);
+  color: var(--accent-hi);
+}

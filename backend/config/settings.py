@@ -65,6 +65,8 @@ INSTALLED_APPS = [
     "apps.inventory",
     "apps.accounts",
     "apps.orders",
+    "apps.payments",
+    "apps.pos",
     "apps.panel",
 ]
 
@@ -165,6 +167,23 @@ SMS_PASSWORD = env("SMS_PASSWORD", "")
 SMS_PATTERN_OTP = env("SMS_PATTERN_OTP", "")
 SMS_PATTERN_ORDER_PLACED = env("SMS_PATTERN_ORDER_PLACED", "")
 SMS_PATTERN_ORDER_STATUS = env("SMS_PATTERN_ORDER_STATUS", "")
+SMS_PATTERN_ORDER_SHIPPED = env("SMS_PATTERN_ORDER_SHIPPED", "")
+SMS_PATTERN_ADMIN_ORDER = env("SMS_PATTERN_ADMIN_ORDER", "")
+SMS_PATTERN_BACK_IN_STOCK = env("SMS_PATTERN_BACK_IN_STOCK", "")
+SMS_PATTERN_RETURN_STATUS = env("SMS_PATTERN_RETURN_STATUS", "")
+
+# The storefront's public address. Payment gateways send the customer back here.
+SITE_URL = env("SITE_URL", "http://localhost:3100").rstrip("/")
+
+# Online payment: "none" (the store arranges payment by phone), "fake" (a local
+# test page, development only) or "zarinpal".
+PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", "none")
+ZARINPAL_MERCHANT_ID = env("ZARINPAL_MERCHANT_ID", "")
+ZARINPAL_SANDBOX = env_bool("ZARINPAL_SANDBOX", False)
+# Prices are kept in toman; gateways charge in rial.
+PAYMENT_RIAL_PER_UNIT = int(env("PAYMENT_RIAL_PER_UNIT", "10"))
+# A customer who leaves the gateway without paying gets the items back in stock after this long.
+PAYMENT_TIMEOUT_MINUTES = int(env("PAYMENT_TIMEOUT_MINUTES", "20"))
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 30 * 1024 * 1024

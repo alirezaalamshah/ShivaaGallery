@@ -40,9 +40,18 @@ export function CartView() {
       <h1 className="page-title">
         سبد خرید <small className="num">{faNum(cart.count)} کالا</small>
       </h1>
+      {cart.issues > 0 && (
+        <div className={styles.alert} role="alert">
+          <span>موجودی {faNum(cart.issues)} کالا کمتر از سبد شماست.</span>
+          <button type="button" className="btn btn-ink" onClick={cart.fix}>اصلاح سبد</button>
+        </div>
+      )}
       <ul className={styles.lines}>
-        {cart.lines.map((l) => (
-          <li key={l.variantId} className={styles.line}>
+        {cart.lines.map((l) => {
+          const c = cart.check[l.variantId];
+          const max = c ? Math.max(c.available, 0) : Infinity;
+          return (
+          <li key={l.variantId} className={`${styles.line} ${c && !c.ok ? styles.bad : ""}`}>
             <Link href={`/p/${l.slug}`} className={styles.thumb}>
               <ProductMedia image={l.image} alt={l.name} hex={l.colorHex} sizes="88px" />
             </Link>
@@ -53,8 +62,12 @@ export function CartView() {
               <span>
                 رنگ {l.colorName} · سایز <span className="num">{l.size}</span>
               </span>
+              {c && !c.ok && (
+                <span className={styles.warn}>{c.available > 0 ? <>فقط <span className="num">{faNum(c.available)}</span> عدد موجود است</> : "این کالا تمام شد"}</span>
+              )}
+              {c?.ok && c.available <= 2 && <span className={styles.low}>آخرین موجودی</span>}
               <div className={styles.qty}>
-                <button type="button" aria-label="یکی بیشتر" onClick={() => cart.setQty(l.variantId, l.qty + 1)}>
+                <button type="button" aria-label="یکی بیشتر" disabled={l.qty >= max} onClick={() => cart.setQty(l.variantId, l.qty + 1)}>
                   <Icon name="plus" />
                 </button>
                 <span className="num" aria-live="polite">{faNum(l.qty)}</span>
@@ -70,7 +83,8 @@ export function CartView() {
               </button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
       <div className={styles.foot}>
         <div className={styles.total}>
@@ -79,9 +93,16 @@ export function CartView() {
             {faNum(cart.subtotal)} {currency_label}
           </span>
         </div>
-        <Link href="/checkout" className="btn btn-ink" style={{ width: "100%", borderRadius: 14, marginTop: 14 }}>
-          ادامه‌ی خرید <Icon name="arrow" />
-        </Link>
+        {cart.issues > 0 ? (
+          <button type="button" className="btn btn-ink" style={{ width: "100%", borderRadius: 14, marginTop: 14 }} onClick={cart.fix}>
+            اول سبد را اصلاح کن
+          </button>
+        ) : (
+          <Link href="/checkout" className="btn btn-ink" style={{ width: "100%", borderRadius: 14, marginTop: 14 }}>
+            ادامه‌ی خرید <Icon name="arrow" />
+          </Link>
+        )}
+        <p className={styles.hint}>هزینه‌ی ارسال و کد تخفیف در مرحله‌ی بعد حساب می‌شود.</p>
       </div>
     </div>
   );

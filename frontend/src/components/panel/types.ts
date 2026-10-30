@@ -16,8 +16,13 @@ export type AdminOrderRow = {
 
 export type AdminOrder = Order & {
   id: number;
+  user: number;
   admin_note: string;
   next_statuses: { value: OrderStatus; label: string }[];
+  /** Amounts are in rial, as the gateway charged them. */
+  payments: { status: "pending" | "paid" | "failed"; status_label: string; amount: number; ref_id: string; card: string; created_at: string }[];
+  /** How many orders this customer has placed in all. */
+  customer_orders: number;
 };
 
 export type AdminColor = { id: number; name: string; hex: string; sort: number; in_use: boolean };

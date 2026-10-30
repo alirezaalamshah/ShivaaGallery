@@ -14,8 +14,13 @@ router.register("shipping-methods", views.ShippingMethodViewSet, basename="admin
 router.register("discounts", views.DiscountCodeViewSet, basename="admin-discount")
 router.register("orders", views.OrderViewSet, basename="admin-order")
 router.register("stock-movements", views.MovementViewSet, basename="admin-movement")
+router.register("reviews", views.ReviewViewSet, basename="admin-review")
+router.register("returns", views.ReturnViewSet, basename="admin-return")
 
 urlpatterns = [
     path("store/", views.store_settings),
     path("dashboard/", views.dashboard),
+    path("customers/", views.customers),
+    path("team/", views.team),
+    path("team/<int:pk>/", views.team_member),
 ] + router.urls

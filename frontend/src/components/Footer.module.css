@@ -308,3 +308,15 @@
     margin-inline-start: 0;
   }
 }
+
+.seal {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.seal img {
+  display: block;
+}

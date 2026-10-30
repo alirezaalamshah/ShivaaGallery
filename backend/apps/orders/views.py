@@ -5,13 +5,16 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from apps.accounts.models import Address
+from apps.accounts.roles import is_seller
 
 from .models import Order, OrderItem, ShippingMethod
 from .serializers import (
     CartSerializer, CheckoutSerializer, OrderSerializer, OrderSummarySerializer, QuoteSerializer,
-    ShippingMethodSerializer, TrackSerializer,
+    ReturnInSerializer, ShippingMethodSerializer, TrackSerializer,
 )
-from .services import CheckoutError, find_discount, place_order, price_lines, quote
+from .services import (
+    CheckoutError, cancel_by_customer, expire_unpaid_soon, find_discount, place_order, price_lines, quote, request_return,
+)
 
 
 class TrackThrottle(AnonRateThrottle):
@@ -30,6 +33,7 @@ def shipping_methods(request):
 
 @api_view(["POST"])
 def cart_validate(request):
+    expire_unpaid_soon()
     s = CartSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     return Response({"lines": price_lines(s.validated_data["lines"])})
@@ -40,11 +44,11 @@ def checkout_quote(request):
     s = QuoteSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     d = s.validated_data
-    result = quote(d["lines"], d.get("city", ""), d.get("shipping_method"), d.get("discount_code", ""))
+    result = quote(d["lines"], d.get("city", ""), d.get("shipping_method"), d.get("discount_code", ""), request.user)
     code = d.get("discount_code", "").strip()
     if code:
         discount = find_discount(code)
-        result["discount_error"] = (discount.problem(result["subtotal"]) if discount else "این کد معتبر نیست یا تاریخش گذشته است.")
+        result["discount_error"] = (discount.problem(result["subtotal"], request.user) if discount else "این کد معتبر نیست یا تاریخش گذشته است.")
     return Response(result)
 
 
@@ -59,11 +63,12 @@ def orders(request):
         )
         return Response(OrderSummarySerializer(qs, many=True).data)
 
-    if request.user.is_staff:
-        return Response({"detail": "با حساب مدیر نمی‌شود سفارش ثبت کرد."}, status=status.HTTP_403_FORBIDDEN)
+    if request.user.is_staff or is_seller(request.user):
+        return Response({"detail": "با حساب مدیر یا فروشنده نمی‌شود سفارش ثبت کرد."}, status=status.HTTP_403_FORBIDDEN)
     s = CheckoutSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     d = s.validated_data
+    expire_unpaid_soon()
     try:
         order = place_order(request.user, d)
     except CheckoutError as e:
@@ -71,7 +76,10 @@ def orders(request):
     if d["save_address"]:
         Address.objects.update_or_create(
             user=request.user, receiver_name=d["receiver_name"], address=d["address"],
-            defaults={"province": d.get("province", ""), "city": d["city"], "postal_code": d.get("postal_code", "")},
+            defaults={
+                "province": d.get("province", ""), "city": d["city"], "postal_code": d.get("postal_code", ""),
+                "receiver_phone": d.get("receiver_phone", ""),
+            },
         )
     return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data, status=status.HTTP_201_CREATED)
 
@@ -86,6 +94,34 @@ def order_detail(request, number):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def order_cancel(request, number):
+    order = Order.objects.filter(user=request.user, number=number).first()
+    if order is None:
+        return Response({"detail": "سفارش پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        cancel_by_customer(order, request.user)
+    except CheckoutError as e:
+        return Response({"detail": e.message}, status=status.HTTP_409_CONFLICT)
+    return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def order_return(request, number):
+    order = Order.objects.filter(user=request.user, number=number).first()
+    if order is None:
+        return Response({"detail": "سفارش پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
+    s = ReturnInSerializer(data=request.data)
+    s.is_valid(raise_exception=True)
+    try:
+        request_return(order, s.validated_data)
+    except CheckoutError as e:
+        return Response({"detail": e.message}, status=status.HTTP_409_CONFLICT)
+    return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
 @throttle_classes([TrackThrottle])
 def track(request):
     """Public order tracking by order number + the phone used for it."""
@@ -96,5 +132,6 @@ def track(request):
         return Response({"detail": "سفارشی با این شماره و موبایل پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
     data = OrderSerializer(order).data
     # Strangers may know a number and phone; keep the street address private.
-    data.pop("address"), data.pop("postal_code"), data.pop("note")
+    for private in ("address", "postal_code", "note", "receiver_phone", "returns", "return_window"):
+        data.pop(private)
     return Response(data)

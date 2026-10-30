@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,7 @@ from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
 
 from .models import DiscountCode, Order, ShippingMethod
-from .services import CheckoutError, change_status, place_order
+from .services import CheckoutError, change_status, expire_unpaid, place_order
 
 User = get_user_model()
 
@@ -119,3 +120,64 @@ class OrderApiTests(OrderFixture):
         self.assertTrue(q["discount_error"])
         lines = self.client.post("/api/cart/validate/", {"lines": [{"variant": self.v.pk, "qty": 4}]}, content_type="application/json").json()["lines"]
         self.assertEqual((lines[0]["available"], lines[0]["ok"], lines[0]["unit_price"]), (3, False, 800_000))
+
+
+class OrderLifecycleTests(OrderFixture):
+    def test_cancelling_gives_the_discount_code_its_use_back(self):
+        DiscountCode.objects.create(code="ONCE", value=10, max_uses=1)
+        order = place_order(self.user, self.data(discount_code="ONCE", lines=[{"variant": self.v.pk, "qty": 1}]))
+        change_status(order, "cancelled")
+        self.assertEqual(DiscountCode.objects.get().used_count, 0)
+
+    def test_code_is_once_per_customer(self):
+        DiscountCode.objects.create(code="HELLO", value=10)
+        place_order(self.user, self.data(discount_code="HELLO", lines=[{"variant": self.v.pk, "qty": 1}]))
+        with self.assertRaisesMessage(CheckoutError, "قبلاً"):
+            place_order(self.user, self.data(discount_code="HELLO", lines=[{"variant": self.v.pk, "qty": 1}]))
+        other = User.objects.create_user("09120000000")
+        self.assertEqual(place_order(other, self.data(discount_code="HELLO", lines=[{"variant": self.v.pk, "qty": 1}])).discount_code, "HELLO")
+
+    def test_same_client_key_returns_the_first_order(self):
+        first = place_order(self.user, self.data(client_key="abc"))
+        again = place_order(self.user, self.data(client_key="abc"))
+        self.assertEqual(first.pk, again.pk)
+        self.v.refresh_from_db()
+        self.assertEqual(self.v.stock, 1)
+
+    def test_unpaid_orders_expire_and_free_their_stock(self):
+        order = place_order(self.user, self.data())
+        self.assertIsNotNone(order.payment_deadline)  # 24 hours by default
+        self.assertEqual(expire_unpaid(), 0)
+        self.assertEqual(expire_unpaid(now=order.payment_deadline + timedelta(minutes=1)), 1)
+        order.refresh_from_db()
+        self.v.refresh_from_db()
+        self.assertEqual((order.status, self.v.stock), ("cancelled", 3))
+
+    def test_paid_orders_never_expire(self):
+        order = place_order(self.user, self.data())
+        change_status(order, "paid")
+        self.assertEqual(expire_unpaid(now=order.payment_deadline + timedelta(days=1)), 0)
+
+    def test_postal_code_required_when_the_method_needs_it(self):
+        self.post.needs_postal_code = True
+        self.post.save()
+        with self.assertRaises(CheckoutError) as ctx:
+            place_order(self.user, self.data())
+        self.assertEqual(ctx.exception.field, "postal_code")
+        self.assertTrue(place_order(self.user, self.data(postal_code="1234567890")).number)
+
+    def test_shipped_sms_carries_the_tracking_code(self):
+        order = place_order(self.user, self.data())
+        change_status(order, "paid")
+        with mock.patch("apps.orders.services.send_sms") as sms, self.captureOnCommitCallbacks(execute=True):
+            change_status(order, "shipped", tracking_code="TP123")
+        sms.assert_called_once_with("09121234567", "order_shipped", order.number, "پست", "TP123")
+
+    def test_customer_can_cancel_only_unpaid_orders(self):
+        order = place_order(self.user, self.data())
+        self.client.force_login(self.user)
+        res = self.client.post(f"/api/orders/{order.number}/cancel/", content_type="application/json")
+        self.assertEqual(res.json()["status"], "cancelled")
+        paid = place_order(self.user, self.data(lines=[{"variant": self.v.pk, "qty": 1}]))
+        change_status(paid, "paid")
+        self.assertEqual(self.client.post(f"/api/orders/{paid.number}/cancel/", content_type="application/json").status_code, 409)

@@ -20,7 +20,9 @@ export function PanelLogin() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (me?.is_staff) router.replace(next.startsWith("/panel") ? next : "/panel");
+    if (me?.role === "admin") router.replace(next.startsWith("/panel") ? next : "/panel");
+    // Sellers only have the till.
+    else if (me?.role === "seller") router.replace(next.startsWith("/panel/pos") ? next : "/panel/pos");
   }, [me, next, router]);
 
   const submit = async (e: React.FormEvent) => {

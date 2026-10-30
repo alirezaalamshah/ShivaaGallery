@@ -3,6 +3,7 @@ from rest_framework import serializers
 from apps.core.validators import iran_mobile
 
 from .models import Address
+from .roles import role_of
 
 PERSIAN_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
@@ -39,10 +40,17 @@ class StaffLoginSerializer(serializers.Serializer):
     password = serializers.CharField(trim_whitespace=False)
 
 
+class OptionalPhoneField(PhoneField):
+    def to_internal_value(self, data):
+        return super().to_internal_value(data) if normalize_digits(data) else ""
+
+
 class AddressSerializer(serializers.ModelSerializer):
+    receiver_phone = OptionalPhoneField(required=False, allow_blank=True)
+
     class Meta:
         model = Address
-        fields = ["id", "receiver_name", "province", "city", "address", "postal_code"]
+        fields = ["id", "receiver_name", "receiver_phone", "province", "city", "address", "postal_code"]
 
     def validate_postal_code(self, value):
         value = normalize_digits(value)
@@ -54,10 +62,14 @@ class AddressSerializer(serializers.ModelSerializer):
 def me_payload(user):
     if not user.is_authenticated:
         return {"authenticated": False}
+    role = role_of(user)
     return {
         "authenticated": True,
-        "phone": None if user.is_staff else user.username,
+        "role": role,
+        "phone": user.username if role == "customer" else None,
         "name": user.get_full_name(),
+        "first_name": user.first_name,
+        "last_name": user.last_name,
         "is_staff": user.is_staff,
         "username": user.username,
     }

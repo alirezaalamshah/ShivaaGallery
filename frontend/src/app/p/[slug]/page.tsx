@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 
+import Link from "next/link";
+
+import { Icon } from "@/components/Icon";
+import { ProductCard } from "@/components/ProductCard";
+import { ProductReviews } from "@/components/product/ProductReviews";
 import { ProductView } from "@/components/product/ProductView";
 import { api } from "@/lib/api";
 
@@ -16,7 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
-  const [product, store] = await Promise.all([api.product(decodeURIComponent((await params).slug)), api.store()]);
+  const slug = decodeURIComponent((await params).slug);
+  const [product, store, related] = await Promise.all([api.product(slug), api.store(), api.related(slug).catch(() => [])]);
   const color = Number((await searchParams).color) || undefined;
 
   const jsonLd = {
@@ -41,6 +47,25 @@ export default async function ProductPage({ params, searchParams }: Props) {
     <div className="wrap">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ProductView product={product} initialColor={color} />
+      <ProductReviews slug={product.slug} />
+      {related.length > 0 && (
+        <section className="sec" style={{ paddingInline: 0 }}>
+          <div className="sec-head" data-reveal>
+            <div>
+              <span className="latin">You may also like</span>
+              <h2>از همین دسته</h2>
+            </div>
+            <Link href={`/c/${product.category.slug}`} className="link-more">
+              همه‌ی {product.category.name} <Icon name="arrow" />
+            </Link>
+          </div>
+          <div className="grid" data-reveal-group>
+            {related.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -7,8 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
-import { fieldErrors } from "@/lib/client";
-import { faNum } from "@/lib/format";
+import { ApiError, fieldErrors } from "@/lib/client";
+import { faNum, toEnDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import { PhotoCropper } from "./PhotoCropper";
@@ -22,8 +22,11 @@ type Basic = { name: string; category: number | null; description: string; detai
 
 const EMPTY: Basic = { name: "", category: null, description: "", details: "", price: null, is_active: true, is_featured: false };
 const key = cellKey;
-// Quantities are hidden from the panel; "available" is stored as a stock large enough that orders never run it out.
-const IN_STOCK = 9999;
+const MAX_STOCK = 999;
+// An earlier panel stored "available" as 9999 instead of a count.
+const LEGACY_STOCK = 9999;
+
+const stockOf = (p: AdminProduct) => Object.fromEntries(p.variants.map((v) => [key(v.color, v.size), v.stock]));
 
 export function ProductEditor({ id }: { id?: string }) {
   const router = useRouter();
@@ -37,6 +40,8 @@ export function ProductEditor({ id }: { id?: string }) {
   const [form, setForm] = useState<Basic>(EMPTY);
   const [picked, setPicked] = useState<{ colors: number[]; sizes: number[] }>({ colors: [], sizes: [] });
   const [stock, setStock] = useState<Record<string, number>>({});
+  // The stock as loaded. Only cells the admin changed are sent, with this as proof of what they saw.
+  const [base, setBase] = useState<Record<string, number>>({});
   const [prices, setPrices] = useState<Prices>({});
   const [sales, setSales] = useState<Prices>({});
   const [systemId, setSystemId] = useState<number | null>(null);
@@ -59,7 +64,8 @@ export function ProductEditor({ id }: { id?: string }) {
     });
     const live = product.variants.filter((v) => v.is_active);
     setPicked({ colors: [...new Set(live.map((v) => v.color))], sizes: [...new Set(live.map((v) => v.size))] });
-    setStock(Object.fromEntries(product.variants.map((v) => [key(v.color, v.size), v.stock])));
+    setStock(stockOf(product));
+    setBase(stockOf(product));
     setPrices(Object.fromEntries(product.variants.map((v) => [key(v.color, v.size), v.price_override])));
     setSales(Object.fromEntries(product.variants.map((v) => [key(v.color, v.size), v.sale_price])));
   }, [product]);
@@ -87,6 +93,8 @@ export function ProductEditor({ id }: { id?: string }) {
   const colorsInOrder = colors?.filter((c) => picked.colors.includes(c.id)) ?? [];
   const regularOf = (k: string) => prices[k] ?? form.price;
   const cells = colorsInOrder.flatMap((c) => sizesInOrder.map((z) => key(c.id, z.id!)));
+  const totalStock = cells.reduce((n, k) => n + Math.min(stock[k] ?? 0, MAX_STOCK), 0);
+  const legacy = cells.some((k) => (stock[k] ?? 0) >= LEGACY_STOCK);
 
   const upload = async (productId: number, files: File[]) => {
     const fd = new FormData();
@@ -160,13 +168,28 @@ export function ProductEditor({ id }: { id?: string }) {
         saved = await upload(saved.id, pending);
         setPending([]);
       }
-      const stockBody = Object.fromEntries(cells.map((k) => [k, (stock[k] ?? 0) > 0 ? IN_STOCK : 0]));
+      const changed = cells.filter((k) => (stock[k] ?? 0) !== (base[k] ?? 0));
+      const stockBody = Object.fromEntries(changed.map((k) => [k, stock[k] ?? 0]));
+      const stockBase = Object.fromEntries(changed.filter((k) => k in base).map((k) => [k, base[k]]));
       const priceBody = Object.fromEntries(cells.map((k) => [k, prices[k] ?? null]));
       const saleBody = Object.fromEntries(cells.map((k) => [k, sales[k] ?? null]));
-      saved = await adminCall<AdminProduct>(`/products/${saved.id}/matrix`, {
-        method: "POST",
-        body: { colors: colorsInOrder.map((c) => c.id), sizes: sizesInOrder.map((z) => z.id), stock: stockBody, prices: priceBody, sale_prices: saleBody },
-      });
+      try {
+        saved = await adminCall<AdminProduct>(`/products/${saved.id}/matrix`, {
+          method: "POST",
+          body: { colors: colorsInOrder.map((c) => c.id), sizes: sizesInOrder.map((z) => z.id), stock: stockBody, stock_base: stockBase, prices: priceBody, sale_prices: saleBody },
+        });
+      } catch (e) {
+        if (e instanceof ApiError && e.data?.code === "stock_changed") {
+          // Something sold while the page was open. Show the real numbers; the admin's other edits stay.
+          const fresh = stockOf(await adminCall<AdminProduct>(`/products/${saved.id}`));
+          const moved = Object.fromEntries(Object.entries(fresh).filter(([k, v]) => v !== base[k]));
+          setStock((st) => ({ ...st, ...moved }));
+          setBase(fresh);
+        }
+        throw e;
+      }
+      setStock(stockOf(saved));
+      setBase(stockOf(saved));
       setPrices(Object.fromEntries(saved.variants.map((v) => [key(v.color, v.size), v.price_override])));
       setSales(Object.fromEntries(saved.variants.map((v) => [key(v.color, v.size), v.sale_price])));
       setProduct(saved);
@@ -279,7 +302,7 @@ export function ProductEditor({ id }: { id?: string }) {
             ) : null}
           </Card>
 
-          <Card title="رنگ‌ها، سایزها و موجودی">
+          <Card title="رنگ‌ها، سایزها و موجودی" actions={cells.length ? <span className="muted num">موجودی کل: {legacy ? "؟" : faNum(totalStock)}</span> : undefined}>
             <div style={{ display: "grid", gap: 16 }}>
               <div>
                 <div className="label" style={{ marginBottom: 8 }}>رنگ‌هایی که این مدل دارد</div>
@@ -309,7 +332,12 @@ export function ProductEditor({ id }: { id?: string }) {
               </div>
               {colorsInOrder.length > 0 && sizesInOrder.length > 0 ? (
                 <div style={{ overflowX: "auto" }}>
-                  <div className="label" style={{ marginBottom: 6 }}>موجود بودن هر رنگ و سایز</div>
+                  <div className="label" style={{ marginBottom: 6 }}>تعداد موجود از هر رنگ و سایز</div>
+                  {legacy && (
+                    <p className="err" style={{ marginBottom: 8 }}>
+                      خانه‌های «؟» تعداد واقعی ندارند (از نسخه‌ی قبلی پنل مانده‌اند). تعداد واقعی را بنویسید تا سایت بیشتر از موجودی نفروشد.
+                    </p>
+                  )}
                   <table className={s.matrix}>
                     <thead>
                       <tr>
@@ -323,19 +351,21 @@ export function ProductEditor({ id }: { id?: string }) {
                           <th><span className={s.colorHead}><i style={{ background: c.hex }} />{c.name}</span></th>
                           {sizesInOrder.map((z) => {
                             const k = key(c.id, z.id!);
-                            const on = (stock[k] ?? 0) > 0;
+                            const v = stock[k] ?? 0;
+                            const unknown = v >= LEGACY_STOCK;
                             return (
                               <td key={k}>
-                                <button
-                                  type="button"
-                                  aria-label={`${c.name} سایز ${z.label}`}
-                                  aria-pressed={on}
-                                  className={on ? "" : s.zero}
-                                  onClick={() => setStock((st) => ({ ...st, [k]: on ? 0 : IN_STOCK }))}
-                                  style={{ width: "100%", minWidth: 64, padding: "6px 4px", border: 0, background: "transparent", cursor: "pointer", font: "inherit", fontSize: 12 }}
-                                >
-                                  {on ? "موجود" : "ناموجود"}
-                                </button>
+                                <input
+                                  aria-label={`موجودی ${c.name} سایز ${z.label}`}
+                                  className={`num ${v === 0 || unknown ? s.zero : ""}`}
+                                  inputMode="numeric"
+                                  value={unknown ? "؟" : faNum(v)}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onChange={(e) => {
+                                    const n = Number(toEnDigits(e.target.value).replace(/\D/g, "") || 0);
+                                    setStock((st) => ({ ...st, [k]: Math.min(n, MAX_STOCK) }));
+                                  }}
+                                />
                               </td>
                             );
                           })}
@@ -343,7 +373,10 @@ export function ProductEditor({ id }: { id?: string }) {
                       ))}
                     </tbody>
                   </table>
-                  <p className="hint" style={{ marginTop: 6 }}>روی هر خانه بزنید تا بین «موجود» و «ناموجود» عوض شود.</p>
+                  <p className="hint" style={{ marginTop: 6 }}>
+                    موجودی بین مغازه و سایت مشترک است: با هر سفارش اینترنتی خودکار کم می‌شود. فروش حضوری را در صفحه‌ی{" "}
+                    <Link href="/panel/stock" style={{ textDecoration: "underline" }}>موجودی و فروش حضوری</Link> ثبت کنید تا سایت بیشتر از موجودی نفروشد. صفر یعنی «ناموجود».
+                  </p>
 
                   <PriceMatrix
                     id="p-bulk-price"

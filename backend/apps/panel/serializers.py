@@ -1,11 +1,11 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from apps.catalog.models import Category, Color, Product, ProductImage, Size, SizeSystem, Variant
+from apps.catalog.models import Category, Color, Product, ProductImage, Review, Size, SizeSystem, Variant
 from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
-from apps.orders.models import DiscountCode, Order, ShippingMethod
-from apps.orders.serializers import OrderSerializer
+from apps.orders.models import DiscountCode, Order, ReturnRequest, ShippingMethod
+from apps.orders.serializers import OrderSerializer, ReturnSerializer
 
 from .images import prepare_photo
 
@@ -154,11 +154,50 @@ class MatrixSerializer(serializers.Serializer):
 
     colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True)
     sizes = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True)
-    stock = serializers.DictField(child=serializers.IntegerField(min_value=0), required=False)
+    stock = serializers.DictField(child=serializers.IntegerField(min_value=0, max_value=999), required=False)
+    # The stock the panel showed when the admin opened the product, to catch sales made meanwhile.
+    stock_base = serializers.DictField(child=serializers.IntegerField(), required=False)
     # A missing or empty price means the combination sells at the product's price.
     prices = serializers.DictField(child=serializers.IntegerField(min_value=1, allow_null=True), required=False)
     # A missing or empty sale price means the combination is not on sale.
     sale_prices = serializers.DictField(child=serializers.IntegerField(min_value=1, allow_null=True), required=False)
+
+
+class StockRowSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField()
+    product = serializers.CharField(source="product.name")
+    product_active = serializers.BooleanField(source="product.is_active")
+    color_name = serializers.CharField(source="color.name")
+    color_hex = serializers.CharField(source="color.hex")
+    size_label = serializers.CharField(source="size.label")
+    price = serializers.IntegerField()
+    thumb = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Variant
+        fields = ["id", "product_id", "product", "product_active", "color", "color_name", "color_hex", "size", "size_label", "sku", "price", "stock", "thumb"]
+
+    def get_thumb(self, obj):
+        images = list(obj.product.images.all())
+        img = next((i for i in images if i.color_id == obj.color_id), None) or next(iter(images), None)
+        if not img:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(img.image.url) if request else img.image.url
+
+
+class StockMoveSerializer(serializers.Serializer):
+    # kind → (ledger reason, sign of the change)
+    KINDS = {
+        "store_sale": (StockMovement.Reason.STORE_SALE, -1),
+        "receive": (StockMovement.Reason.RECEIVE, 1),
+        "return": (StockMovement.Reason.RETURN, 1),
+        "remove": (StockMovement.Reason.ADJUST, -1),
+    }
+
+    kind = serializers.ChoiceField(choices=list(KINDS))
+    qty = serializers.IntegerField(min_value=1, max_value=100)
+    note = serializers.CharField(max_length=200, required=False, allow_blank=True)
 
 
 class StockSetSerializer(serializers.Serializer):
@@ -175,13 +214,13 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
 class ShippingMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShippingMethod
-        fields = ["id", "name", "description", "fee", "only_city", "is_active", "sort"]
+        fields = ["id", "name", "description", "fee", "only_city", "needs_postal_code", "is_active", "sort"]
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscountCode
-        fields = ["id", "code", "kind", "value", "max_amount", "min_subtotal", "max_uses", "used_count", "starts_at", "ends_at", "is_active", "created_at"]
+        fields = ["id", "code", "kind", "value", "max_amount", "min_subtotal", "max_uses", "once_per_customer", "used_count", "starts_at", "ends_at", "is_active", "created_at"]
         read_only_fields = ["used_count", "created_at"]
 
     def validate_code(self, value):
@@ -209,9 +248,20 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
 
 class AdminOrderSerializer(OrderSerializer):
     next_statuses = serializers.SerializerMethodField()
+    payments = serializers.SerializerMethodField()
+    customer_orders = serializers.SerializerMethodField()
 
     class Meta(OrderSerializer.Meta):
-        fields = ["id"] + OrderSerializer.Meta.fields + ["admin_note", "next_statuses"]
+        fields = ["id", "user"] + OrderSerializer.Meta.fields + ["admin_note", "next_statuses", "payments", "customer_orders"]
+
+    def get_payments(self, obj):
+        return [
+            {"status": p.status, "status_label": p.get_status_display(), "amount": p.amount, "ref_id": p.ref_id, "card": p.card, "created_at": p.created_at}
+            for p in obj.payments.all()
+        ]
+
+    def get_customer_orders(self, obj):
+        return Order.objects.filter(user_id=obj.user_id).count()
 
     def get_next_statuses(self, obj):
         labels = dict(Order.Status.choices)
@@ -235,3 +285,39 @@ class MovementSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockMovement
         fields = ["id", "created_at", "product", "color", "size", "delta", "balance", "reason", "reason_label", "reference", "note", "by"]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_slug = serializers.CharField(source="product.slug", read_only=True)
+    author = serializers.CharField(source="author_name", read_only=True)
+    phone = serializers.CharField(source="user.username", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ["id", "product", "product_name", "product_slug", "author", "phone", "rating", "text", "status", "status_label", "reply", "created_at"]
+        read_only_fields = ["product", "rating", "text", "created_at"]
+
+
+class AdminReturnSerializer(ReturnSerializer):
+    order_id = serializers.IntegerField(source="order.id")
+    order_number = serializers.CharField(source="order.number")
+    receiver_name = serializers.CharField(source="order.receiver_name")
+    phone = serializers.CharField(source="order.phone")
+    next_statuses = serializers.SerializerMethodField()
+
+    class Meta(ReturnSerializer.Meta):
+        fields = ReturnSerializer.Meta.fields + ["order_id", "order_number", "receiver_name", "phone", "next_statuses"]
+
+    def get_next_statuses(self, obj):
+        labels = dict(ReturnRequest.Status.choices)
+        return [{"value": s, "label": labels[s]} for s in ReturnRequest.TRANSITIONS[obj.status]]
+
+
+class SellerSerializer(serializers.Serializer):
+    username = serializers.RegexField(r"^[A-Za-z0-9_.-]{3,30}$", error_messages={"invalid": "نام کاربری فقط حروف انگلیسی، عدد و . _ - (۳ تا ۳۰ حرف)."})
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    password = serializers.CharField(min_length=6, max_length=128, required=False, allow_blank=True, trim_whitespace=False)
+    is_active = serializers.BooleanField(required=False)

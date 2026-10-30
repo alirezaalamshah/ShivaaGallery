@@ -14,7 +14,9 @@ import { useToast } from "@/components/Toast";
 import { faNum } from "@/lib/format";
 import type { ProductDetail } from "@/lib/types";
 
+import { FavButton } from "./FavButton";
 import styles from "./Product.module.css";
+import { StockNotify } from "./StockNotify";
 
 const SLIDE_MS = 4000;
 
@@ -65,7 +67,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
   const pickColor = (id: number) => {
     setColorId(id);
     setSlide(0);
-    const stillOk = product.variants.some((v) => v.color === id && v.size_id === sizeId && v.in_stock);
+    const stillOk = product.variants.some((v) => v.color === id && v.size_id === sizeId);
     if (!stillOk && !singleSize) setSizeId(undefined);
   };
 
@@ -86,8 +88,13 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
       price: variant.price,
       image: images[0]?.image ?? null,
     };
+    const inCart = cart.lines.find((l) => l.variantId === variant.id)?.qty ?? 0;
+    if (variant.left !== null && inCart >= variant.left) {
+      toast({ text: "همه‌ی موجودی این رنگ و سایز در سبد شماست.", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
+      return;
+    }
     flyToCart(from, color.hex, () => {
-      cart.add(item);
+      cart.add(item, 1, variant.left ?? undefined);
       toast({ text: "به سبد خرید اضافه شد", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
     });
   };
@@ -145,7 +152,10 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
             </span>
           ))}
         </nav>
-        <h1 className={styles.title}>{product.name}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>{product.name}</h1>
+          <FavButton productId={product.id} name={product.name} />
+        </div>
         <div className={styles.priceRow}>
           <Price price={regular} salePrice={offPct ? price : null} size="lg" />
           {offPct > 0 && <span className={`${styles.off} num`}>{faNum(offPct)}٪ تخفیف</span>}
@@ -157,9 +167,22 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
               رنگ: <b>{color?.name}</b>
             </div>
             <div className={styles.colors} role="radiogroup" aria-label="رنگ">
-              {colors.map((c) => (
-                <button key={c.id} type="button" role="radio" aria-checked={c.id === colorId} aria-label={c.name} title={c.name} style={{ "--c": c.hex } as React.CSSProperties} onClick={() => pickColor(c.id)} />
-              ))}
+              {colors.map((c) => {
+                const soldOut = !product.variants.some((v) => v.color === c.id && v.in_stock);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={c.id === colorId}
+                    aria-label={soldOut ? `${c.name}، ناموجود` : c.name}
+                    title={soldOut ? `${c.name} (ناموجود)` : c.name}
+                    className={soldOut ? styles.soldOut : undefined}
+                    style={{ "--c": c.hex } as React.CSSProperties}
+                    onClick={() => pickColor(c.id)}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -177,23 +200,24 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
             {product.sizes.map((s) => {
               const v = variants.find((x) => x.size_id === s.id);
               const out = !v || !v.in_stock;
+              const missing = !v;
               return (
                 <button
                   key={s.id}
                   type="button"
                   role="radio"
                   aria-checked={s.id === sizeId}
-                  aria-disabled={out}
+                  aria-disabled={missing}
                   aria-label={out ? `${s.label}، ناموجود` : s.label}
                   className={`${styles.sz} num ${out ? styles.out : ""}`}
                   onClick={() => {
-                    if (out) return;
+                    if (missing) return;
                     setSizeId(s.id);
                     setWarn(false);
                   }}
                 >
                   {s.label}
-                  {v?.low_stock && <span className={styles.low}>آخرین‌ها</span>}
+                  {v?.left != null && <span className={styles.low}>{v.left === 1 ? "آخرین عدد" : `فقط ${faNum(v.left)} عدد`}</span>}
                 </button>
               );
             })}
@@ -219,10 +243,15 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
           )}
         </div>
 
-        <button type="button" className={`${styles.add} ${variant?.in_stock ? "" : styles.wait}`} onClick={add}>
-          <Icon name="bag" />
-          {variant?.in_stock ? <>افزودن به سبد — <span className="num">{faNum(price)}</span> {store.currency_label}</> : "افزودن به سبد"}
-        </button>
+        {!product.in_stock && !variant && <p className={styles.soldNote}>این مدل فعلاً تمام شده است. سایز دلخواهت را انتخاب کن تا وقتی موجود شد خبرت کنیم.</p>}
+        {variant && !variant.in_stock && color ? (
+          <StockNotify variantId={variant.id} what={`${color.name} سایز ${variant.size}`} />
+        ) : (
+          <button type="button" className={`${styles.add} ${variant?.in_stock ? "" : styles.wait}`} onClick={add}>
+            <Icon name="bag" />
+            {variant?.in_stock ? <>افزودن به سبد — <span className="num">{faNum(price)}</span> {store.currency_label}</> : "افزودن به سبد"}
+          </button>
+        )}
         <p className={styles.assure}>
           <Icon name="ret" />
           {store.returns.enabled ? `${faNum(store.returns.days)} روز مهلت مرجوعی` : "ارسال به سراسر ایران"}

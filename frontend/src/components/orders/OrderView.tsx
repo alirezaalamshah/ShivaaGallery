@@ -41,8 +41,8 @@ export function OrderTimeline({ order }: { order: Order }) {
   );
 }
 
-export function OrderView({ order, celebrate = false }: { order: Order; celebrate?: boolean }) {
-  const { currency_label } = useStore();
+export function OrderView({ order, celebrate = false, actions }: { order: Order; celebrate?: boolean; actions?: React.ReactNode }) {
+  const { currency_label, online_payment } = useStore();
   return (
     <div className={styles.wrap}>
       {celebrate && (
@@ -55,8 +55,12 @@ export function OrderView({ order, celebrate = false }: { order: Order; celebrat
             <circle className={styles.ringDraw} cx="60" cy="60" r="44" fill="none" strokeWidth="2.5" />
             <path className={styles.tick} d="M41 61l13 13 26-28" fill="none" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <h1>سفارشت ثبت شد</h1>
-          <p>موجودی این سفارش برایت نگه داشته شد. پیامک ثبت سفارش هم برایت فرستاده می‌شود.</p>
+          <h1>{order.paid_at ? "پرداخت انجام شد" : "سفارشت ثبت شد"}</h1>
+          <p>
+            {order.paid_at
+              ? "سفارشت قطعی شد و به‌زودی آماده و ارسال می‌شود. پیامک تأیید هم برایت فرستاده شد."
+              : "کالاهای این سفارش برایت کنار گذاشته شد. پیامک ثبت سفارش هم برایت فرستاده می‌شود."}
+          </p>
         </div>
       )}
 
@@ -75,9 +79,17 @@ export function OrderView({ order, celebrate = false }: { order: Order; celebrat
       {order.status === "awaiting_payment" && (
         <div className={styles.note}>
           <Icon name="card" />
-          <span>پرداخت آنلاین به‌زودی فعال می‌شود. فروشگاه برای هماهنگی پرداخت با شماره‌ی <b className="num" dir="ltr">{toFaDigits(order.phone)}</b> تماس می‌گیرد.</span>
+          <span>
+            {online_payment
+              ? "این سفارش هنوز پرداخت نشده است."
+              : <>فروشگاه برای هماهنگی پرداخت با شماره‌ی <b className="num" dir="ltr">{toFaDigits(order.phone)}</b> تماس می‌گیرد.</>}
+            {order.payment_deadline && (
+              <> کالاها تا <b className="num">{faDateTime(order.payment_deadline)}</b> برایت کنار گذاشته شده‌اند؛ بعد از آن، سفارش پرداخت‌نشده خودکار لغو می‌شود.</>
+            )}
+          </span>
         </div>
       )}
+      {actions}
       {order.tracking_code && (
         <div className={styles.note}>
           <Icon name="truck" />
@@ -116,7 +128,9 @@ export function OrderView({ order, celebrate = false }: { order: Order; celebrat
       <section className={styles.card}>
         <h2>تحویل</h2>
         <p className={styles.addr}>
-          <b>{order.receiver_name}</b> · {order.province ? `${order.province}، ` : ""}{order.city}
+          <b>{order.receiver_name}</b>
+          {order.receiver_phone && <> · <span className="num" dir="ltr">{toFaDigits(order.receiver_phone)}</span></>}
+          {" · "}{order.province ? `${order.province}، ` : ""}{order.city}
           {order.address && <><br />{order.address}</>}
           {order.postal_code && <><br />کد پستی: <span className="num">{toFaDigits(order.postal_code)}</span></>}
         </p>

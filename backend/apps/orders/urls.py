@@ -9,4 +9,6 @@ urlpatterns = [
     path("orders/", views.orders),
     path("orders/track/", views.track),
     path("orders/<str:number>/", views.order_detail),
+    path("orders/<str:number>/cancel/", views.order_cancel),
+    path("orders/<str:number>/return/", views.order_return),
 ]

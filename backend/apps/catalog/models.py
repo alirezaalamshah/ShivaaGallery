@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import F, Min, Q
+from django.db.models import Exists, F, Min, OuterRef, Q
 from django.db.models.functions import Coalesce, Least
 from django.utils.text import slugify
 
@@ -130,7 +132,9 @@ class Category(models.Model):
 
 class ProductQuerySet(models.QuerySet):
     def published(self):
-        return self.filter(is_active=True, category__is_active=True)
+        """Visible products: switched on, in an active category, with at least one color and size on sale."""
+        has_variant = Variant.objects.filter(product=OuterRef("pk"), is_active=True)
+        return self.filter(Exists(has_variant), is_active=True, category__is_active=True)
 
     def with_prices(self):
         """Adds `current`: the lowest price any active variant sells at (the product price when it has none)."""
@@ -235,3 +239,59 @@ class Variant(models.Model):
     @property
     def in_stock(self):
         return self.is_active and self.stock > 0
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "علاقه‌مندی"
+        verbose_name_plural = "علاقه‌مندی‌ها"
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["user", "product"], name="uniq_favorite")]
+
+
+class Review(models.Model):
+    """A buyer's rating and comment. Shown on the product page once the admin approves it."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        APPROVED = "approved", "منتشر شده"
+        REJECTED = "rejected", "رد شده"
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews", verbose_name="محصول")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reviews", verbose_name="مشتری")
+    rating = models.PositiveSmallIntegerField("امتیاز", validators=[MinValueValidator(1), MaxValueValidator(5)])
+    text = models.TextField("متن نظر", max_length=1000, blank=True)
+    status = models.CharField("وضعیت", max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    reply = models.TextField("پاسخ فروشگاه", max_length=1000, blank=True)
+    created_at = models.DateTimeField("زمان ثبت", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "نظر"
+        verbose_name_plural = "نظرات"
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["product", "user"], name="uniq_review_per_buyer")]
+
+    def author_name(self):
+        name = self.user.get_full_name()
+        return name or "خریدار"
+
+
+class StockAlert(models.Model):
+    """"Tell me when it's back": one SMS when this color and size is in stock again."""
+
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="alerts", verbose_name="تنوع")
+    phone = models.CharField("موبایل", max_length=11)
+    created_at = models.DateTimeField("زمان درخواست", auto_now_add=True)
+    notified_at = models.DateTimeField("زمان اطلاع‌رسانی", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "درخواست «موجود شد خبرم کن»"
+        verbose_name_plural = "درخواست‌های «موجود شد خبرم کن»"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["variant", "phone"], condition=models.Q(notified_at__isnull=True), name="uniq_waiting_alert"),
+        ]

@@ -3,8 +3,14 @@ Pluggable SMS sending. Pick a backend with SMS_BACKEND:
 
 - "console" (default): prints the message to the server log. For development.
 - "melipayamak": Melipayamak shared-number pattern API. Needs SMS_USERNAME,
-  SMS_PASSWORD and one approved pattern id per message kind (SMS_PATTERN_OTP,
-  SMS_PATTERN_ORDER_PLACED, SMS_PATTERN_ORDER_STATUS).
+  SMS_PASSWORD and one approved pattern id per message kind:
+    SMS_PATTERN_OTP            {0} = code
+    SMS_PATTERN_ORDER_PLACED   {0} = order number, {1} = total
+    SMS_PATTERN_ORDER_STATUS   {0} = order number, {1} = new status
+    SMS_PATTERN_ORDER_SHIPPED  {0} = order number, {1} = shipping method, {2} = tracking code
+    SMS_PATTERN_ADMIN_ORDER    {0} = order number, {1} = total  (sent to the store)
+    SMS_PATTERN_BACK_IN_STOCK  {0} = product, color and size, {1} = link
+    SMS_PATTERN_RETURN_STATUS  {0} = order number, {1} = return request status
 """
 
 import logging
@@ -32,6 +38,10 @@ class MelipayamakBackend:
         "otp": "SMS_PATTERN_OTP",
         "order_placed": "SMS_PATTERN_ORDER_PLACED",
         "order_status": "SMS_PATTERN_ORDER_STATUS",
+        "order_shipped": "SMS_PATTERN_ORDER_SHIPPED",
+        "admin_order": "SMS_PATTERN_ADMIN_ORDER",
+        "back_in_stock": "SMS_PATTERN_BACK_IN_STOCK",
+        "return_status": "SMS_PATTERN_RETURN_STATUS",
     }
 
     def send(self, phone, kind, args):
@@ -44,7 +54,8 @@ class MelipayamakBackend:
             "password": settings.SMS_PASSWORD,
             "to": phone,
             "bodyId": pattern,
-            "text": ";".join(map(str, args)),
+            # An empty pattern variable makes Melipayamak reject the message.
+            "text": ";".join(str(a) if str(a).strip() else "-" for a in args),
         }).encode()
         try:
             with urllib.request.urlopen(urllib.request.Request(self.URL, data=data), timeout=10) as res:

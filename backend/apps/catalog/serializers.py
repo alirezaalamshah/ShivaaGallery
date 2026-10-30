@@ -28,15 +28,20 @@ class VariantSerializer(serializers.ModelSerializer):
     size_id = serializers.IntegerField()
     in_stock = serializers.BooleanField()
     low_stock = serializers.SerializerMethodField()
+    left = serializers.SerializerMethodField()
     price = serializers.IntegerField()
     regular_price = serializers.IntegerField()
 
     class Meta:
         model = Variant
-        fields = ["id", "sku", "color", "size_id", "size", "price", "regular_price", "in_stock", "low_stock"]
+        fields = ["id", "sku", "color", "size_id", "size", "price", "regular_price", "in_stock", "low_stock", "left"]
 
     def get_low_stock(self, obj):
         return obj.in_stock and obj.stock <= LOW_STOCK
+
+    def get_left(self, obj):
+        """How many are left, shown only when it is a few, so the customer can't add more than exist."""
+        return obj.stock if obj.in_stock and obj.stock <= LOW_STOCK else None
 
 
 def _active_variants(product):

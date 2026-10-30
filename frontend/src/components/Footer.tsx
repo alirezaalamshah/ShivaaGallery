@@ -56,7 +56,10 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
               <li><Link href="/track">پیگیری سفارش</Link></li>
               <li><Link href="/account">حساب من</Link></li>
               {store.returns.enabled && <li><Link href="/returns">قوانین مرجوعی</Link></li>}
-              <li><Link href="/cart">سبد خرید</Link></li>
+              <li><Link href="/terms">قوانین و مقررات</Link></li>
+              <li><Link href="/privacy">حریم خصوصی</Link></li>
+              <li><Link href="/about">درباره‌ی ما</Link></li>
+              <li><Link href="/contact">تماس با ما</Link></li>
             </ul>
           </nav>
 
@@ -76,6 +79,25 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
                 <li><Icon name="pin" /><span>{store.city}</span></li>
               )}
             </ul>
+            {store.enamad_id && store.enamad_code && (
+              // The trust seal as eNamad hands it out; its image only loads with the origin as referrer.
+              <a
+                className={styles.seal}
+                referrerPolicy="origin"
+                target="_blank"
+                rel="noopener"
+                href={`https://trustseal.enamad.ir/?id=${encodeURIComponent(store.enamad_id)}&Code=${encodeURIComponent(store.enamad_code)}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- third-party seal that must load from eNamad */}
+                <img
+                  referrerPolicy="origin"
+                  src={`https://trustseal.enamad.ir/logo.aspx?id=${encodeURIComponent(store.enamad_id)}&Code=${encodeURIComponent(store.enamad_code)}`}
+                  alt="نماد اعتماد الکترونیکی"
+                  width={96}
+                  height={104}
+                />
+              </a>
+            )}
           </div>
         </div>
 

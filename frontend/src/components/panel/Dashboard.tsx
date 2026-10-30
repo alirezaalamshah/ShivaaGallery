@@ -15,9 +15,16 @@ import { Card, Empty, PageHead } from "./ui";
 import s from "./panel.module.css";
 
 type Dash = {
+  store_sales_today: number;
+  store_sales_count: number;
+  reviews_pending: number;
+  returns_open: number;
+  stock_alerts: number;
   sales_today: number;
   orders_today: number;
   orders_open: number;
+  orders_to_ship: number;
+  orders_unpaid: number;
   products_active: number;
   variants_out: number;
   sales_week: { day: string; total: number }[];
@@ -26,7 +33,6 @@ type Dash = {
 };
 
 const weekday = new Intl.DateTimeFormat("fa-IR", { weekday: "short" });
-const SHOW_QUANTITIES = false;
 
 export function Dashboard() {
   const store = useStore();
@@ -50,7 +56,10 @@ export function Dashboard() {
   return (
     <>
       <PageHead title="داشبورد" sub={`سلام! این‌جا خلاصه‌ی امروز ${store.name} است.`}>
-        <Link href="/panel/products/new" className={s.btn}>
+        <Link href="/panel/pos" className={s.btn}>
+          <Icon name="card" /> صندوق فروش
+        </Link>
+        <Link href="/panel/products/new" className={`${s.btn} ${s.btnGhost}`}>
           <Icon name="plus" /> محصول جدید
         </Link>
       </PageHead>
@@ -58,21 +67,27 @@ export function Dashboard() {
       <div className={s.stats}>
         <div className={s.stat}>
           <Icon name="card" />
-          <span>فروش امروز</span>
+          <span>فروش اینترنتی امروز</span>
           <b className="num">{faNum(data.sales_today)}</b>
-          <small>{store.currency_label}</small>
+          <small>{store.currency_label} · فقط سفارش‌های پرداخت‌شده</small>
         </div>
+        <Link href="/panel/pos?tab=sales" className={s.stat}>
+          <Icon name="home" />
+          <span>فروش حضوری امروز</span>
+          <b className="num">{faNum(data.store_sales_today)}</b>
+          <small>{store.currency_label} · {faNum(data.store_sales_count)} فاکتور صندوق</small>
+        </Link>
         <div className={s.stat}>
           <Icon name="bag" />
-          <span>سفارش‌های امروز</span>
+          <span>سفارش‌های پرداخت‌شده‌ی امروز</span>
           <b className="num">{faNum(data.orders_today)}</b>
           <small>بدون سفارش‌های لغوشده</small>
         </div>
-        <Link href="/panel/orders?status=open" className={`${s.stat} ${data.orders_open ? s.statWarn : ""}`}>
+        <Link href="/panel/orders?status=open" className={`${s.stat} ${data.orders_to_ship ? s.statWarn : ""}`}>
           <Icon name="truck" />
           <span>سفارش‌های باز</span>
           <b className="num">{faNum(data.orders_open)}</b>
-          <small>منتظر پرداخت، آماده‌سازی یا ارسال</small>
+          <small>{faNum(data.orders_to_ship)} آماده‌ی ارسال · {faNum(data.orders_unpaid)} منتظر پرداخت</small>
         </Link>
         <Link href="/panel/products" className={s.stat}>
           <Icon name="grid" />
@@ -84,11 +99,27 @@ export function Dashboard() {
           <Icon name="ret" />
           <span>تنوع‌های تمام‌شده</span>
           <b className="num">{faNum(data.variants_out)}</b>
-          <small>رنگ و سایزهای بدون موجودی</small>
+          <small>رنگ و سایزهای بدون موجودی{data.stock_alerts ? ` · ${faNum(data.stock_alerts)} نفر منتظر موجود شدن` : ""}</small>
         </Link>
+        {(data.returns_open > 0 || data.reviews_pending > 0) && (
+          <>
+            <Link href="/panel/returns" className={`${s.stat} ${data.returns_open ? s.statWarn : ""}`}>
+              <Icon name="ret" />
+              <span>مرجوعی‌های باز</span>
+              <b className="num">{faNum(data.returns_open)}</b>
+              <small>منتظر بررسی یا دریافت کالا</small>
+            </Link>
+            <Link href="/panel/reviews" className={s.stat}>
+              <Icon name="heart" />
+              <span>نظرهای جدید</span>
+              <b className="num">{faNum(data.reviews_pending)}</b>
+              <small>منتظر تأیید شما</small>
+            </Link>
+          </>
+        )}
       </div>
 
-      <div className={SHOW_QUANTITIES ? s.cols : undefined}>
+      <div className={s.cols}>
         <div className={s.stack}>
           <Card title="فروش ۷ روز اخیر" actions={<span className="muted num">{faNum(weekTotal)} {store.currency_label}</span>}>
             <div className={s.chart}>
@@ -128,7 +159,7 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {SHOW_QUANTITIES && <Card title="موجودی رو به اتمام">
+        <Card title="موجودی رو به اتمام" actions={<Link href="/panel/stock?stock=low" className="link-more">همه <Icon name="arrow" /></Link>}>
           {data.low_stock.length ? (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
               {data.low_stock.map((v) => (
@@ -155,7 +186,7 @@ export function Dashboard() {
           ) : (
             <Empty icon="check" title="موجودی همه‌ی کالاها خوب است" />
           )}
-        </Card>}
+        </Card>
       </div>
     </>
   );

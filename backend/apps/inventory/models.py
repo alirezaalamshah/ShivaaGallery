@@ -10,7 +10,8 @@ class StockMovement(models.Model):
 
     class Reason(models.TextChoices):
         RECEIVE = "receive", "ورود کالا"
-        SALE = "sale", "فروش"
+        SALE = "sale", "فروش اینترنتی"
+        STORE_SALE = "store_sale", "فروش حضوری"
         CANCEL = "cancel", "لغو سفارش"
         RETURN = "return", "مرجوعی"
         ADJUST = "adjust", "اصلاح دستی"

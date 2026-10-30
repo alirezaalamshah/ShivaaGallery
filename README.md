@@ -76,12 +76,17 @@ The shop owner works from a computer, so the panel at `/panel` is designed for d
 - **Guest cart.** No account is needed to shop. The cart is kept in the browser, and prices and availability are checked again on the server at checkout.
 - **One-page checkout.** Sign in with a mobile number and an SMS code, with no passwords. Then pick a province and city, choose a shipping method, apply a discount code and place the order. The order summary stays pinned to the bottom of the screen.
 - **Order tracking** with an order number and mobile number, without signing in, plus an account page that lists past orders.
+- **Account.** Name, saved addresses (add, edit, remove) and favorites. Each signed-in customer has their own cart on a shared device.
+- **Favorites, back-in-stock SMS and reviews.** A heart on every product page; a sold-out size can be picked to get one SMS when it is back; customers who received a product can rate and review it, shown after the owner approves.
+- **Returns.** Within the store's return window, the customer asks to return or exchange chosen items from the order page and follows the answer there.
 - **SEO.** Pages are rendered on the server, product pages include `schema.org` product data, and private pages (cart, checkout, panel) are marked `noindex`.
 
 ### For the shop owner
 
-- **Dashboard.** Today's sales and orders, open orders, out-of-stock variants, a 7-day sales chart and the latest orders.
-- **Orders.** Filter by status, search by number, phone or name, and move each order through its lifecycle. Every status change sends the customer an SMS. The owner can add a parcel tracking code and private notes and see the full status history. Cancelling an order returns its items to stock automatically.
+- **Dashboard.** Today's online and in-store sales, open orders, returns and reviews waiting, out-of-stock variants, a 7-day sales chart and the latest orders.
+- **Shop till (`/panel/pos`).** Ring up in-store sales from the same stock the site sells: search or scan a product code, build a ticket, give a discount, take cash, card, card transfer or a mix, and print an 80 mm receipt. The day's sales list shows totals per payment method for closing the till. Only the owner can void a sale, which puts the pieces back in stock.
+- **Roles.** Besides the owner (admin), sellers sign in with their own username and password and see only the till and their own sales, with a discount cap set by the owner. Sellers are added and disabled under "Users and access".
+- **Orders.** Filter by status and date range, export to Excel (CSV), search by number, phone or name, and move each order through its lifecycle. Every status change sends the customer an SMS. The owner can add a parcel tracking code and private notes and see the full status history. Cancelling an order returns its items to stock automatically.
 - **Products.** Photos are dragged in and cropped to the site's 3:4 frame in the browser, then stored on the server as WebP at a fixed 1200×1600. Each photo can be tied to a color. Each color × size variant can be marked available or unavailable, with its own price and sale price. A price can be applied to everything at once, or to one whole color or size.
 - **Categories.** A category tree with a size system and size chart per category. Subcategories inherit both.
 - **Colors and sizes.** Named color swatches and size systems (letter sizes, numeric sizes, one-size).

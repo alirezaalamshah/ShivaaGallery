@@ -32,6 +32,7 @@ export const api = {
   facets: () => get<Facets>("/facets/", 300),
   products: (params: Query = {}) => get<Page<ProductSummary>>(`/products/${toQuery(params)}`),
   product: (slug: string) => get<ProductDetail>(`/products/${encodeURIComponent(slug)}/`),
+  related: (slug: string) => get<ProductSummary[]>(`/products/${encodeURIComponent(slug)}/related/`),
 };
 
 export function findCategory(nodes: CategoryNode[], slug: string): CategoryNode | undefined {

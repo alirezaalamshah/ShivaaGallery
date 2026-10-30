@@ -161,3 +161,41 @@ class PanelTests(TestCase):
         fresh = Product.objects.create(category=self.cat, name="y", price=1)
         Variant.objects.create(product=fresh, color=self.black, size=self.s)
         self.assertEqual(self.client.delete(f"/api/admin/products/{fresh.pk}/").status_code, 204)
+
+    def variant_with_stock(self, stock):
+        v = Variant.objects.create(product=Product.objects.create(category=self.cat, name="مانتو", price=500_000), color=self.black, size=self.s)
+        from apps.inventory.services import move_stock
+        move_stock(v, stock, "receive")
+        return v
+
+    def test_in_store_sale_takes_stock_and_is_logged(self):
+        v = self.variant_with_stock(4)
+        res = self.client.post(f"/api/admin/variants/{v.pk}/move/", {"kind": "store_sale", "qty": 1}, content_type="application/json")
+        self.assertEqual(res.json()["stock"], 3)
+        self.assertEqual(v.movements.first().reason, "store_sale")
+        res = self.client.post(f"/api/admin/variants/{v.pk}/move/", {"kind": "store_sale", "qty": 9}, content_type="application/json")
+        self.assertEqual(res.status_code, 409)
+        rows = self.client.get("/api/admin/variants/?search=مانتو").json()["results"]
+        self.assertEqual((rows[0]["id"], rows[0]["stock"]), (v.pk, 3))
+
+    def test_matrix_refuses_to_overwrite_stock_sold_meanwhile(self):
+        v = self.variant_with_stock(4)
+        k = f"{self.black.pk}-{self.s.pk}"
+        from apps.inventory.services import move_stock
+        move_stock(v, -1, "store_sale")  # sold in the shop after the admin opened the product
+        url = f"/api/admin/products/{v.product_id}/matrix/"
+        res = self.client.post(url, {"colors": [self.black.pk], "sizes": [self.s.pk], "stock": {k: 5}, "stock_base": {k: 4}}, content_type="application/json")
+        self.assertEqual(res.status_code, 409)
+        v.refresh_from_db()
+        self.assertEqual(v.stock, 3)
+        res = self.client.post(url, {"colors": [self.black.pk], "sizes": [self.s.pk], "stock": {k: 5}, "stock_base": {k: 3}}, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+
+    def test_unpaid_orders_are_not_sales(self):
+        v = self.variant_with_stock(2)
+        method = ShippingMethod.objects.create(name="پست", fee=0)
+        place_order(self.customer, {"lines": [{"variant": v.pk, "qty": 1}], "receiver_name": "مریم", "city": "اهواز", "address": "خیابان یک پلاک ده", "shipping_method": method.pk})
+        dash = self.client.get("/api/admin/dashboard/").json()
+        self.assertEqual((dash["sales_today"], dash["orders_unpaid"]), (0, 1))
+        customers = self.client.get("/api/admin/customers/").json()
+        self.assertEqual((customers[0]["phone"], customers[0]["order_count"], customers[0]["spent"]), ("09121234567", 1, 0))

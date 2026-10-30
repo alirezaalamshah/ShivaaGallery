@@ -1,11 +1,15 @@
 from collections import defaultdict
 
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Exists, OuterRef, Prefetch
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
 from .filters import ProductFilter
 from .models import Category, Color, Product, ProductImage, SizeSystem, Variant
+from .search import PersianSearchFilter
 from .serializers import CategoryTreeSerializer, ColorSerializer, ProductDetailSerializer, ProductListSerializer
 
 
@@ -13,11 +17,15 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "slug"
     lookup_value_regex = "[^/]+"
     filterset_class = ProductFilter
+    filter_backends = [DjangoFilterBackend, PersianSearchFilter, OrderingFilter]
     search_fields = ["name", "description", "category__name"]
     ordering_fields = ["current", "created_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
+        return self.get_queryset_for_lists()
+
+    def get_queryset_for_lists(self):
         variants = Variant.objects.select_related("color", "size")
         return (
             Product.objects.published()
@@ -28,6 +36,17 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         return ProductDetailSerializer if self.action == "retrieve" else ProductListSerializer
+
+    @action(detail=True)
+    def related(self, request, slug=None):
+        """Other models from the same category that can still be bought, newest first."""
+        product = self.get_object()
+        sellable = Variant.objects.filter(product=OuterRef("pk"), is_active=True, stock__gt=0)
+        qs = (
+            self.get_queryset().filter(category_id__in=product.category.descendant_ids()).exclude(pk=product.pk)
+            .filter(Exists(sellable)).order_by("-created_at")[:8]
+        )
+        return Response(ProductListSerializer(qs, many=True, context={"request": request}).data)
 
 
 class CategoryViewSet(viewsets.ViewSet):

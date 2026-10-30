@@ -301,3 +301,149 @@
     display: none;
   }
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.actions .err {
+  flex-basis: 100%;
+}
+
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--sale-soft);
+  color: var(--sale);
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+
+.returns {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.returns h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.returnCard {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--band);
+}
+
+.returnCard small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.returnCard ul {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  font-size: 13.5px;
+}
+
+.returnHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.returnStatus {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.returnStatus[data-status="approved"],
+.returnStatus[data-status="completed"] {
+  color: var(--accent-ink);
+}
+
+.returnStatus[data-status="rejected"] {
+  color: var(--sale);
+}
+
+.returnNote {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+}
+
+.returnAsk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.returnAsk p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.returnForm {
+  display: grid;
+  gap: 12px;
+}
+
+.returnForm fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.returnForm legend {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.returnItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.returnItem .input {
+  width: auto;
+  min-width: 120px;
+}
+
+.wants {
+  display: flex;
+  gap: 18px;
+  font-size: 14px;
+}
+
+.wants label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

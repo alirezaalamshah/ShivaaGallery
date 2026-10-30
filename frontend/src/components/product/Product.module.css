@@ -379,3 +379,117 @@
     box-shadow: 0 14px 30px -14px rgb(0 0 0 / 0.45);
   }
 }
+
+/* A color with no size left: a diagonal line through the swatch. */
+.colors button.soldOut {
+  opacity: 0.55;
+}
+
+.colors button.soldOut::before {
+  content: "";
+  position: absolute;
+  inset: 50% -2px auto;
+  height: 1.5px;
+  background: var(--text);
+  transform: rotate(-45deg);
+}
+
+.soldNote {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--sale-soft);
+  color: var(--sale);
+  font-size: 13px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fav {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  transition: color 0.2s, border-color 0.2s, transform 0.2s var(--ease-out);
+}
+
+.fav svg {
+  width: 22px;
+  height: 22px;
+}
+
+.fav:hover {
+  color: var(--sale);
+  border-color: var(--sale);
+}
+
+.fav:active {
+  transform: scale(0.92);
+}
+
+.favOn {
+  color: var(--sale);
+  border-color: var(--sale);
+}
+
+.favOn svg {
+  fill: currentColor;
+}
+
+.notify {
+  margin-top: 22px;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--band);
+  border: 1px dashed var(--line);
+}
+
+.notify p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.notifyRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.notifyRow .input {
+  flex: 1 1 160px;
+}
+
+.notifyRow .btn {
+  flex: 1 1 auto;
+}
+
+.notifyDone {
+  margin: 22px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--band);
+  font-size: 14px;
+}
+
+.notifyDone svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--accent-ink);
+}

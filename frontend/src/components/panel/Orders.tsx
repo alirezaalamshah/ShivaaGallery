@@ -8,11 +8,12 @@ import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
-import { faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
+import { RANGES, rangeOf, type RangeValue } from "./dates";
 import { adminCall, useAdmin } from "./hooks";
 import type { AdminOrder, AdminOrderRow, Paged } from "./types";
-import { Card, Empty, Field, PageHead } from "./ui";
+import { Card, ConfirmButton, Empty, Field, PageHead } from "./ui";
 import s from "./panel.module.css";
 
 const TABS = [
@@ -30,19 +31,28 @@ export function OrdersList() {
   const router = useRouter();
   const params = useSearchParams();
   const status = params.get("status") ?? "";
+  const user = params.get("user") ?? "";
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [range, setRange] = useState<RangeValue>("");
+  const [custom, setCustom] = useState({ from: "", to: "" });
   useEffect(() => {
     const t = setTimeout(() => setSearch(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
-  const qs = new URLSearchParams({ ...(status && { status }), ...(search && { search }), page: String(page) });
-  const { data, loading } = useAdmin<Paged<AdminOrderRow>>(`/orders?${qs}`);
+  const dates = rangeOf(range, custom);
+  const filters = new URLSearchParams({ ...(status && { status }), ...(search && { search }), ...(user && { user }), ...dates });
+  const { data, loading } = useAdmin<Paged<AdminOrderRow>>(`/orders?${filters}&page=${page}`);
 
   return (
     <>
-      <PageHead title="سفارش‌ها" sub={data ? `${faNum(data.count)} سفارش` : undefined} />
+      <PageHead title="سفارش‌ها" sub={data ? `${faNum(data.count)} سفارش${user && data.results[0] ? ` · مشتری ${toFaDigits(data.results[0].phone)}` : ""}` : undefined}>
+        {user && <Link href="/panel/orders" className={`${s.btn} ${s.btnGhost}`}>همه‌ی مشتری‌ها</Link>}
+        <a href={`/api/admin/orders/export?${filters}`} className={`${s.btn} ${s.btnGhost}`} download>
+          خروجی اکسل
+        </a>
+      </PageHead>
       <Card>
         <div className={s.toolbar}>
           <div className={s.tabs} role="group" aria-label="وضعیت">
@@ -57,6 +67,31 @@ export function OrdersList() {
             <span className="sr-only">جستجو</span>
             <input id="order-search" className="input" placeholder="شماره سفارش، موبایل یا نام" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </label>
+        </div>
+        <div className={s.toolbar}>
+          <label className={s.inlineField}>
+            <span>بازه‌ی زمانی</span>
+            <select className="input" value={range} onChange={(e) => { setRange(e.target.value as RangeValue); setPage(1); }}>
+              {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </label>
+          {range === "custom" && (
+            <>
+              <label className={s.inlineField}>
+                <span>از</span>
+                <input type="date" className="input ltr" value={custom.from} onChange={(e) => { setCustom({ ...custom, from: e.target.value }); setPage(1); }} />
+              </label>
+              <label className={s.inlineField}>
+                <span>تا</span>
+                <input type="date" className="input ltr" value={custom.to} onChange={(e) => { setCustom({ ...custom, to: e.target.value }); setPage(1); }} />
+              </label>
+            </>
+          )}
+          {dates.from && (
+            <span className="muted">
+              {faDate(dates.from)}{dates.to && dates.to !== dates.from ? ` تا ${faDate(dates.to)}` : ""}
+            </span>
+          )}
         </div>
         {data?.results.length ? (
           <div className={s.tableWrap}>
@@ -102,6 +137,7 @@ export function OrderDetail({ id }: { id: string }) {
   const [tracking, setTracking] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [statusNote, setStatusNote] = useState("");
+  const [shipping, setShipping] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -115,6 +151,8 @@ export function OrderDetail({ id }: { id: string }) {
       setData(await adminCall<AdminOrder>(`/orders/${order.id}/update_status`, { method: "POST", body }));
       setMsg({ ok: true, text: done });
       setStatusNote("");
+      setShipping(false);
+      setTracking(null);
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "ذخیره نشد." });
     } finally {
@@ -126,6 +164,7 @@ export function OrderDetail({ id }: { id: string }) {
     <>
       <PageHead title={`سفارش #${toFaDigits(order.number)}`} sub={`${faDateTime(order.created_at)} · ${order.receiver_name}`}>
         <Link href="/panel/orders" className={`${s.btn} ${s.btnGhost}`}><Icon name="back" /> همه‌ی سفارش‌ها</Link>
+        <a href={`/panel/orders/${order.id}/print`} target="_blank" rel="noopener" className={`${s.btn} ${s.btnGhost}`}>چاپ فاکتور و برچسب</a>
       </PageHead>
       {msg && <p className={msg.ok ? "hint" : "err"} role="status">{msg.text}</p>}
       <div className={s.cols}>
@@ -165,7 +204,12 @@ export function OrderDetail({ id }: { id: string }) {
           <Card title="مشتری و تحویل">
             <dl className={s.kv}>
               <dt>تحویل‌گیرنده</dt><dd>{order.receiver_name}</dd>
-              <dt>موبایل</dt><dd><a href={`tel:${order.phone}`} className="num" dir="ltr">{toFaDigits(order.phone)}</a></dd>
+              {order.receiver_phone && (<><dt>موبایل تحویل‌گیرنده</dt><dd><a href={`tel:${order.receiver_phone}`} className="num" dir="ltr">{toFaDigits(order.receiver_phone)}</a></dd></>)}
+              <dt>موبایل خریدار</dt>
+              <dd>
+                <a href={`tel:${order.phone}`} className="num" dir="ltr">{toFaDigits(order.phone)}</a>
+                {order.customer_orders > 1 && <> · <Link href={`/panel/orders?user=${order.user}`} className="link-more" style={{ display: "inline" }}>{faNum(order.customer_orders)} سفارش</Link></>}
+              </dd>
               <dt>شهر</dt><dd>{order.province ? `${order.province}، ` : ""}{order.city}</dd>
               <dt>آدرس</dt><dd>{order.address}</dd>
               {order.postal_code && (<><dt>کد پستی</dt><dd className="num">{toFaDigits(order.postal_code)}</dd></>)}
@@ -181,24 +225,65 @@ export function OrderDetail({ id }: { id: string }) {
                 <Field label="توضیح برای تاریخچه (اختیاری)">
                   <input id="status-note" className="input" value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
                 </Field>
-                <div className={s.chipset}>
-                  {order.next_statuses.map((n) => (
-                    <button key={n.value} type="button" disabled={busy} className={`${s.btn} ${n.value === "cancelled" ? s.btnDanger : ""}`} onClick={() => update({ status: n.value, note: statusNote }, `وضعیت به «${n.label}» تغییر کرد و برای مشتری پیامک شد.`)}>
-                      {n.label}
-                    </button>
-                  ))}
-                </div>
-                {order.next_statuses.some((n) => n.value === "cancelled") && <p className="hint">با لغو سفارش، کالاها به موجودی برمی‌گردند.</p>}
+                {shipping ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <Field label={`کد رهگیری ${order.shipping_name}`} hint="برای پیک داخل شهر خالی بگذارید. کد در پیامک «ارسال شد» برای مشتری می‌رود.">
+                      <input id="ship-tracking" className="input ltr num" autoFocus value={tracking ?? order.tracking_code} onChange={(e) => setTracking(e.target.value)} />
+                    </Field>
+                    <div className={s.chipset}>
+                      <button type="button" className={s.btn} disabled={busy} onClick={() => update({ status: "shipped", note: statusNote, tracking_code: tracking ?? order.tracking_code }, "سفارش «ارسال شد» و کد رهگیری برای مشتری پیامک شد.")}>
+                        ثبت ارسال و پیامک به مشتری
+                      </button>
+                      <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={() => setShipping(false)}>انصراف</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={s.chipset}>
+                    {order.next_statuses.filter((n) => n.value !== "cancelled").map((n) => (
+                      <button
+                        key={n.value}
+                        type="button"
+                        disabled={busy}
+                        className={s.btn}
+                        onClick={() => (n.value === "shipped" ? setShipping(true) : update({ status: n.value, note: statusNote }, `وضعیت به «${n.label}» تغییر کرد و برای مشتری پیامک شد.`))}
+                      >
+                        {n.label}
+                      </button>
+                    ))}
+                    {order.next_statuses.some((n) => n.value === "cancelled") && (
+                      <ConfirmButton label="لغو سفارش" confirmLabel="مطمئنید؟ لغو شود و به مشتری پیامک برود" onConfirm={() => update({ status: "cancelled", note: statusNote }, "سفارش لغو شد، کالاها به موجودی برگشت و برای مشتری پیامک شد.")} />
+                    )}
+                  </div>
+                )}
+                {order.next_statuses.some((n) => n.value === "cancelled") && (
+                  <p className="hint">
+                    با لغو سفارش، کالاها به موجودی برمی‌گردند.{order.paid_at ? " این سفارش پرداخت شده؛ مبلغ را خودتان به مشتری برگردانید." : ""}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="muted" style={{ margin: 0 }}>این سفارش در وضعیت نهایی است.</p>
             )}
           </Card>
 
+          {order.payments.length > 0 && (
+            <Card title="پرداخت‌های آنلاین">
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, fontSize: 13 }}>
+                {order.payments.map((p, i) => (
+                  <li key={i}>
+                    <b className={p.status === "paid" ? "" : s.danger}>{p.status_label}</b> · <span className="num">{faNum(p.amount / 10)}</span> {store.currency_label}
+                    {p.ref_id && <> · کد پیگیری <span className="num" dir="ltr">{toFaDigits(p.ref_id)}</span></>}
+                    <small className="muted" style={{ display: "block" }}>{faDateTime(p.created_at)}{p.card ? ` · کارت ${p.card}` : ""}</small>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <Card title="کد رهگیری مرسوله">
             <div style={{ display: "flex", gap: 8 }}>
               <input id="tracking" className="input ltr num" value={tracking ?? order.tracking_code} onChange={(e) => setTracking(e.target.value)} placeholder="مثلاً کد پست یا تیپاکس" />
-              <button type="button" className={s.btn} disabled={busy || tracking === null} onClick={() => update({ tracking_code: tracking ?? "" }, "کد رهگیری ذخیره شد.")}>ذخیره</button>
+              <button type="button" className={s.btn} disabled={busy || tracking === null || shipping} onClick={() => update({ tracking_code: tracking ?? "" }, order.status === "shipped" ? "کد رهگیری ذخیره و برای مشتری پیامک شد." : "کد رهگیری ذخیره شد.")}>ذخیره</button>
             </div>
           </Card>
 

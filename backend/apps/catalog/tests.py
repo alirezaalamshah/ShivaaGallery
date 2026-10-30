@@ -33,6 +33,7 @@ class CatalogFixture(TestCase):
         self.coat_black_m = self.variant(self.coat, self.black, self.m, stock=3)
         self.variant(self.coat, self.beige, self.s, stock=0)
         self.dress_beige_s = self.variant(self.dress, self.beige, self.s, stock=2, sale_price=3_990_000)
+        self.variant(self.heel, self.black, self.s, stock=0)
 
     def variant(self, product, color, size, stock, **fields):
         v = Variant.objects.create(product=product, color=color, size=size, **fields)
@@ -88,6 +89,24 @@ class ModelTests(CatalogFixture):
 class ProductApiTests(CatalogFixture):
     def test_list_hides_inactive_products(self):
         self.assertEqual(self.names(), {"مانتو کتان", "پیراهن", "کفش پاشنه‌بلند"})
+
+    def test_list_hides_products_without_colors_and_sizes(self):
+        Product.objects.create(category=self.manto, name="مانتو بی‌سایز", price=1_000_000)
+        self.assertNotIn("مانتو بی‌سایز", self.names())
+
+    def test_search_matches_arabic_and_persian_letters(self):
+        self.assertEqual(self.names("?search=كفش"), {"کفش پاشنه‌بلند"})
+
+    def test_left_is_shown_only_when_few_remain(self):
+        detail = self.client.get(f"/api/products/{self.dress.slug}/").json()
+        self.assertEqual(detail["variants"][0]["left"], 2)
+        move_stock(self.dress_beige_s, 5, StockMovement.Reason.RECEIVE)
+        detail = self.client.get(f"/api/products/{self.dress.slug}/").json()
+        self.assertIsNone(detail["variants"][0]["left"])
+
+    def test_related_products_are_in_stock_and_from_the_same_category(self):
+        rows = self.client.get(f"/api/products/{self.dress.slug}/related/").json()
+        self.assertEqual([r["name"] for r in rows], ["مانتو کتان"])
 
     def test_category_filter_includes_subcategories(self):
         self.assertEqual(self.names(f"?category={self.clothes.slug}"), {"مانتو کتان", "پیراهن"})

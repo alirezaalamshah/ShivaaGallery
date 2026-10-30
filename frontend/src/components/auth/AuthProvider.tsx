@@ -4,7 +4,18 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 import { call } from "@/lib/client";
 
-export type Me = { authenticated: boolean; phone?: string | null; name?: string; is_staff?: boolean; username?: string };
+export type Role = "admin" | "seller" | "customer";
+
+export type Me = {
+  authenticated: boolean;
+  role?: Role;
+  phone?: string | null;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  is_staff?: boolean;
+  username?: string;
+};
 
 type Auth = { me: Me | null; refresh: () => Promise<Me>; setMe: (me: Me) => void; logout: () => Promise<void> };
 

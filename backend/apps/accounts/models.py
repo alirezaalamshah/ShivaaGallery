@@ -35,6 +35,7 @@ class OtpCode(models.Model):
 class Address(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="addresses")
     receiver_name = models.CharField("نام تحویل‌گیرنده", max_length=80)
+    receiver_phone = models.CharField("موبایل تحویل‌گیرنده", max_length=11, blank=True)
     province = models.CharField("استان", max_length=40, blank=True)
     city = models.CharField("شهر", max_length=60)
     address = models.TextField("آدرس")

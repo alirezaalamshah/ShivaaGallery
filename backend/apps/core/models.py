@@ -40,6 +40,23 @@ class StoreSettings(models.Model):
     returns_days = models.PositiveSmallIntegerField("مهلت مرجوعی (روز)", default=7)
     returns_policy = models.TextField("متن قوانین مرجوعی", blank=True)
 
+    terms_text = models.TextField("قوانین و مقررات خرید", blank=True, help_text="در صفحه‌ی «قوانین و مقررات» نمایش داده می‌شود")
+    privacy_text = models.TextField("حریم خصوصی", blank=True, help_text="در صفحه‌ی «حریم خصوصی» نمایش داده می‌شود")
+    working_hours = models.CharField("ساعت کاری", max_length=120, blank=True, help_text="مثلاً شنبه تا پنجشنبه، ۱۰ تا ۱۴ و ۱۷ تا ۲۲")
+    enamad_id = models.CharField("شناسه‌ی اینماد (id)", max_length=20, blank=True)
+    enamad_code = models.CharField("کد اینماد (Code)", max_length=40, blank=True)
+
+    order_notify_phone = models.CharField("موبایل دریافت خبر سفارش جدید", max_length=11, blank=True, help_text="با هر سفارش جدید به این شماره پیامک می‌رود")
+    unpaid_hold_hours = models.PositiveSmallIntegerField(
+        "نگه‌داشتن سفارش پرداخت‌نشده (ساعت)", default=24,
+        help_text="تا وقتی پرداخت آنلاین فعال نیست: سفارشی که در این مدت پرداخت نشود خودکار لغو و کالایش به موجودی برمی‌گردد. صفر یعنی هیچ‌وقت.",
+    )
+
+    seller_max_discount = models.PositiveSmallIntegerField(
+        "سقف تخفیف فروشنده (درصد)", default=10,
+        help_text="بیشترین تخفیفی که فروشنده در صندوق می‌تواند بدهد. مدیر محدودیتی ندارد.",
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

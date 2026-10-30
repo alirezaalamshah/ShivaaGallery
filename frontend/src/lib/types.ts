@@ -17,6 +17,13 @@ export type Store = {
   address: string;
   currency_label: string;
   returns: { enabled: boolean; type: "refund" | "exchange"; days: number; policy: string };
+  terms_text: string;
+  privacy_text: string;
+  working_hours: string;
+  enamad_id: string;
+  enamad_code: string;
+  /** A payment gateway is connected; otherwise the store arranges payment by phone. */
+  online_payment: boolean;
 };
 
 export type Color = { id: number; name: string; hex: string };
@@ -58,6 +65,8 @@ export type Variant = {
   regular_price: number;
   in_stock: boolean;
   low_stock: boolean;
+  /** How many are left, only when it is a few. */
+  left: number | null;
 };
 
 export type SizeGuide = { columns?: string[]; rows?: string[][]; note?: string };
@@ -79,12 +88,13 @@ export type Facets = {
   size_systems: { id: number; name: string; sizes: { id: number; label: string }[] }[];
 };
 
-export type ShippingMethod = { id: number; name: string; description: string; fee: number; only_city: string };
-export type Address = { id: number; receiver_name: string; province: string; city: string; address: string; postal_code: string };
+export type ShippingMethod = { id: number; name: string; description: string; fee: number; only_city: string; needs_postal_code: boolean };
+export type Address = { id: number; receiver_name: string; receiver_phone: string; province: string; city: string; address: string; postal_code: string };
 
 export type OrderStatus = "awaiting_payment" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
 
 export type OrderItem = {
+  id: number;
   product_slug: string;
   product_name: string;
   color_name: string;
@@ -102,6 +112,7 @@ export type Order = {
   status_label: string;
   created_at: string;
   receiver_name: string;
+  receiver_phone?: string;
   phone: string;
   province?: string;
   city: string;
@@ -115,8 +126,42 @@ export type Order = {
   discount_amount: number;
   total: number;
   tracking_code: string;
+  payment_deadline: string | null;
+  paid_at: string | null;
+  /** Online payment is on and this order can still be paid. */
+  can_pay: boolean;
   items: OrderItem[];
   events: { status: OrderStatus; label: string; note: string; created_at: string }[];
+  returns?: ReturnRequest[];
+  /** Only for shipped or delivered orders: whether a return can be asked for now. */
+  return_window?: { deadline: string | null; can: boolean; problem: string | null } | null;
+};
+
+export type ReturnStatus = "pending" | "approved" | "rejected" | "completed";
+
+export type ReturnRequest = {
+  id: number;
+  reason: string;
+  reason_label: string;
+  wants: "refund" | "exchange";
+  wants_label: string;
+  text: string;
+  status: ReturnStatus;
+  status_label: string;
+  admin_note: string;
+  created_at: string;
+  updated_at: string;
+  items: { item: number; product_name: string; color_name: string; size_label: string; image: string; qty: number }[];
+};
+
+export type Review = { id: number; rating: number; text: string; author: string; reply: string; created_at: string };
+
+export type Reviews = {
+  average: number | null;
+  count: number;
+  items: Review[];
+  can_review: boolean;
+  mine: (Review & { status: "pending" | "approved" | "rejected"; status_label: string }) | null;
 };
 
 export type OrderSummary = Pick<Order, "number" | "status" | "status_label" | "created_at" | "total"> & {

@@ -30,6 +30,10 @@ You cannot reach the server. You only see what the owner pastes back.
 - `deploy/initial-data/` is a one-time snapshot of the local database and uploaded photos. Copy it **only** on the first deploy. Copying it again wipes live orders.
 - The panel signs in with a Django username and password. Customer login uses an SMS code, and SMS stays on the `console` backend until a Melipayamak panel is bought.
 - Django 5.2 needs Python ≥ 3.10. Next.js needs Node ≥ 18.18; use 20 or newer.
+- Stock is shared by the shop and the site. Real counts per color and size; in-store sales are recorded at the till, `/panel/pos`. Stock of 9999 is left over from an older panel and means "count unknown".
+- Three roles: admin (`is_staff`), seller (member of the `seller` group, till only) and customer. See `backend/apps/accounts/roles.py`.
+- `python manage.py expire_orders` cancels unpaid orders past their deadline; it belongs in a cPanel cron job every five minutes.
+- Online payment is `PAYMENT_GATEWAY` in `backend/.env`: `none`, `fake` (local testing only) or `zarinpal`. `SITE_URL` must be the storefront's address, because the gateway sends customers back there.
 
 ## Local development (Windows)
 

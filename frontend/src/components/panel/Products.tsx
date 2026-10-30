@@ -103,7 +103,11 @@ export function ProductsList() {
                       {p.sale_count > 0 && <small className={s.danger} style={{ display: "block", fontSize: 11.5 }}>حراج در {faNum(p.sale_count)} تنوع</small>}
                     </td>
                     <td>
-                      {p.total_stock > 0 ? "موجود" : <span className={s.danger}>ناموجود</span>}
+                      {p.total_stock > 0 ? (
+                        <span className="num">{p.total_stock >= 9999 ? "تعداد را وارد کنید" : `${faNum(p.total_stock)} عدد`}</span>
+                      ) : (
+                        <span className={s.danger}>ناموجود</span>
+                      )}
                       {p.total_stock > 0 && p.out_count > 0 && <small className={s.danger} style={{ display: "block", fontSize: 11.5 }}>{faNum(p.out_count)} رنگ/سایز ناموجود</small>}
                       {p.variant_count === 0 && <small className={s.danger} style={{ display: "block", fontSize: 11.5 }}>رنگ و سایز ندارد</small>}
                     </td>

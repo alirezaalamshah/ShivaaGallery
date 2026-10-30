@@ -11,6 +11,7 @@ class ShippingMethod(models.Model):
     description = models.CharField("توضیح کوتاه", max_length=120, blank=True)
     fee = models.PositiveBigIntegerField("هزینه")
     only_city = models.CharField("فقط برای شهر", max_length=60, blank=True, help_text="خالی یعنی همه‌ی شهرها")
+    needs_postal_code = models.BooleanField("کد پستی لازم است", default=False, help_text="برای پست و تیپاکس روشن باشد")
     is_active = models.BooleanField("فعال", default=True)
     sort = models.PositiveSmallIntegerField("ترتیب", default=0)
 
@@ -37,6 +38,7 @@ class DiscountCode(models.Model):
     max_amount = models.PositiveBigIntegerField("سقف تخفیف", null=True, blank=True, help_text="برای کد درصدی")
     min_subtotal = models.PositiveBigIntegerField("حداقل مبلغ خرید", default=0)
     max_uses = models.PositiveIntegerField("حداکثر دفعات استفاده", null=True, blank=True)
+    once_per_customer = models.BooleanField("هر مشتری فقط یک بار", default=True)
     used_count = models.PositiveIntegerField("دفعات استفاده", default=0, editable=False)
     starts_at = models.DateTimeField("شروع", null=True, blank=True)
     ends_at = models.DateTimeField("پایان", null=True, blank=True)
@@ -60,13 +62,17 @@ class DiscountCode(models.Model):
         self.code = self.code.strip().upper()
         super().save(*args, **kwargs)
 
-    def problem(self, subtotal, now=None):
+    def problem(self, subtotal, user=None, now=None):
         """Why this code can't be used now, or None if it can."""
         now = now or timezone.now()
         if not self.is_active or (self.starts_at and now < self.starts_at) or (self.ends_at and now > self.ends_at):
             return "این کد معتبر نیست یا تاریخش گذشته است."
         if self.max_uses is not None and self.used_count >= self.max_uses:
             return "ظرفیت استفاده از این کد تمام شده است."
+        if self.once_per_customer and user is not None and user.is_authenticated and (
+            Order.objects.filter(user=user, discount_code=self.code).exclude(status=Order.Status.CANCELLED).exists()
+        ):
+            return "شما قبلاً از این کد استفاده کرده‌اید."
         if subtotal < self.min_subtotal:
             return f"این کد برای خرید بالای {self.min_subtotal:,} است."
         return None
@@ -93,6 +99,10 @@ class Order(models.Model):
         DELIVERED = "delivered", "تحویل شد"
         CANCELLED = "cancelled", "لغو شد"
 
+    # Orders in these statuses count as sales.
+    SOLD = ["paid", "processing", "shipped", "delivered"]
+    OPEN = ["awaiting_payment", "paid", "processing"]
+
     # Statuses an admin may move an order to from each status.
     TRANSITIONS = {
         "awaiting_payment": ["paid", "processing", "cancelled"],
@@ -107,6 +117,7 @@ class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders", verbose_name="مشتری")
     phone = models.CharField("موبایل", max_length=11)
     receiver_name = models.CharField("نام تحویل‌گیرنده", max_length=80)
+    receiver_phone = models.CharField("موبایل تحویل‌گیرنده", max_length=11, blank=True)
     province = models.CharField("استان", max_length=40, blank=True)
     city = models.CharField("شهر", max_length=60)
     address = models.TextField("آدرس")
@@ -123,6 +134,9 @@ class Order(models.Model):
 
     status = models.CharField("وضعیت", max_length=20, choices=Status.choices, default=Status.AWAITING_PAYMENT, db_index=True)
     tracking_code = models.CharField("کد رهگیری مرسوله", max_length=40, blank=True)
+    payment_deadline = models.DateTimeField("مهلت پرداخت", null=True, blank=True, help_text="بعد از این زمان، سفارش پرداخت‌نشده خودکار لغو می‌شود")
+    paid_at = models.DateTimeField("زمان پرداخت", null=True, blank=True)
+    client_key = models.CharField(max_length=40, unique=True, null=True, blank=True, editable=False, help_text="جلوی ثبت دوباره‌ی یک سفارش را می‌گیرد")
     admin_note = models.TextField("یادداشت مدیر", blank=True)
     created_at = models.DateTimeField("زمان ثبت", auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -168,3 +182,47 @@ class OrderEvent(models.Model):
 
     class Meta:
         ordering = ["created_at", "id"]
+
+
+class ReturnRequest(models.Model):
+    """A customer's request to return or exchange items of a received order, within the store's return window."""
+
+    class Reason(models.TextChoices):
+        SIZE = "size", "سایز مناسب نبود"
+        DEFECT = "defect", "ایراد یا آسیب در کالا"
+        DIFFERENT = "different", "با عکس و توضیحات فرق داشت"
+        OTHER = "other", "دلیل دیگر"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        APPROVED = "approved", "تأیید شد، کالا را بفرستید"
+        REJECTED = "rejected", "رد شد"
+        COMPLETED = "completed", "کالا دریافت شد و انجام شد"
+
+    # Statuses an admin may move a request to from each status.
+    TRANSITIONS = {
+        "pending": ["approved", "rejected"],
+        "approved": ["completed", "rejected"],
+        "rejected": [],
+        "completed": [],
+    }
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="returns", verbose_name="سفارش")
+    reason = models.CharField("دلیل", max_length=10, choices=Reason.choices)
+    wants = models.CharField("درخواست مشتری", max_length=10, choices=[("refund", "بازگشت وجه"), ("exchange", "تعویض")], default="exchange")
+    text = models.TextField("توضیح مشتری", max_length=1000, blank=True)
+    status = models.CharField("وضعیت", max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    admin_note = models.TextField("پیام فروشگاه به مشتری", max_length=1000, blank=True)
+    created_at = models.DateTimeField("زمان ثبت", auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "درخواست مرجوعی"
+        verbose_name_plural = "درخواست‌های مرجوعی"
+        ordering = ["-created_at"]
+
+
+class ReturnItem(models.Model):
+    request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name="items")
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name="returns")
+    qty = models.PositiveSmallIntegerField("تعداد")

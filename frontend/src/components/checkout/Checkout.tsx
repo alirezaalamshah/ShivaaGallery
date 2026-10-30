@@ -18,19 +18,21 @@ import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
 
 import styles from "./Checkout.module.css";
 
-type Form = { receiver_name: string; province: string; city: string; address: string; postal_code: string; note: string };
+type Form = { receiver_name: string; receiver_phone: string; province: string; city: string; address: string; postal_code: string; note: string };
+
+const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 export function Checkout() {
   const store = useStore();
   const cart = useCart();
   const { me } = useAuth();
   const router = useRouter();
-  const signedIn = !!me?.authenticated && !me.is_staff;
+  const signedIn = me?.role === "customer";
 
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressId, setAddressId] = useState<number | "new">("new");
-  const [form, setForm] = useState<Form>({ receiver_name: "", province: provinceOf(store.city), city: store.city || "", address: "", postal_code: "", note: "" });
+  const [form, setForm] = useState<Form>({ receiver_name: "", receiver_phone: "", province: provinceOf(store.city), city: store.city || "", address: "", postal_code: "", note: "" });
   const [customCity, setCustomCity] = useState(false);
   const [shipping, setShipping] = useState<number | null>(null);
   const [codeInput, setCodeInput] = useState("");
@@ -41,10 +43,14 @@ export function Checkout() {
   const [placing, setPlacing] = useState(false);
   const [sumOpen, setSumOpen] = useState(false);
   const refs = { login: useRef<HTMLElement>(null), address: useRef<HTMLElement>(null), shipping: useRef<HTMLElement>(null) };
+  // One key per checkout visit: a retried request gets back the same order instead of placing a second one.
+  const clientKey = useRef(newKey());
 
   const lines = useMemo(() => cart.lines.map((l) => ({ variant: l.variantId, qty: l.qty })), [cart.lines]);
   const chosen = addressId === "new" ? form : addresses.find((a) => a.id === addressId) ?? form;
   const city = chosen.city.trim();
+  const method = methods.find((m) => m.id === shipping);
+  const needsPostal = !!method?.needs_postal_code;
 
   useEffect(() => {
     call<ShippingMethod[]>("/shipping-methods").then(setMethods).catch(() => setBanner("روش‌های ارسال دریافت نشد. صفحه را دوباره باز کن."));
@@ -68,7 +74,13 @@ export function Checkout() {
   const refreshQuote = useCallback(async () => {
     if (!lines.length) return;
     try {
-      setQuote(await call<Quote>("/checkout/quote", { method: "POST", body: { lines, city, shipping_method: shipping, discount_code: code } }));
+      const q = await call<Quote>("/checkout/quote", { method: "POST", body: { lines, city, shipping_method: shipping, discount_code: code } });
+      setQuote(q);
+      // The cart changed and the code no longer applies: say so instead of quietly dropping the discount.
+      if (code && q.discount_error) {
+        setCode("");
+        setErrors((er) => ({ ...er, discount_code: `کد ${code} حذف شد: ${q.discount_error}` }));
+      }
     } catch {
       /* the summary keeps the last good numbers */
     }
@@ -79,9 +91,10 @@ export function Checkout() {
     return () => clearTimeout(t);
   }, [refreshQuote]);
 
-  const unavailable = quote?.lines.filter((l) => !l.ok) ?? [];
+  const unavailable = cart.lines.filter((l) => cart.check[l.variantId] && !cart.check[l.variantId].ok);
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [k]: k === "postal_code" ? toEnDigits(e.target.value).replace(/\D/g, "").slice(0, 10) : e.target.value });
+    const digits = (n: number) => toEnDigits(e.target.value).replace(/\D/g, "").slice(0, n);
+    setForm({ ...form, [k]: k === "postal_code" ? digits(10) : k === "receiver_phone" ? digits(11) : e.target.value });
     setErrors((er) => ({ ...er, [k]: "" }));
   };
 
@@ -106,25 +119,47 @@ export function Checkout() {
   const place = async () => {
     setBanner("");
     if (!signedIn) return focus(refs.login);
+    if (unavailable.length) return setBanner("اول موجودی سبد را اصلاح کن.");
+    if (!shipping) return focus(refs.shipping);
     const errs: Record<string, string> = {};
+    const receiverPhone = chosen.receiver_phone ?? "";
     if (chosen.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
+    if (receiverPhone && !/^09\d{9}$/.test(receiverPhone)) errs.receiver_phone = "شماره موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.";
     if (addressId === "new" && !form.province) errs.province = "استان را انتخاب کن.";
     if (!city) errs.city = "شهر را انتخاب کن.";
     if (chosen.address.trim().length < 10) errs.address = "آدرس را کامل‌تر بنویس (خیابان، کوچه، پلاک).";
-    if (chosen.postal_code && chosen.postal_code.length !== 10) errs.postal_code = "کد پستی باید ۱۰ رقم باشد.";
+    if (needsPostal && !chosen.postal_code) errs.postal_code = `برای ارسال با ${method?.name} کد پستی لازم است.`;
+    else if (chosen.postal_code && chosen.postal_code.length !== 10) errs.postal_code = "کد پستی باید ۱۰ رقم باشد.";
     if (Object.keys(errs).length) {
       setErrors(errs);
-      if (addressId !== "new") setAddressId("new");
+      // A saved address is missing something: open it in the form, already filled in, so only the gap needs typing.
+      if (addressId !== "new") {
+        const province = chosen.province || provinceOf(chosen.city);
+        setForm({ ...form, ...chosen, receiver_phone: receiverPhone, note: form.note, province });
+        setCustomCity(!!chosen.city && !(PROVINCES[province] ?? []).includes(chosen.city));
+        setAddressId("new");
+      }
       return focus(refs.address);
     }
-    if (!shipping) return focus(refs.shipping);
     setPlacing(true);
     try {
       const order = await call<Order>("/orders", {
         method: "POST",
-        body: { lines, ...chosen, note: form.note, shipping_method: shipping, discount_code: code, save_address: addressId === "new" },
+        body: {
+          lines, ...chosen, receiver_phone: receiverPhone, note: form.note, shipping_method: shipping,
+          discount_code: code, save_address: addressId === "new", client_key: clientKey.current,
+        },
       });
       cart.clear();
+      if (store.online_payment) {
+        try {
+          const { redirect } = await call<{ redirect: string }>("/payments/start", { method: "POST", body: { number: order.number } });
+          window.location.assign(redirect);
+          return;
+        } catch {
+          /* the order page offers the payment button again */
+        }
+      }
       navStart();
       router.push(`/account/orders/${order.number}?new=1`);
     } catch (e) {
@@ -162,8 +197,8 @@ export function Checkout() {
       {banner && <div className={styles.banner} role="alert">{banner}</div>}
       {unavailable.length > 0 && (
         <div className={styles.banner} role="alert">
-          موجودی {faNum(unavailable.length)} کالا کمتر از تعداد سبد است.{" "}
-          <Link href="/cart">ویرایش سبد</Link>
+          موجودی این کالاها کمتر از سبد شماست: {unavailable.map((l) => `${l.name} (${l.colorName}، سایز ${l.size})`).join("، ")}.{" "}
+          <button type="button" className={styles.link} onClick={cart.fix}>اصلاح خودکار سبد</button>
         </div>
       )}
 
@@ -173,8 +208,8 @@ export function Checkout() {
           <p className={styles.verified}>
             <Icon name="check" /> وارد شدی با <b className="num" dir="ltr">{toFaDigits(me?.phone ?? "")}</b>
           </p>
-        ) : me?.is_staff ? (
-          <p className="err">با حساب مدیر نمی‌شود خرید کرد. از پنل خارج شو و با شماره موبایل وارد شو.</p>
+        ) : me?.authenticated ? (
+          <p className="err">با حساب مدیر یا فروشنده نمی‌شود خرید کرد. از پنل خارج شو و با شماره موبایل وارد شو.</p>
         ) : (
           <PhoneLogin compact />
         )}
@@ -207,6 +242,11 @@ export function Checkout() {
               <span className="label">نام تحویل‌گیرنده</span>
               <input id="co-name" className="input" autoComplete="name" value={form.receiver_name} onChange={set("receiver_name")} aria-invalid={!!errors.receiver_name} placeholder="مثلاً مریم احمدی" />
               {errors.receiver_name && <span className="err">{errors.receiver_name}</span>}
+            </label>
+            <label className="field">
+              <span className="label">موبایل تحویل‌گیرنده (اختیاری)</span>
+              <input id="co-rphone" className="input ltr num" inputMode="tel" autoComplete="tel" value={toFaDigits(form.receiver_phone)} onChange={set("receiver_phone")} aria-invalid={!!errors.receiver_phone} placeholder={me?.phone ? toFaDigits(me.phone) : "۰۹۱۲ ۰۰۰ ۰۰۰۰"} />
+              {errors.receiver_phone ? <span className="err">{errors.receiver_phone}</span> : <span className="hint">اگر سفارش برای کس دیگری است، شماره‌ی او را بنویس تا مأمور ارسال با او تماس بگیرد.</span>}
             </label>
             <div className="row2">
               <label className="field">
@@ -263,13 +303,18 @@ export function Checkout() {
             </label>
             <div className="row2">
               <label className="field">
-                <span className="label">کد پستی (اختیاری)</span>
+                <span className="label">کد پستی{needsPostal ? "" : " (اختیاری)"}</span>
                 <input id="co-postal" className="input ltr num" inputMode="numeric" value={toFaDigits(form.postal_code)} onChange={set("postal_code")} aria-invalid={!!errors.postal_code} placeholder="۱۰ رقم" />
                 {errors.postal_code && <span className="err">{errors.postal_code}</span>}
               </label>
             </div>
           </div>
         )}
+        {addressId !== "new" && errors.postal_code && <p className="err">{errors.postal_code}</p>}
+        <label className="field" style={{ marginTop: 12 }}>
+          <span className="label">یادداشت برای فروشگاه (اختیاری)</span>
+          <input id="co-note" className="input" value={form.note} onChange={set("note")} maxLength={300} placeholder="مثلاً ساعت مناسب تحویل" />
+        </label>
       </section>
 
       <section ref={refs.shipping} className={`${styles.sec} ${shipping ? styles.done : ""}`}>
@@ -314,12 +359,15 @@ export function Checkout() {
         <h2><span className={styles.n}><Icon name="card" /></span>پرداخت</h2>
         <div className={styles.payNote}>
           <Icon name="card" />
-          <span>پرداخت آنلاین به‌زودی فعال می‌شود. بعد از ثبت سفارش، فروشگاه برای هماهنگی پرداخت با شما تماس می‌گیرد و موجودی سفارش برایتان نگه داشته می‌شود.</span>
+          {store.online_payment ? (
+            <span>با زدن دکمه‌ی پرداخت به درگاه امن بانکی می‌روی و با همه‌ی کارت‌های عضو شتاب می‌توانی پرداخت کنی. سفارش بعد از پرداخت موفق قطعی می‌شود.</span>
+          ) : (
+            <span>بعد از ثبت سفارش، فروشگاه برای هماهنگی پرداخت با شما تماس می‌گیرد. کالاهای سفارش تا آن موقع برایتان کنار گذاشته می‌شود.</span>
+          )}
         </div>
-        <label className="field" style={{ marginTop: 12 }}>
-          <span className="label">یادداشت برای فروشگاه (اختیاری)</span>
-          <input id="co-note" className="input" value={form.note} onChange={set("note")} maxLength={300} />
-        </label>
+        <p className="hint" style={{ marginTop: 10 }}>
+          با ثبت سفارش، <Link href="/terms" style={{ textDecoration: "underline" }}>قوانین و مقررات</Link> فروشگاه را می‌پذیری.
+        </p>
       </section>
 
       <div className={styles.foot}>
@@ -344,9 +392,17 @@ export function Checkout() {
               {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>تخفیف</span><b className="num">{faNum(quote.discount)}−</b></div>}
             </div>
           </div>
-          <button type="button" className={styles.place} onClick={place} disabled={placing}>
+          <button type="button" className={styles.place} onClick={place} disabled={placing || unavailable.length > 0}>
             <Icon name="lock" />
-            {placing ? "در حال ثبت…" : signedIn ? <>ثبت سفارش — <span className="num">{faNum(total)}</span> {store.currency_label}</> : "اول وارد شو"}
+            {placing ? (
+              store.online_payment ? "در حال انتقال به درگاه…" : "در حال ثبت…"
+            ) : !signedIn ? (
+              "اول وارد شو"
+            ) : unavailable.length ? (
+              "اول سبد را اصلاح کن"
+            ) : (
+              <>{store.online_payment ? "پرداخت" : "ثبت سفارش"} — <span className="num">{faNum(total)}</span> {store.currency_label}</>
+            )}
           </button>
         </div>
       </div>

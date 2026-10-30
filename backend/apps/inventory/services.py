@@ -24,9 +24,14 @@ def move_stock(variant, delta, reason, *, note="", reference="", user=None):
     new_balance = locked.stock + delta
     if new_balance < 0:
         raise InsufficientStock(locked, locked.stock, -delta)
+    back_in_stock = locked.stock == 0 and new_balance > 0
     locked.stock = new_balance
     locked.save(update_fields=["stock"])
     variant.stock = new_balance
+    if back_in_stock:
+        from apps.catalog.alerts import notify_back_in_stock
+
+        transaction.on_commit(lambda: notify_back_in_stock(locked.pk))
     return StockMovement.objects.create(
         variant=locked, delta=delta, reason=reason, balance=new_balance,
         note=note, reference=reference, created_by=user,

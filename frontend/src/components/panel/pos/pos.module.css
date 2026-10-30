@@ -1,0 +1,643 @@
+/* Till: the catalog on one side, the ticket on the other. On phones the ticket follows the catalog. */
+.till {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: 18px;
+  align-items: start;
+}
+
+.catalog {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.searchBox {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  max-width: none;
+}
+
+.searchBox input {
+  min-height: 50px;
+  font-size: 15px;
+}
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.results[aria-busy="true"] {
+  opacity: 0.6;
+}
+
+.product {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.product header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.product header img,
+.noImg {
+  width: 44px;
+  height: 58px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--band);
+}
+
+.colorRow {
+  display: grid;
+  gap: 6px;
+}
+
+.colorName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.colorName i,
+.lineWhat i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+  display: inline-block;
+}
+
+.sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Big tap targets: a seller taps these all day. */
+.size {
+  position: relative;
+  min-width: 58px;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.size b {
+  font-size: 15px;
+}
+
+.size small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.size:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.size:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.size:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.sizeIn {
+  border-color: var(--ink);
+  background: color-mix(in oklab, var(--accent), transparent 85%);
+}
+
+.size em {
+  position: absolute;
+  top: -7px;
+  inset-inline-end: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 5px;
+  border-radius: 99px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  background: var(--ink);
+  color: var(--accent-hi);
+}
+
+.ticket {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 48px -36px rgb(0 0 0 / 0.4);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+
+.ticket h2 {
+  margin: 0;
+  font-size: 17px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ticket h2 small {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.lineShort {
+  background: color-mix(in oklab, var(--sale), transparent 92%);
+}
+
+.lineWhat {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lineWhat b {
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineWhat small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.qty button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.qty button:disabled {
+  opacity: 0.35;
+}
+
+.qty svg {
+  width: 16px;
+  height: 16px;
+}
+
+.qty b {
+  min-width: 22px;
+  text-align: center;
+}
+
+.linePrice {
+  min-width: 84px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.emptyTicket {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.emptyTicket svg {
+  width: 30px;
+  height: 30px;
+}
+
+.sums {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.sums > div,
+.minor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.minor {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.warn {
+  color: var(--sale);
+  font-weight: 600;
+}
+
+.discountInput {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.discountInput input {
+  width: 120px;
+  min-height: 38px;
+}
+
+.total {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--accent-hi);
+}
+
+.total b {
+  font-size: 22px;
+}
+
+.total small {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.payTabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.payTabs button {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.payTabs button[aria-checked="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--accent-hi);
+}
+
+.payField {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.split {
+  display: grid;
+  gap: 8px;
+}
+
+.change {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.change b {
+  font-size: 18px;
+}
+
+.more {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.more svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(-90deg);
+  transition: transform 0.2s;
+}
+
+.more[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.customer {
+  display: grid;
+  gap: 8px;
+}
+
+.finish {
+  display: grid;
+  gap: 8px;
+}
+
+.finishBtn {
+  min-height: 56px;
+  font-size: 16px;
+}
+
+.mobileBar {
+  display: none;
+}
+
+.doneBox {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 8px 0 4px;
+  text-align: center;
+}
+
+.doneBox b {
+  font-size: 20px;
+}
+
+.doneBox > span:not(.doneIcon) {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.doneBox small {
+  color: var(--muted);
+}
+
+.doneIcon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--accent-hi);
+}
+
+.doneIcon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.dayNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dayNav input {
+  width: auto;
+  min-height: 36px;
+}
+
+.voided td {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.voided td:last-child {
+  text-decoration: none;
+}
+
+.receiptLines {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13.5px;
+}
+
+.receiptLines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+
+@media (max-width: 900px) {
+  .till {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 72px;
+  }
+
+  .ticket {
+    position: static;
+    max-height: none;
+  }
+
+  .results {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobileBar {
+    position: fixed;
+    inset: auto 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    min-height: 56px;
+    border-radius: 16px;
+    background: var(--ink);
+    color: var(--accent-hi);
+    font-size: 14px;
+    box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.5);
+  }
+
+  .mobileBar span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mobileBar svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Printed receipt, 80 mm wide. */
+.receipt {
+  width: 72mm;
+  margin: 0 auto;
+  padding: 4mm 0;
+  color: #000;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.receipt header {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #000;
+}
+
+.receipt header img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.receipt h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.receipt header p,
+.receipt footer p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.receipt dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  margin: 6px 0;
+}
+
+.receipt dd {
+  margin: 0;
+  text-align: left;
+}
+
+.receipt table {
+  width: 100%;
+  border-collapse: collapse;
+  border-block: 1px dashed #000;
+}
+
+.receipt th {
+  font-size: 11px;
+  text-align: right;
+  padding: 3px 0;
+  border-bottom: 1px solid #000;
+}
+
+.receipt td {
+  padding: 3px 0;
+  vertical-align: top;
+}
+
+.receipt td small {
+  display: block;
+  font-size: 10px;
+}
+
+.receipt td:not(:first-child),
+.receipt th:not(:first-child) {
+  text-align: left;
+  padding-inline-start: 6px;
+  white-space: nowrap;
+}
+
+.receiptTotal {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.receiptVoid {
+  margin: 6px 0;
+  padding: 4px;
+  border: 2px solid #000;
+  text-align: center;
+  font-weight: 800;
+}
+
+.receipt footer {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding-top: 6px;
+  border-top: 1px dashed #000;
+  text-align: center;
+}
+
+.printBtn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid #000;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  .printBtn {
+    display: none;
+  }
+}

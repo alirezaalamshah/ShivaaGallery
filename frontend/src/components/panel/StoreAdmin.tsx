@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
-import { faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
@@ -20,7 +20,8 @@ type Movement = { id: number; created_at: string; product: string; color: string
 const REASONS = [
   { value: "", label: "همه" },
   { value: "receive", label: "ورود کالا" },
-  { value: "sale", label: "فروش" },
+  { value: "sale", label: "فروش اینترنتی" },
+  { value: "store_sale", label: "فروش حضوری" },
   { value: "cancel", label: "لغو سفارش" },
   { value: "return", label: "مرجوعی" },
   { value: "adjust", label: "اصلاح دستی" },
@@ -39,7 +40,7 @@ export function Inventory() {
   const { data, loading } = useAdmin<Paged<Movement>>(`/stock-movements?${qs}`);
   return (
     <>
-      <PageHead title="انبار" sub="هر تغییر موجودی با دلیلش این‌جا ثبت می‌شود. برای تغییر موجودی، محصول را ویرایش کنید." />
+      <PageHead title="دفتر موجودی" sub="هر تغییر موجودی با دلیلش این‌جا ثبت می‌شود: فروش اینترنتی، فروش حضوری، لغو سفارش و ورود کالا." />
       <Card>
         <div className={s.toolbar}>
           <div className={s.tabs} role="group" aria-label="علت">
@@ -90,7 +91,7 @@ export function Inventory() {
 
 /* ---------- shipping methods ---------- */
 
-type Method = { id?: number; name: string; description: string; fee: number | null; only_city: string; is_active: boolean; sort: number };
+type Method = { id?: number; name: string; description: string; fee: number | null; only_city: string; needs_postal_code: boolean; is_active: boolean; sort: number };
 
 export function Shipping() {
   const toast = useToast();
@@ -118,7 +119,7 @@ export function Shipping() {
   return (
     <>
       <PageHead title="روش‌های ارسال" sub="هزینه‌ی هر روش ثابت است و در تسویه‌حساب به مشتری نشان داده می‌شود.">
-        <button type="button" className={s.btn} onClick={() => setDraft({ name: "", description: "", fee: null, only_city: "", is_active: true, sort: data?.length ?? 0 })}><Icon name="plus" /> روش جدید</button>
+        <button type="button" className={s.btn} onClick={() => setDraft({ name: "", description: "", fee: null, only_city: "", needs_postal_code: true, is_active: true, sort: data?.length ?? 0 })}><Icon name="plus" /> روش جدید</button>
       </PageHead>
       <Card>
         <div className={s.tableWrap}>
@@ -150,6 +151,7 @@ export function Shipping() {
             <Field label="توضیح کوتاه" full><input id="sh-desc" className="input" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="مثلاً سراسر ایران · ۲ تا ۴ روز کاری" /></Field>
             <Field label="فقط برای شهر (اختیاری)" hint="مثلاً پیک فقط برای شهر خودتان" full><input id="sh-city" className="input" value={draft.only_city} onChange={(e) => setDraft({ ...draft, only_city: e.target.value })} /></Field>
           </div>
+          <SwitchRow title="کد پستی لازم است" hint="برای پست و تیپاکس روشن کنید؛ مشتری بدون کد پستی نمی‌تواند این روش را انتخاب کند" checked={draft.needs_postal_code} onChange={(v) => setDraft({ ...draft, needs_postal_code: v })} />
         </Modal>
       )}
     </>
@@ -158,7 +160,7 @@ export function Shipping() {
 
 /* ---------- discount codes ---------- */
 
-type Discount = { id?: number; code: string; kind: "percent" | "fixed"; value: number | null; max_amount: number | null; min_subtotal: number | null; max_uses: number | null; used_count?: number; ends_at: string | null; is_active: boolean };
+type Discount = { id?: number; code: string; kind: "percent" | "fixed"; value: number | null; max_amount: number | null; min_subtotal: number | null; max_uses: number | null; once_per_customer: boolean; used_count?: number; ends_at: string | null; is_active: boolean };
 
 export function Discounts() {
   const toast = useToast();
@@ -178,7 +180,7 @@ export function Discounts() {
   return (
     <>
       <PageHead title="کدهای تخفیف" sub="مشتری کد را در تسویه‌حساب وارد می‌کند.">
-        <button type="button" className={s.btn} onClick={() => { setErrors({}); setDraft({ code: "", kind: "percent", value: 10, max_amount: null, min_subtotal: null, max_uses: null, ends_at: null, is_active: true }); }}><Icon name="plus" /> کد جدید</button>
+        <button type="button" className={s.btn} onClick={() => { setErrors({}); setDraft({ code: "", kind: "percent", value: 10, max_amount: null, min_subtotal: null, max_uses: null, once_per_customer: true, ends_at: null, is_active: true }); }}><Icon name="plus" /> کد جدید</button>
       </PageHead>
       <Card>
         {data?.length ? (
@@ -224,6 +226,7 @@ export function Discounts() {
             <Field label="حداکثر دفعات استفاده (اختیاری)"><MoneyInput id="dc-uses" value={draft.max_uses} onChange={(v) => setDraft({ ...draft, max_uses: v })} /></Field>
             <Field label="تاریخ پایان (اختیاری)" full><input id="dc-end" type="datetime-local" className="input ltr" value={draft.ends_at ? draft.ends_at.slice(0, 16) : ""} onChange={(e) => setDraft({ ...draft, ends_at: e.target.value ? new Date(e.target.value).toISOString() : null })} /></Field>
           </div>
+          <SwitchRow title="هر مشتری فقط یک بار" hint="خاموش باشد، یک مشتری می‌تواند این کد را در چند سفارش استفاده کند" checked={draft.once_per_customer} onChange={(v) => setDraft({ ...draft, once_per_customer: v })} />
         </Modal>
       )}
     </>
@@ -238,6 +241,8 @@ type Settings = {
   color_ink: string; color_accent: string; color_background: string;
   phone: string; landline: string; instagram: string; city: string; address: string; currency_label: string;
   returns_enabled: boolean; returns_type: "refund" | "exchange"; returns_days: number; returns_policy: string;
+  terms_text: string; privacy_text: string; working_hours: string; enamad_id: string; enamad_code: string;
+  order_notify_phone: string; unpaid_hold_hours: number; seller_max_discount: number;
 };
 
 export function StoreSettings() {
@@ -328,6 +333,33 @@ export function StoreSettings() {
               {text("city", "شهر")}
               {text("currency_label", "واحد پول")}
               {text("address", "آدرس فروشگاه حضوری", { full: true, area: true })}
+              {text("working_hours", "ساعت کاری", { full: true, hint: "در صفحه‌ی «تماس با ما» نمایش داده می‌شود" })}
+            </div>
+          </Card>
+          <Card title="سفارش‌ها">
+            <div className={s.formGrid}>
+              {text("order_notify_phone", "موبایل دریافت خبر سفارش جدید", { ltr: true, hint: "با هر سفارش جدید (یا هر پرداخت موفق) به این شماره پیامک می‌رود" })}
+              <Field label="نگه‌داشتن سفارش پرداخت‌نشده (ساعت)" hint="تا وقتی پرداخت آنلاین فعال نیست: سفارشی که در این مدت پرداخت نشود خودکار لغو و کالایش به موجودی برمی‌گردد. صفر یعنی هیچ‌وقت." error={errors.unpaid_hold_hours}>
+                <input id="st-hold" className="input ltr num" inputMode="numeric" value={toFaDigits(data.unpaid_hold_hours)} onChange={(e) => set("unpaid_hold_hours", Number(toEnDigits(e.target.value).replace(/\D/g, "")) || 0)} />
+              </Field>
+            </div>
+          </Card>
+          <Card title="صندوق فروش حضوری">
+            <div className={s.formGrid}>
+              <Field label="سقف تخفیف فروشنده (درصد)" hint="بیشترین تخفیفی که فروشنده در صندوق می‌تواند روی یک فاکتور بدهد. مدیر محدودیتی ندارد. صفر یعنی فروشنده تخفیف نمی‌دهد." error={errors.seller_max_discount}>
+                <input id="st-seller-discount" className="input ltr num" inputMode="numeric" value={toFaDigits(data.seller_max_discount)} onChange={(e) => set("seller_max_discount", Math.min(100, Number(toEnDigits(e.target.value).replace(/\D/g, "")) || 0))} />
+              </Field>
+            </div>
+          </Card>
+          <Card title="قوانین، حریم خصوصی و اینماد">
+            <p className="hint" style={{ marginBottom: 12 }}>
+              اینماد و درگاه پرداخت این صفحه‌ها را لازم دارند. اگر خالی بمانند، متن پیش‌فرض مناسبی بر اساس تنظیمات فروشگاه نمایش داده می‌شود. خطی که با «# » شروع شود، تیتر می‌شود.
+            </p>
+            <div className={s.formGrid}>
+              {text("terms_text", "متن قوانین و مقررات", { full: true, area: true })}
+              {text("privacy_text", "متن حریم خصوصی", { full: true, area: true })}
+              {text("enamad_id", "اینماد: id", { ltr: true, hint: "از کد نماد اینماد، عدد بعد از id=" })}
+              {text("enamad_code", "اینماد: Code", { ltr: true, hint: "از کد نماد اینماد، مقدار بعد از Code=" })}
             </div>
           </Card>
           <Card title="مرجوعی">

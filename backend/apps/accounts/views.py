@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from .models import Address
+from .roles import is_seller
 from .otp import OtpError, RESEND_AFTER, expose_code_in_response, request_code, verify_code
 from .serializers import AddressSerializer, OtpRequestSerializer, OtpVerifySerializer, StaffLoginSerializer, me_payload
 
@@ -65,7 +66,7 @@ def staff_login(request):
     s = StaffLoginSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     user = authenticate(request, **s.validated_data)
-    if user is None or not user.is_staff:
+    if user is None or not (user.is_staff or is_seller(user)):
         return Response({"detail": "نام کاربری یا رمز عبور درست نیست."}, status=status.HTTP_400_BAD_REQUEST)
     login(request, user)
     return Response(me_payload(user))
@@ -95,6 +96,6 @@ def update_profile(request):
     user = request.user
     for field in ("first_name", "last_name"):
         if field in request.data:
-            setattr(user, field, str(request.data[field])[:150])
+            setattr(user, field, str(request.data[field]).strip()[:150])
     user.save(update_fields=["first_name", "last_name"])
     return Response(me_payload(user))
