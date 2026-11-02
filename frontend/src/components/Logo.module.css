@@ -15,8 +15,8 @@
 .mono {
   display: grid;
   place-items: center;
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
   font-family: var(--f-display);
   font-size: 20px;
 }

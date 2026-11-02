@@ -1332,3 +1332,253 @@
   background: var(--ink);
   color: var(--accent-hi);
 }
+
+/* Daily sales chart (reports) */
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendItem i,
+.dayTip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.dayChart {
+  position: relative;
+  padding-top: 18px;
+}
+
+.dayChartMax {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dayBars {
+  display: grid;
+  gap: 3px;
+  height: 200px;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.dayBar {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 0;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+  border-radius: 4px;
+}
+
+.dayBar[data-on] {
+  background: color-mix(in oklab, var(--line) 45%, transparent);
+}
+
+.dayStack {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  gap: 2px;
+  height: 100%;
+  margin-inline: auto;
+  width: min(100%, 22px);
+}
+
+.dayStack i {
+  display: block;
+  min-height: 2px;
+}
+
+.dayStack i:last-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.dayBar small {
+  position: relative;
+  top: 4px;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  justify-self: center;
+}
+
+.dayTip {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 28px -18px rgb(0 0 0 / 0.4);
+  font-size: 12.5px;
+  pointer-events: none;
+}
+
+.dayTip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Home page admin: ring picker and banners */
+
+.pickList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.pickList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.pickList li > .num {
+  width: 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.pickList img,
+.pickList .thumb {
+  width: 38px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--band);
+  flex: none;
+}
+
+.pickList .cellStack {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+}
+
+.pickList .actions {
+  gap: 2px;
+}
+
+.up {
+  transform: rotate(90deg);
+}
+
+.down {
+  transform: rotate(-90deg);
+}
+
+.bannerThumb {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: none;
+}
+
+.bannerPreview {
+  width: min(100%, 360px);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+/* Store settings: theme cards */
+
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.theme {
+  display: grid;
+  gap: 6px;
+  padding: 8px 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.theme[aria-checked="true"] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.themePreview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.themePreview > span {
+  justify-self: start;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.themePreview i {
+  display: block;
+  height: 26px;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.themePreview em {
+  display: block;
+  width: 45%;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.themeName {
+  font-weight: 700;
+  padding-inline: 4px;
+}
+
+.theme small {
+  color: var(--muted);
+  font-size: 12px;
+  padding-inline: 4px;
+}

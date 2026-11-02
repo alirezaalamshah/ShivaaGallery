@@ -386,6 +386,30 @@
 .customer {
   display: grid;
   gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.customerHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.customerHead small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.customerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
 }
 
 .finish {
@@ -639,5 +663,144 @@
 
   .printBtn {
     display: none;
+  }
+}
+
+/* Returns and exchanges */
+
+.ticket h2 {
+  align-items: center;
+  gap: 8px;
+}
+
+.backBtn {
+  margin-inline-start: auto;
+}
+
+.backHead {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--sale);
+  display: flex;
+  justify-content: space-between;
+}
+
+.backHead small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.backLines .linePrice {
+  color: var(--sale);
+}
+
+.total.refund {
+  background: var(--sale);
+  color: var(--surface);
+}
+
+.known {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-ink);
+  font-size: 12.5px;
+}
+
+.known svg {
+  width: 15px;
+  height: 15px;
+}
+
+.returnList {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+}
+
+.returnSale {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.returnSale header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.returnSale header b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.returnSale .lines li.voided {
+  color: var(--faint);
+}
+
+.returnSale > button {
+  justify-self: start;
+}
+
+/* Closing the till */
+
+.closeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.drawerSum {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.drawerSum div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.drawerSum .expected {
+  border: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--accent-hi);
+  font-size: 16px;
+}
+
+.diff {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  background: var(--band);
+}
+
+.diffShort {
+  background: var(--sale-soft);
+  color: var(--sale);
+}
+
+.diffOk {
+  color: var(--accent-ink);
+}
+
+@media (max-width: 860px) {
+  .closeGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

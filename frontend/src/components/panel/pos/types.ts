@@ -30,6 +30,9 @@ export type Sale = {
   note: string;
   subtotal: number;
   discount: number;
+  /** Value of pieces taken back from earlier tickets. */
+  returned_total: number;
+  /** Negative: money handed back to the customer. */
   total: number;
   cash: number;
   card: number;
@@ -37,10 +40,42 @@ export type Sale = {
   void_reason: string;
   voided_at: string | null;
   item_count?: number;
+  returned_count?: number;
   items?: { variant: number | null; product_name: string; color_name: string; size_label: string; sku: string; unit_price: number; qty: number; line_total: number }[];
+  returns?: { from_sale: string; from_sale_id: number; product_name: string; color_name: string; size_label: string; sku: string; unit_refund: number; qty: number; line_total: number }[];
 };
 
-export type DayTotals = { count: number; total: number; cash: number; card: number; transfer: number; discount: number; pieces: number; voided: number };
+export type DayTotals = {
+  count: number; total: number; cash: number; card: number; transfer: number; discount: number; returned: number;
+  pieces: number; pieces_returned: number; voided: number;
+};
+
+/** An earlier ticket the customer can bring pieces back from. */
+export type Returnable = {
+  id: number;
+  number: string;
+  created_at: string;
+  seller: string;
+  customer_name: string;
+  customer_phone: string;
+  total: number;
+  /** Why the seller may not take pieces back (too old, store policy), or null. */
+  problem: string | null;
+  items: { id: number; product_name: string; color_name: string; size_label: string; sku: string; qty: number; returnable: number; paid_unit: number }[];
+};
+
+/** A piece being taken back on the open ticket. */
+export type BackLine = { item: number; fromSale: string; product: string; color: string; size: string; unit: number; qty: number; max: number };
+
+export type Drawer = {
+  day: string; opening_cash: number; cash_sales: number; cash_expenses: number; expected_cash: number;
+  card_total: number; transfer_total: number; sale_count: number;
+};
+
+export type TillCloseRow = {
+  day: string; opening_cash: number; cash_sales: number; cash_expenses: number; expected_cash: number; counted_cash: number; difference: number;
+  card_total: number; counted_card: number | null; transfer_total: number; left_in_drawer: number; note: string; closed_by: string; closed_at: string;
+};
 
 /** Stock of 9999 is left over from an older panel and means "count unknown". */
 export const UNKNOWN_STOCK = 9999;

@@ -69,6 +69,7 @@ export type AdminProduct = {
   description: string;
   details: string[];
   price: number;
+  cost_price: number | null;
   is_active: boolean;
   is_featured: boolean;
   created_at: string;

@@ -122,8 +122,8 @@
 }
 
 .swatch[aria-pressed="true"] {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 1px var(--ink);
+  border-color: var(--strong);
+  box-shadow: 0 0 0 1px var(--strong);
 }
 
 .priceRow {

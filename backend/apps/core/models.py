@@ -1,6 +1,8 @@
 from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 
-from .validators import hex_color
+from .validators import split_mobiles
 
 
 class StoreSettings(models.Model):
@@ -8,6 +10,10 @@ class StoreSettings(models.Model):
     The one row that describes this store. Nothing store-specific is
     hard-coded elsewhere, so the same code can be installed for another shop.
     """
+
+    class Theme(models.TextChoices):
+        DAY = "day", "روز گرم (روشن)"
+        NIGHT = "night", "شب طلایی (تیره)"
 
     class ReturnType(models.TextChoices):
         REFUND = "refund", "بازگشت وجه یا تعویض"
@@ -18,9 +24,10 @@ class StoreSettings(models.Model):
     tagline = models.CharField("شعار کوتاه", max_length=160, blank=True)
     logo = models.ImageField("لوگو", upload_to="store/", blank=True)
 
-    color_ink = models.CharField("رنگ اصلی (متن و دکمه)", max_length=7, default="#14110E", validators=[hex_color])
-    color_accent = models.CharField("رنگ تأکید", max_length=7, default="#C9A24C", validators=[hex_color])
-    color_background = models.CharField("رنگ زمینه", max_length=7, default="#E5D7C1", validators=[hex_color])
+    theme = models.CharField(
+        "تم سایت", max_length=10, choices=Theme.choices, default=Theme.DAY,
+        help_text="هر تم رنگ‌های کامل و آزموده‌ی خودش را دارد. پنل مدیریت همیشه تم روشن می‌ماند تا خوانا باشد.",
+    )
 
     hero_title = models.CharField("تیتر صفحه‌ی اصلی", max_length=80, blank=True, help_text="کلمه‌ای که بین * و * بیاید طلایی نمایش داده می‌شود، مثلاً: درخشش، *به سبک تو*")
     hero_text = models.CharField("متن صفحه‌ی اصلی", max_length=240, blank=True)
@@ -46,7 +53,10 @@ class StoreSettings(models.Model):
     enamad_id = models.CharField("شناسه‌ی اینماد (id)", max_length=20, blank=True)
     enamad_code = models.CharField("کد اینماد (Code)", max_length=40, blank=True)
 
-    order_notify_phone = models.CharField("موبایل دریافت خبر سفارش جدید", max_length=11, blank=True, help_text="با هر سفارش جدید به این شماره پیامک می‌رود")
+    order_notify_phone = models.CharField(
+        "موبایل‌های دریافت خبر سفارش جدید", max_length=200, blank=True,
+        help_text="با هر سفارش جدید و هر درخواست مرجوعی به این شماره‌ها پیامک می‌رود. چند شماره را با ویرگول جدا کنید.",
+    )
     unpaid_hold_hours = models.PositiveSmallIntegerField(
         "نگه‌داشتن سفارش پرداخت‌نشده (ساعت)", default=24,
         help_text="تا وقتی پرداخت آنلاین فعال نیست: سفارشی که در این مدت پرداخت نشود خودکار لغو و کالایش به موجودی برمی‌گردد. صفر یعنی هیچ‌وقت.",
@@ -55,6 +65,11 @@ class StoreSettings(models.Model):
     seller_max_discount = models.PositiveSmallIntegerField(
         "سقف تخفیف فروشنده (درصد)", default=10,
         help_text="بیشترین تخفیفی که فروشنده در صندوق می‌تواند بدهد. مدیر محدودیتی ندارد.",
+    )
+
+    hero_products = models.JSONField(
+        "کارت‌های اسلایدر صفحه‌ی اصلی", default=list, blank=True,
+        help_text="شناسه‌ی محصولات به ترتیب نمایش. خالی یعنی محصولات ویژه و تازه‌ترین‌ها خودکار نشان داده شوند.",
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -77,3 +92,46 @@ class StoreSettings(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1, defaults={"name": "فروشگاه من"})
         return obj
+
+    def notify_phones(self):
+        """The staff numbers that get the new order and new return messages."""
+        return split_mobiles(self.order_notify_phone)[0]
+
+
+class BannerQuerySet(models.QuerySet):
+    def live(self):
+        """Switched on and inside its start and end dates, if it has them."""
+        now = timezone.now()
+        return self.filter(is_active=True).filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now)).filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gt=now)
+        )
+
+
+class Banner(models.Model):
+    """A campaign shown on the site for a while: a picture banner on the home page, or a line of text above every page."""
+
+    class Placement(models.TextChoices):
+        HOME = "home", "بنر تصویری صفحه‌ی اصلی"
+        BAR = "bar", "نوار متنی بالای همه‌ی صفحه‌ها"
+
+    placement = models.CharField("جای نمایش", max_length=8, choices=Placement.choices, default=Placement.HOME)
+    title = models.CharField("تیتر", max_length=80)
+    text = models.CharField("متن", max_length=200, blank=True)
+    image = models.ImageField("تصویر", upload_to="banners/", blank=True)
+    link = models.CharField("لینک", max_length=300, blank=True, help_text="مثلاً /shop?on_sale=true یا /c/manto")
+    button_label = models.CharField("متن دکمه", max_length=30, blank=True)
+    starts_at = models.DateTimeField("شروع", null=True, blank=True)
+    ends_at = models.DateTimeField("پایان", null=True, blank=True)
+    is_active = models.BooleanField("فعال", default=True)
+    sort = models.PositiveSmallIntegerField("ترتیب", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = BannerQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "بنر و کمپین"
+        verbose_name_plural = "بنرها و کمپین‌ها"
+        ordering = ["sort", "-id"]
+
+    def __str__(self):
+        return self.title

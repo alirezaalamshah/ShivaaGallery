@@ -8,11 +8,13 @@ import { PageHead } from "../ui";
 import s from "../panel.module.css";
 import { Register } from "./Register";
 import { SalesDay } from "./SalesDay";
+import { TillClose } from "./TillClose";
 
-/** The shop till: ring up in-store sales, and see the day's sales and cash drawer totals. */
+/** The shop till: ring up in-store sales and returns, see the day's sales, and close the drawer at night. */
 export function Pos() {
   const router = useRouter();
-  const tab = useSearchParams().get("tab") === "sales" ? "sales" : "till";
+  const param = useSearchParams().get("tab");
+  const tab = param === "sales" || param === "close" ? param : "till";
   const { me } = useAuth();
 
   return (
@@ -25,9 +27,12 @@ export function Pos() {
           <button type="button" className={s.tab} aria-pressed={tab === "sales"} onClick={() => router.replace("/panel/pos?tab=sales")}>
             فروش‌های روز
           </button>
+          <button type="button" className={s.tab} aria-pressed={tab === "close"} onClick={() => router.replace("/panel/pos?tab=close")}>
+            بستن صندوق
+          </button>
         </div>
       </PageHead>
-      {tab === "till" ? <Register /> : <SalesDay />}
+      {tab === "till" ? <Register /> : tab === "sales" ? <SalesDay /> : <TillClose />}
     </>
   );
 }

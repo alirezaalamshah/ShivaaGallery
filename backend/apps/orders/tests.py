@@ -43,6 +43,18 @@ class PlaceOrderTests(OrderFixture):
         self.assertEqual(order.items.get().product_name, "مانتو")
         self.assertEqual(order.events.get().status, "awaiting_payment")
 
+    def test_every_staff_number_hears_of_a_new_order(self):
+        from apps.core.models import StoreSettings
+
+        store = StoreSettings.load()
+        store.order_notify_phone = "09166446200, 09355958047"
+        store.save()
+        with mock.patch("apps.orders.services.send_sms") as sms, self.captureOnCommitCallbacks(execute=True):
+            order = place_order(self.user, self.data())
+        staff = [c.args[0] for c in sms.call_args_list if c.args[1] == "admin_order"]
+        self.assertEqual(staff, ["09166446200", "09355958047"])
+        sms.assert_any_call("09121234567", "order_placed", order.number, "1,700,000")
+
     def test_insufficient_stock_rolls_everything_back(self):
         with self.assertRaises(CheckoutError) as ctx:
             place_order(self.user, self.data(lines=[{"variant": self.v.pk, "qty": 5}]))

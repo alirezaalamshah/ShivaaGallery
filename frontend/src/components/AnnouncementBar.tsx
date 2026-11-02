@@ -1,0 +1,35 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import styles from "./AnnouncementBar.module.css";
+
+type Item = { id: number; title: string; text: string; link: string };
+
+const SLOT_MS = 5000;
+
+/** One short line above the header for live campaigns ("free delivery until Friday"); several take turns. */
+export function AnnouncementBar({ items }: { items: Item[] }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (items.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => setI((n) => (n + 1) % items.length), SLOT_MS);
+    return () => clearInterval(t);
+  }, [items.length]);
+  if (!items.length) return null;
+  const a = items[i % items.length];
+  const body = (
+    <>
+      <b>{a.title}</b>
+      {a.text && <span>{a.text}</span>}
+    </>
+  );
+  return (
+    <div className={styles.bar} role="region" aria-label="اطلاعیه‌ها">
+      <p key={a.id} className={styles.item}>
+        {a.link ? <Link href={a.link}>{body}</Link> : body}
+      </p>
+    </div>
+  );
+}

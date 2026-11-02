@@ -128,10 +128,18 @@ class PanelTests(TestCase):
         self.assertEqual(self.client.delete(f"/api/admin/categories/{child.pk}/").status_code, 409)
 
     def test_store_settings_update(self):
-        res = self.client.patch("/api/admin/store/", {"name": "فروشگاه", "color_accent": "#123456", "returns_days": 10}, content_type="application/json")
+        res = self.client.patch("/api/admin/store/", {"name": "فروشگاه", "theme": "night", "returns_days": 10}, content_type="application/json")
         self.assertEqual(res.json()["returns_days"], 10)
-        bad = self.client.patch("/api/admin/store/", {"color_accent": "gold"}, content_type="application/json")
+        self.assertEqual(self.client.get("/api/store/").json()["theme"], "night")
+        bad = self.client.patch("/api/admin/store/", {"theme": "gold"}, content_type="application/json")
         self.assertEqual(bad.status_code, 400)
+
+    def test_several_staff_numbers_are_cleaned_and_checked(self):
+        res = self.client.patch("/api/admin/store/", {"order_notify_phone": "۰۹۱۶۶۴۴۶۲۰۰، 09355958047\n09166446200"}, content_type="application/json")
+        self.assertEqual(res.json()["order_notify_phone"], "09166446200, 09355958047")
+        bad = self.client.patch("/api/admin/store/", {"order_notify_phone": "09166446200, 0916"}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("0916", bad.json()["order_notify_phone"][0])
 
     def test_order_status_flow_and_dashboard(self):
         v = Variant.objects.create(product=Product.objects.create(category=self.cat, name="x", price=500_000), color=self.black, size=self.s)
@@ -197,5 +205,88 @@ class PanelTests(TestCase):
         place_order(self.customer, {"lines": [{"variant": v.pk, "qty": 1}], "receiver_name": "مریم", "city": "اهواز", "address": "خیابان یک پلاک ده", "shipping_method": method.pk})
         dash = self.client.get("/api/admin/dashboard/").json()
         self.assertEqual((dash["sales_today"], dash["orders_unpaid"]), (0, 1))
-        customers = self.client.get("/api/admin/customers/").json()
-        self.assertEqual((customers[0]["phone"], customers[0]["order_count"], customers[0]["spent"]), ("09121234567", 1, 0))
+        customers = self.client.get("/api/admin/customers/").json()["results"]
+        self.assertEqual((customers[0]["phone"], customers[0]["online_orders"], customers[0]["total_spent"]), ("09121234567", 0, 0))
+
+
+@override_settings(MEDIA_ROOT=TMP_MEDIA)
+class CustomerProfileTests(TestCase):
+    def setUp(self):
+        from apps.inventory.services import move_stock
+
+        self.staff = User.objects.create_user("admin", is_staff=True)
+        sizes = SizeSystem.objects.create(name="حروفی")
+        cat = Category.objects.create(name="مانتو", size_system=sizes)
+        product = Product.objects.create(category=cat, name="مانتو", price=500_000)
+        self.v = Variant.objects.create(product=product, color=Color.objects.create(name="مشکی", hex="#111111"), size=Size.objects.create(system=sizes, label="M"))
+        move_stock(self.v, 5, "receive")
+        self.client.force_login(self.staff)
+
+    def test_site_and_shop_purchases_meet_under_one_mobile(self):
+        from apps.orders.services import change_status
+        from apps.pos.services import create_sale
+
+        customer = User.objects.create_user("09121234567")
+        order = place_order(customer, {
+            "lines": [{"variant": self.v.pk, "qty": 1}], "receiver_name": "مریم", "city": "اهواز", "address": "خیابان یک پلاک ده",
+            "shipping_method": ShippingMethod.objects.create(name="پست", fee=0).pk,
+        })
+        change_status(order, Order.Status.PAID)
+        create_sale(self.staff, {"lines": [{"variant": self.v.pk, "qty": 2}], "cash": 1_000_000, "customer_phone": "09121234567"})
+        create_sale(self.staff, {"lines": [{"variant": self.v.pk, "qty": 1}], "cash": 500_000, "customer_phone": "09130000000", "customer_name": "نرگس"})
+
+        rows = {r["phone"]: r for r in self.client.get("/api/admin/customers/?ordering=spent").json()["results"]}
+        self.assertEqual((rows["09121234567"]["total_spent"], rows["09121234567"]["purchases"], rows["09121234567"]["name"]), (1_500_000, 2, "مریم"))
+        self.assertEqual((rows["09130000000"]["has_account"], rows["09130000000"]["name"]), (False, "نرگس"))
+        shop_only = self.client.get("/api/admin/customers/?kind=store&search=نرگس").json()["results"]
+        self.assertEqual([r["phone"] for r in shop_only], ["09130000000"])
+
+        detail = self.client.get("/api/admin/customers/09121234567/").json()
+        stats = detail["stats"]
+        self.assertEqual((stats["online_orders"], stats["store_tickets"], stats["top_sizes"][0]), (1, 1, {"label": "M", "count": 3}))
+        self.assertEqual(detail["order_addresses"], ["اهواز، خیابان یک پلاک ده"])
+
+        res = self.client.patch("/api/admin/customers/09130000000/", {"note": "سایز ۴۰ می‌پوشد", "name": "نرگس احمدی"}, content_type="application/json")
+        self.assertEqual((res.json()["note"], res.json()["name"]), ("سایز ۴۰ می‌پوشد", "نرگس احمدی"))
+        self.assertEqual(self.client.get("/api/admin/customers/09999999999/").status_code, 404)
+        self.assertIn("نرگس احمدی", self.client.get("/api/admin/customers/export/").content.decode("utf-8-sig"))
+
+
+@override_settings(MEDIA_ROOT=TMP_MEDIA)
+class HomeAndBannerTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user("admin", is_staff=True)
+        self.client.force_login(self.staff)
+        sizes = SizeSystem.objects.create(name="حروفی")
+        cat = Category.objects.create(name="مانتو", size_system=sizes)
+        color, size = Color.objects.create(name="مشکی", hex="#111111"), Size.objects.create(system=sizes, label="M")
+        self.products = []
+        for name in ("اول", "دوم", "سوم"):
+            p = Product.objects.create(category=cat, name=name, price=500_000)
+            Variant.objects.create(product=p, color=color, size=size)
+            self.products.append(p)
+
+    def test_admin_picks_the_ring_products_in_order(self):
+        a, b, c = self.products
+        res = self.client.patch("/api/admin/store/", {"hero_products": [c.pk, a.pk, c.pk, 99999]}, content_type="application/json")
+        self.assertEqual(res.json()["hero_products"], [c.pk, a.pk])
+        self.assertEqual([p["name"] for p in self.client.get("/api/home/").json()["hero"]], ["سوم", "اول"])
+        too_many = self.client.patch("/api/admin/store/", {"hero_products": list(range(1, 10))}, content_type="application/json")
+        self.assertEqual(too_many.status_code, 400)
+
+    def test_banners_show_only_while_live(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        res = self.client.post("/api/admin/banners/", {"title": "حراج پاییزه", "link": "/shop?on_sale=true", "button_label": "دیدن حراج"}, content_type="application/json")
+        self.assertEqual(res.status_code, 201, res.content)
+        img = self.client.post(f"/api/admin/banners/{res.json()['id']}/image/", {"image": photo(size=(2000, 1000))})
+        self.assertTrue(img.json()["image"].endswith(".webp"))
+        self.client.post("/api/admin/banners/", {"title": "ارسال رایگان", "placement": "bar"}, content_type="application/json")
+        later = (timezone.now() + timedelta(days=3)).isoformat()
+        self.client.post("/api/admin/banners/", {"title": "بعداً", "starts_at": later}, content_type="application/json")
+        self.assertEqual([b["title"] for b in self.client.get("/api/home/").json()["banners"]], ["حراج پاییزه"])
+        self.assertEqual([a["title"] for a in self.client.get("/api/store/").json()["announcements"]], ["ارسال رایگان"])
+        bad = self.client.post("/api/admin/banners/", {"title": "x", "link": "javascript:alert(1)"}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)

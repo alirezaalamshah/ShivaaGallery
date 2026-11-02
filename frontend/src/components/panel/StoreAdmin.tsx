@@ -238,12 +238,18 @@ export function Discounts() {
 type Settings = {
   name: string; name_latin: string; tagline: string; logo: string | null;
   hero_title: string; hero_text: string; about_title: string; about_text: string;
-  color_ink: string; color_accent: string; color_background: string;
+  theme: "day" | "night";
   phone: string; landline: string; instagram: string; city: string; address: string; currency_label: string;
   returns_enabled: boolean; returns_type: "refund" | "exchange"; returns_days: number; returns_policy: string;
   terms_text: string; privacy_text: string; working_hours: string; enamad_id: string; enamad_code: string;
   order_notify_phone: string; unpaid_hold_hours: number; seller_max_discount: number;
 };
+
+/** Swatches for the theme cards; the full palettes live in globals.css. */
+const THEMES = [
+  { value: "day", label: "روز گرم", hint: "زمینه‌ی شنی و کرم، مشکی و طلایی", ground: "#e5d7c1", surface: "#f2e9da", line: "#cfc1ab", text: "#1a1612", fill: "#14110e", onFill: "#ecd393", accent: "#c9a24c" },
+  { value: "night", label: "شب طلایی", hint: "زمینه‌ی مشکی گرم، متن کرم و طلایی", ground: "#0e0c0a", surface: "#18150f", line: "#352e23", text: "#f1e8d8", fill: "#d4ae5a", onFill: "#14110e", accent: "#c9a24c" },
+] as const;
 
 export function StoreSettings() {
   const toast = useToast();
@@ -260,7 +266,8 @@ export function StoreSettings() {
     try {
       const fd = new FormData();
       for (const [k, v] of Object.entries(data)) {
-        if (k === "logo") continue;
+        // Lists (the home page ring) are edited on their own page.
+        if (k === "logo" || (v !== null && typeof v === "object")) continue;
         fd.append(k, typeof v === "boolean" ? String(v) : String(v ?? ""));
       }
       if (logo) fd.append("logo", logo);
@@ -284,15 +291,6 @@ export function StoreSettings() {
       ) : (
         <input id={`st-${k}`} className={`input ${opts.ltr ? "ltr" : ""}`} value={String(data[k] ?? "")} onChange={(e) => set(k, e.target.value as never)} />
       )}
-    </Field>
-  );
-
-  const color = (k: "color_ink" | "color_accent" | "color_background", label: string, hint: string) => (
-    <Field label={label} hint={hint} error={errors[k]}>
-      <span style={{ display: "flex", gap: 8 }}>
-        <input type="color" aria-label={label} value={data[k]} onChange={(e) => set(k, e.target.value.toUpperCase())} style={{ width: 56, height: 48, border: 0, background: "none", padding: 0 }} />
-        <input id={`st-${k}`} className="input ltr" value={data[k]} onChange={(e) => set(k, e.target.value)} />
-      </span>
     </Field>
   );
 
@@ -338,7 +336,7 @@ export function StoreSettings() {
           </Card>
           <Card title="سفارش‌ها">
             <div className={s.formGrid}>
-              {text("order_notify_phone", "موبایل دریافت خبر سفارش جدید", { ltr: true, hint: "با هر سفارش جدید (یا هر پرداخت موفق) به این شماره پیامک می‌رود" })}
+              {text("order_notify_phone", "موبایل‌های دریافت خبر سفارش جدید", { ltr: true, hint: "با هر سفارش جدید (یا هر پرداخت موفق) و هر درخواست مرجوعی به این شماره‌ها پیامک می‌رود. چند شماره را با ویرگول جدا کنید." })}
               <Field label="نگه‌داشتن سفارش پرداخت‌نشده (ساعت)" hint="تا وقتی پرداخت آنلاین فعال نیست: سفارشی که در این مدت پرداخت نشود خودکار لغو و کالایش به موجودی برمی‌گردد. صفر یعنی هیچ‌وقت." error={errors.unpaid_hold_hours}>
                 <input id="st-hold" className="input ltr num" inputMode="numeric" value={toFaDigits(data.unpaid_hold_hours)} onChange={(e) => set("unpaid_hold_hours", Number(toEnDigits(e.target.value).replace(/\D/g, "")) || 0)} />
               </Field>
@@ -381,18 +379,20 @@ export function StoreSettings() {
           </Card>
         </div>
         <div className={s.stack}>
-          <Card title="رنگ‌های برند">
-            <div style={{ display: "grid", gap: 14 }}>
-              {color("color_ink", "رنگ اصلی", "متن، دکمه‌ها و بخش‌های تیره")}
-              {color("color_accent", "رنگ تأکید", "طلایی لوگو، خطوط و نشانه‌ها")}
-              {color("color_background", "رنگ زمینه", "زمینه‌ی کل سایت")}
-              <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)" }} aria-label="پیش‌نمایش رنگ‌ها">
-                <div style={{ background: data.color_background, padding: 16, display: "grid", gap: 10 }}>
-                  <b style={{ color: data.color_ink, fontFamily: "var(--f-display)", fontSize: 20 }}>{data.name}</b>
-                  <span style={{ display: "inline-flex", alignSelf: "start", padding: "8px 16px", borderRadius: 999, background: data.color_ink, color: data.color_accent, fontWeight: 700, fontSize: 13, width: "fit-content" }}>افزودن به سبد</span>
-                  <span style={{ height: 3, borderRadius: 2, background: data.color_accent, width: "40%" }} />
-                </div>
-              </div>
+          <Card title="تم سایت">
+            <p className="hint" style={{ marginTop: 0 }}>هر تم رنگ‌های کامل و آزموده‌ی خودش را دارد. پنل مدیریت همیشه همین ظاهر روشن می‌ماند.</p>
+            <div className={s.themes} role="radiogroup" aria-label="تم سایت">
+              {THEMES.map((t) => (
+                <button key={t.value} type="button" role="radio" aria-checked={data.theme === t.value} className={s.theme} onClick={() => set("theme", t.value)}>
+                  <span className={s.themePreview} style={{ background: t.ground, color: t.text }} aria-hidden="true">
+                    <b style={{ fontFamily: "var(--f-display)" }}>{data.name}</b>
+                    <span style={{ background: t.fill, color: t.onFill }}>افزودن به سبد</span>
+                    <i style={{ background: t.surface, borderColor: t.line }}><em style={{ background: t.accent }} /></i>
+                  </span>
+                  <span className={s.themeName}>{t.label}</span>
+                  <small>{t.hint}</small>
+                </button>
+              ))}
             </div>
           </Card>
         </div>

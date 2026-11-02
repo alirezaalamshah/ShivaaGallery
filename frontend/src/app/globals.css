@@ -1,9 +1,15 @@
 /*
- * Design system. Three store colors arrive from the API as --ink, --accent and
- * --ground (set inline on <html>); every other color is derived from them, so
- * another store gets a coherent palette from its own three colors.
+ * Design system. The store picks a ready-made theme (data-theme on <html>):
+ * "day" derives its palette from three colors below; "night" sets every color
+ * by hand, because a dark ground cannot be derived the same way. The admin
+ * panel (inside [data-panel]) always keeps "day", so it stays readable.
  * Look: warm sand ground, cream surfaces (never stark white), ink and gold,
  * one deep band for brand moments. Arch windows and a dotted gold ring recur.
+ *
+ * Roles beyond plain text and surfaces:
+ *   --fill / --on-fill  a strong filled control (primary button, chosen size) and its text
+ *   --strong            the strongest line or icon on the ground (chosen borders)
+ *   --shade             what shadows are made of
  */
 :root {
   --ink: #14110e;
@@ -23,6 +29,10 @@
   --on-deep-muted: color-mix(in oklab, var(--ground) 62%, var(--deep));
   --sale: #9e2b3e;
   --sale-soft: color-mix(in oklab, var(--sale) 14%, var(--surface));
+  --fill: var(--ink);
+  --on-fill: var(--accent-hi);
+  --strong: var(--ink);
+  --shade: var(--ink);
 
   --f-body: var(--font-body), Tahoma, "Segoe UI", sans-serif;
   --f-display: var(--font-display), var(--font-body), Tahoma, sans-serif;
@@ -36,6 +46,32 @@
   --wrap: 1240px;
 
   color-scheme: light;
+}
+
+/* Night: warm black and gold. Checked for text contrast on --ground and --surface. */
+html[data-theme="night"]:not(:has([data-panel])) {
+  --ink: #14110e;
+  --accent: #c9a24c;
+  --ground: #0e0c0a;
+  --surface: #18150f;
+  --band: #1f1b15;
+  --line: #352e23;
+  --text: #f1e8d8;
+  --muted: #b8ab93;
+  --faint: #7d725f;
+  --accent-ink: #dcb968;
+  --accent-hi: #ecd393;
+  --deep: #1c1712;
+  --on-deep: #f1e8d8;
+  --on-deep-muted: #a99c85;
+  --sale: #d95b6e;
+  --sale-soft: #3a1c21;
+  --fill: #d4ae5a;
+  --on-fill: #14110e;
+  --strong: #f1e8d8;
+  --shade: #000;
+
+  color-scheme: dark;
 }
 
 *,
@@ -198,8 +234,8 @@ h3 {
 }
 
 .btn-ink {
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
 }
 
 .btn-ink:hover {
@@ -207,7 +243,7 @@ h3 {
 }
 
 .btn-ghost {
-  border: 1px solid color-mix(in oklab, var(--ink) 22%, transparent);
+  border: 1px solid color-mix(in oklab, var(--strong) 22%, transparent);
   color: var(--text);
 }
 
@@ -277,9 +313,9 @@ h3 {
 
 .chip[aria-pressed="true"],
 .chip[aria-current="page"] {
-  background: var(--ink);
-  color: var(--accent-hi);
-  border-color: var(--ink);
+  background: var(--fill);
+  color: var(--on-fill);
+  border-color: var(--fill);
 }
 
 /* section heading */

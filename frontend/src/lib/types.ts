@@ -7,9 +7,8 @@ export type Store = {
   hero_text: string;
   about_title: string;
   about_text: string;
-  color_ink: string;
-  color_accent: string;
-  color_background: string;
+  /** A ready-made color theme; the admin panel always stays on "day". */
+  theme: "day" | "night";
   phone: string;
   landline: string;
   instagram: string;
@@ -24,7 +23,14 @@ export type Store = {
   enamad_code: string;
   /** A payment gateway is connected; otherwise the store arranges payment by phone. */
   online_payment: boolean;
+  /** Live text campaigns for the line above every page. */
+  announcements: { id: number; title: string; text: string; link: string }[];
 };
+
+export type Banner = { id: number; title: string; text: string; image: string | null; link: string; button_label: string };
+
+/** The admin's picks for the home page ring (empty: the site chooses) and the live banners. */
+export type Home = { hero: ProductSummary[]; banners: Banner[] };
 
 export type Color = { id: number; name: string; hex: string };
 export type CategoryBrief = { id: number; name: string; slug: string };

@@ -22,7 +22,7 @@
     radial-gradient(420px 220px at 50% -10%, color-mix(in oklab, var(--accent), transparent 82%), transparent 70%),
     var(--surface);
   border: 1px solid color-mix(in oklab, var(--accent), transparent 65%);
-  box-shadow: 0 30px 60px -40px color-mix(in oklab, var(--ink), transparent 50%);
+  box-shadow: 0 30px 60px -40px color-mix(in oklab, var(--shade), transparent 50%);
   animation: up 0.6s var(--ease-out);
 }
 
@@ -60,14 +60,14 @@
   height: 76px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent), transparent 30%), 0 14px 30px -14px color-mix(in oklab, var(--ink), transparent 40%);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent), transparent 30%), 0 14px 30px -14px color-mix(in oklab, var(--shade), transparent 40%);
 }
 
 .mono {
   display: grid;
   place-items: center;
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
   font-family: var(--f-display);
   font-size: 30px;
 }

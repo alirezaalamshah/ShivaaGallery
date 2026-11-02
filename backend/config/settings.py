@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "apps.orders",
     "apps.payments",
     "apps.pos",
+    "apps.finance",
     "apps.panel",
 ]
 
@@ -138,6 +139,8 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", str(BASE_DIR / "media")))
+# Where `manage.py backup` writes its zips. Outside the web root, next to the project.
+BACKUP_DIR = Path(env("BACKUP_DIR", str(BASE_DIR.parent / "backups")))
 # Shared hosting has no separate web server for uploads, so Django serves them itself.
 SERVE_FILES = env_bool("DJANGO_SERVE_FILES", DEBUG)
 
@@ -163,7 +166,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 # SMS: "console" prints messages to the server log; "melipayamak" sends them.
 SMS_BACKEND = env("SMS_BACKEND", "console")
 SMS_USERNAME = env("SMS_USERNAME", "")
-SMS_PASSWORD = env("SMS_PASSWORD", "")
+SMS_API_KEY = env("SMS_API_KEY", "")  # sent in place of the panel password
 SMS_PATTERN_OTP = env("SMS_PATTERN_OTP", "")
 SMS_PATTERN_ORDER_PLACED = env("SMS_PATTERN_ORDER_PLACED", "")
 SMS_PATTERN_ORDER_STATUS = env("SMS_PATTERN_ORDER_STATUS", "")

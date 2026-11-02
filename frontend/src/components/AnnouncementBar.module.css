@@ -1,0 +1,54 @@
+.bar {
+  background: var(--deep);
+  color: var(--on-deep, #f5ecdc);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.item {
+  height: 36px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 16px;
+  white-space: nowrap;
+  animation: in 0.5s ease-out both;
+}
+
+.item a {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, currentColor, transparent 60%);
+  text-underline-offset: 4px;
+}
+
+.item b {
+  color: var(--accent-hi, #e3c27a);
+  font-weight: 600;
+  flex: none;
+}
+
+.item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    animation: none;
+  }
+}

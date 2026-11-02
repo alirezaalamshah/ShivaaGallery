@@ -29,8 +29,8 @@
 }
 
 .badge.new {
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
 }
 
 .soldout {

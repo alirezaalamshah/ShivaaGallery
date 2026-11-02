@@ -2,7 +2,8 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, Size, SizeSystem, Variant
-from apps.core.models import StoreSettings
+from apps.core.models import Banner, StoreSettings
+from apps.core.validators import split_mobiles
 from apps.inventory.models import StockMovement
 from apps.orders.models import DiscountCode, Order, ReturnRequest, ShippingMethod
 from apps.orders.serializers import OrderSerializer, ReturnSerializer
@@ -124,7 +125,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["id", "name", "slug", "category", "category_name", "price", "sale_count", "is_active", "is_featured", "thumb", "total_stock", "variant_count", "out_count", "created_at"]
+        fields = ["id", "name", "slug", "category", "category_name", "price", "cost_price", "sale_count", "is_active", "is_featured", "thumb", "total_stock", "variant_count", "out_count", "created_at"]
 
     def get_thumb(self, obj):
         first = next(iter(obj.images.all()), None)
@@ -140,7 +141,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["id", "name", "slug", "category", "description", "details", "price", "is_active", "is_featured", "created_at", "images", "variants"]
+        fields = ["id", "name", "slug", "category", "description", "details", "price", "cost_price", "is_active", "is_featured", "created_at", "images", "variants"]
         read_only_fields = ["slug", "created_at"]
 
     def validate_details(self, value):
@@ -209,6 +210,21 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreSettings
         exclude = ["id", "updated_at"]
+
+    def validate_hero_products(self, value):
+        if not isinstance(value, list) or not all(isinstance(i, int) for i in value):
+            raise serializers.ValidationError("فهرست محصولات درست نیست.")
+        ids = list(dict.fromkeys(value))
+        if len(ids) > 8:
+            raise serializers.ValidationError("حداکثر ۸ محصول را می‌شود در اسلایدر گذاشت.")
+        known = set(Product.objects.filter(pk__in=ids).values_list("pk", flat=True))
+        return [i for i in ids if i in known]
+
+    def validate_order_notify_phone(self, value):
+        valid, invalid = split_mobiles(value)
+        if invalid:
+            raise serializers.ValidationError(f"این شماره درست نیست: {'، '.join(invalid)}. هر شماره ۱۱ رقم است و با ۰۹ شروع می‌شود.")
+        return ", ".join(valid)
 
 
 class ShippingMethodSerializer(serializers.ModelSerializer):
@@ -321,3 +337,30 @@ class SellerSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     password = serializers.CharField(min_length=6, max_length=128, required=False, allow_blank=True, trim_whitespace=False)
     is_active = serializers.BooleanField(required=False)
+
+
+class BannerAdminSerializer(serializers.ModelSerializer):
+    placement_label = serializers.CharField(source="get_placement_display", read_only=True)
+    live = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Banner
+        fields = ["id", "placement", "placement_label", "title", "text", "image", "link", "button_label",
+                  "starts_at", "ends_at", "is_active", "sort", "live", "created_at"]
+        read_only_fields = ["image", "created_at"]
+
+    def get_live(self, obj):
+        return Banner.objects.live().filter(pk=obj.pk).exists()
+
+    def validate_link(self, value):
+        value = value.strip()
+        if value and not (value.startswith("/") or value.startswith("https://") or value.startswith("http://")):
+            raise serializers.ValidationError("لینک باید با / (صفحه‌ای از همین سایت) یا https:// شروع شود.")
+        return value
+
+    def validate(self, attrs):
+        starts = attrs.get("starts_at", getattr(self.instance, "starts_at", None))
+        ends = attrs.get("ends_at", getattr(self.instance, "ends_at", None))
+        if starts and ends and ends <= starts:
+            raise serializers.ValidationError({"ends_at": "پایان باید بعد از شروع باشد."})
+        return attrs

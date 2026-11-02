@@ -9,6 +9,8 @@ from rest_framework.exceptions import ValidationError
 # frame the storefront uses, so cards line up and pages stay light.
 PHOTO_SIZE = (1200, 1600)
 LOGO_SIZE = (600, 600)
+# Home page banners: 4:3, which reads well on a phone and sits two or three to a row on a computer.
+BANNER_SIZE = (1440, 1080)
 MAX_BYTES = 20 * 1024 * 1024
 QUALITY = 80
 

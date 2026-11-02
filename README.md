@@ -84,7 +84,9 @@ The shop owner works from a computer, so the panel at `/panel` is designed for d
 ### For the shop owner
 
 - **Dashboard.** Today's online and in-store sales, open orders, returns and reviews waiting, out-of-stock variants, a 7-day sales chart and the latest orders.
-- **Shop till (`/panel/pos`).** Ring up in-store sales from the same stock the site sells: search or scan a product code, build a ticket, give a discount, take cash, card, card transfer or a mix, and print an 80 mm receipt. The day's sales list shows totals per payment method for closing the till. Only the owner can void a sale, which puts the pieces back in stock.
+- **Shop till (`/panel/pos`).** Ring up in-store sales from the same stock the site sells: search or scan a product code, build a ticket, give a discount, take cash, card, card transfer or a mix, and print an 80 mm receipt. Typing the customer's mobile recognises a returning customer.
+- **In-store returns and exchanges.** Find the earlier ticket by its number or the customer's mobile and pick the pieces coming back. They go back on sale at what the customer paid for them (after that ticket's discount). Pieces taken in exchange go on the same ticket, so it settles the difference either way; a negative total is money handed back. Sellers keep to the store's return window and exchange-only policy; the owner may make exceptions.
+- **Closing the till.** At night the system works out the cash that should be in the drawer (the morning's cash, plus the day's net cash, minus expenses paid from the drawer). The seller counts it, and the difference is recorded. What stays in the drawer starts the next day. Only the owner can void a sale.
 - **Roles.** Besides the owner (admin), sellers sign in with their own username and password and see only the till and their own sales, with a discount cap set by the owner. Sellers are added and disabled under "Users and access".
 - **Orders.** Filter by status and date range, export to Excel (CSV), search by number, phone or name, and move each order through its lifecycle. Every status change sends the customer an SMS. The owner can add a parcel tracking code and private notes and see the full status history. Cancelling an order returns its items to stock automatically.
 - **Products.** Photos are dragged in and cropped to the site's 3:4 frame in the browser, then stored on the server as WebP at a fixed 1200×1600. Each photo can be tied to a color. Each color × size variant can be marked available or unavailable, with its own price and sale price. A price can be applied to everything at once, or to one whole color or size.
@@ -92,7 +94,10 @@ The shop owner works from a computer, so the panel at `/panel` is designed for d
 - **Colors and sizes.** Named color swatches and size systems (letter sizes, numeric sizes, one-size).
 - **Shipping methods** with a fixed fee per method, optionally limited to a single city (for example, local courier only within Dezful).
 - **Discount codes.** Percentage (with an optional cap) or fixed amount, with a minimum order, start and end dates and a usage limit.
-- **Store settings.** Name, logo, slogan, three brand colors with a live preview, home page text, contact details and return policy. Changes appear on the site right away.
+- **Store settings.** Name, logo, slogan, a ready-made theme (warm day or golden night), home page text, contact details and return policy. Changes appear on the site right away. The admin panel always keeps its own light theme so it stays readable.
+- **Customers.** One profile per mobile number, joining site orders and shop purchases: totals, favorite sizes, colors and categories, saved and used addresses, returns, reviews, favorites, a private note, and an Excel export.
+- **Profit and expenses.** Each product has a purchase price, saved on every sold line at the time of sale. The report shows a profit and loss statement (sales, returns, cost of goods, expenses by category), daily sales, best sellers, slow movers and sales per category and seller. Running costs are entered under "Expenses".
+- **Home page and banners.** The owner picks and orders the products on the turning ring, and runs campaigns: picture banners on the home page and a text line above every page, each with optional start and end times.
 
 ## Tech stack
 
@@ -182,8 +187,12 @@ cd frontend && npm run dev
 | `DB_ENGINE` | `sqlite` | `sqlite` or `postgresql`. PostgreSQL also needs `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` and the `psycopg` driver. |
 | `MEDIA_ROOT` | `backend/media` | Where uploaded photos are stored. |
 | `SMS_BACKEND` | `console` | `console` prints messages, `melipayamak` sends them. |
-| `SMS_USERNAME`, `SMS_PASSWORD` | none | Melipayamak account. |
-| `SMS_PATTERN_OTP`, `SMS_PATTERN_ORDER_PLACED`, `SMS_PATTERN_ORDER_STATUS` | none | Approved Melipayamak pattern IDs, one for each message type. |
+| `SMS_USERNAME`, `SMS_API_KEY` | none | Melipayamak panel username and API key. The key is sent in place of the password. |
+| `SMS_PATTERN_*` | none | Approved Melipayamak pattern codes (`bodyId`), one for each of the seven message types. The shared service line sends only approved patterns, never free text. Suggested texts are in `deploy/sms-patterns.md`. |
+| `PAYMENT_GATEWAY` | `none` | `none`, `fake` (local testing only) or `zarinpal`. |
+| `ZARINPAL_MERCHANT_ID`, `ZARINPAL_SANDBOX` | none, `false` | Zarinpal merchant and test mode. |
+| `SITE_URL` | `http://localhost:3100` | The storefront's address. The payment gateway sends customers back here. |
+| `BACKUP_DIR` | `backups/` next to `backend/` | Where `manage.py backup` writes its zips. |
 | `THROTTLE_AUTH`, `THROTTLE_TRACK` | `20/hour`, `30/hour` | Rate limits for sign-in codes and order tracking. |
 
 ### Frontend: `frontend/.env.local`
@@ -248,7 +257,7 @@ All endpoints are under `/api/`.
 - **Stock is a ledger.** A variant's stock is the sum of an append-only list of movements: sales, cancellations and manual changes. Every change goes through one function, which locks the variant row, so two shoppers can't buy the last item at the same time. A database constraint also stops stock from going negative. The panel currently shows only *available* and *unavailable*. The full ledger is still recorded and can be shown again.
 - **Prices are whole tomans.** Each variant can have its own price and sale price. A sale price must be lower than the regular price, and product cards show the cheapest variant.
 - **Orders keep a snapshot.** Each order stores the address, prices, product names and photos as they were at the time of purchase, so later edits to a product don't change past orders. Status changes follow a fixed set of allowed transitions and are recorded in the order's history.
-- **One store, many possible stores.** All store-specific data lives in one settings model. The frontend reads the three brand colors from the API and builds the rest of the palette from them with CSS `color-mix`, so another store gets a matching theme from its own colors.
+- **One store, many possible stores.** All store-specific data lives in one settings model. The store picks one of a few ready-made themes; each sets every color, checked for contrast, so no combination of picked colors can make the site unreadable. More themes are added in `globals.css`.
 - **Readable Persian URLs.** Product and category slugs are in Persian, for example `/p/مانتو-مجلسی-شب`.
 - **Fonts are bundled.** Google Fonts isn't reliable from inside Iran, so the fonts ship with the project and are split by script. Persian pages download only the Persian part.
 
@@ -275,10 +284,11 @@ The backend suite covers the catalog, filters, checkout, discounts, stock, order
 
 ## Roadmap
 
-- [ ] Online payment gateway. The payment step is separate, so a gateway can be added without changing the rest of the checkout.
-- [ ] Live SMS through Melipayamak. The integration is written and only needs an account and approved patterns.
-- [ ] Wishlist and "notify me when it's back in stock".
-- [ ] Customer reviews and ratings from verified buyers, with admin approval.
+- [x] Online payment through Zarinpal. Waiting for Zarinpal to approve the merchant.
+- [x] Wishlist and "notify me when it's back in stock".
+- [x] Customer reviews and ratings from verified buyers, with admin approval.
+- [x] Daily database backups (`manage.py backup`).
+- [x] Live SMS through Melipayamak. The API key is set and the seven patterns are approved.
 - [ ] Production server and domain.
 
 ## Credits

@@ -3,9 +3,12 @@ from collections import defaultdict
 from django.db.models import Count, Exists, OuterRef, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+
+from apps.core.models import Banner, StoreSettings
+from apps.core.serializers import BannerSerializer
 
 from .filters import ProductFilter
 from .models import Category, Color, Product, ProductImage, SizeSystem, Variant
@@ -101,3 +104,18 @@ class FacetViewSet(viewsets.ViewSet):
                 for s in systems
             ],
         })
+
+
+@api_view(["GET"])
+def home(request):
+    """
+    What the home page shows besides the usual lists: the products the admin picked for the
+    turning ring (empty means "featured and newest", chosen by the site), and the live banners.
+    """
+    ids = [i for i in StoreSettings.load().hero_products if isinstance(i, int)]
+    by_id = {p.id: p for p in ProductViewSet().get_queryset_for_lists().filter(pk__in=ids)} if ids else {}
+    ctx = {"request": request}
+    return Response({
+        "hero": ProductListSerializer([by_id[i] for i in ids if i in by_id], many=True, context=ctx).data,
+        "banners": BannerSerializer(Banner.objects.live().filter(placement=Banner.Placement.HOME), many=True, context=ctx).data,
+    })

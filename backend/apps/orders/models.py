@@ -160,6 +160,8 @@ class OrderItem(models.Model):
     sku = models.CharField(max_length=40)
     image = models.CharField(max_length=300, blank=True)
     unit_price = models.PositiveBigIntegerField("قیمت واحد")
+    # The purchase price at the time of sale, for profit reports; empty if it was not entered yet.
+    unit_cost = models.PositiveBigIntegerField("قیمت خرید واحد", null=True, blank=True)
     qty = models.PositiveSmallIntegerField("تعداد")
 
     class Meta:

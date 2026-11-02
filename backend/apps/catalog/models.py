@@ -150,6 +150,10 @@ class Product(models.Model):
     description = models.TextField("توضیحات", blank=True)
     details = models.JSONField("مشخصات", default=list, blank=True, help_text='فهرست مشخصات، مثلاً ["جنس: کتان", "قد: ۱۱۰ سانتی‌متر"]')
     price = models.PositiveBigIntegerField("قیمت", help_text="قیمت رنگ‌ها و سایزهایی که قیمت جدا ندارند")
+    cost_price = models.PositiveBigIntegerField(
+        "قیمت خرید", null=True, blank=True,
+        help_text="فقط برای حساب سود؛ مشتری آن را نمی‌بیند. هنگام هر فروش در همان فروش ثبت می‌شود.",
+    )
     is_active = models.BooleanField("نمایش در سایت", default=True)
     is_featured = models.BooleanField("ویژه", default=False)
     created_at = models.DateTimeField("تاریخ ثبت", auto_now_add=True)

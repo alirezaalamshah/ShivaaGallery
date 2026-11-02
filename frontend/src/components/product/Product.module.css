@@ -191,9 +191,9 @@
 }
 
 .sz[aria-checked="true"] {
-  background: var(--ink);
-  color: var(--accent-hi);
-  border-color: var(--ink);
+  background: var(--fill);
+  color: var(--on-fill);
+  border-color: var(--fill);
 }
 
 .sz.out {
@@ -291,8 +291,8 @@
   width: 100%;
   height: 56px;
   border-radius: 14px;
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
   font-weight: 700;
   font-size: 15px;
   display: flex;

@@ -54,7 +54,7 @@
 }
 
 .filled {
-  border-color: var(--ink);
+  border-color: var(--strong);
   transform: translateY(-3px);
 }
 

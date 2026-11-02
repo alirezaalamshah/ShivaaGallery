@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import type { CategoryNode, Facets, Page, ProductDetail, ProductSummary, Store } from "./types";
+import type { CategoryNode, Facets, Home, Page, ProductDetail, ProductSummary, Store } from "./types";
 
 /** Server components call the API directly; the browser uses the public URL. */
 export const API_URL =
@@ -28,6 +28,7 @@ async function get<T>(path: string, revalidate = 60): Promise<T> {
 
 export const api = {
   store: () => get<Store>("/store/", 300),
+  home: () => get<Home>("/home/"),
   categories: () => get<CategoryNode[]>("/categories/", 300),
   facets: () => get<Facets>("/facets/", 300),
   products: (params: Query = {}) => get<Page<ProductSummary>>(`/products/${toQuery(params)}`),

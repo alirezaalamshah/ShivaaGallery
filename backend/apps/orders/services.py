@@ -84,12 +84,11 @@ def payment_deadline(now=None):
 
 
 def notify_new_order(order):
-    """Tell the customer the order is in, and the store that it has a new order."""
+    """Tell the customer the order is in, and the store staff that there is a new order."""
     total = f"{order.total:,}"
     send_sms(order.phone, "order_placed", order.number, total)
-    store_phone = StoreSettings.load().order_notify_phone
-    if store_phone:
-        send_sms(store_phone, "admin_order", order.number, total)
+    for phone in StoreSettings.load().notify_phones():
+        send_sms(phone, "admin_order", order.number, total)
 
 
 
@@ -171,7 +170,7 @@ def place_order(user, data):
         OrderItem.objects.create(
             order=order, variant=v, product_slug=v.product.slug, product_name=v.product.name,
             color_name=v.color.name, size_label=v.size.label, sku=v.sku,
-            image=first_image.image.url if first_image else "", unit_price=v.price, qty=qty,
+            image=first_image.image.url if first_image else "", unit_price=v.price, unit_cost=v.product.cost_price, qty=qty,
         )
         try:
             move_stock(v, -qty, StockMovement.Reason.SALE, reference=order.number, user=user)
@@ -215,11 +214,25 @@ def change_status(order, new_status, by=None, note="", tracking_code=None, notif
     return order
 
 
+# The approved pattern reads "وضعیت سفارش {0}: {1} میباشد", so each status needs a form
+# that fits before "میباشد" ("لغو شد میباشد" would not).
+ORDER_STATUS_SMS = {
+    "awaiting_payment": "در انتظار پرداخت",
+    "paid": "پرداخت‌شده",
+    "processing": "در حال آماده‌سازی",
+    "delivered": "تحویل‌شده",
+    "cancelled": "لغوشده",
+}
+
+# The approved pattern reads "درخواست مرجوعی سفارش {0}: {1} شد."
+RETURN_STATUS_SMS = {"new": "ثبت", "approved": "تأیید", "rejected": "رد", "completed": "انجام"}
+
+
 def notify_status(order):
     if order.status == Order.Status.SHIPPED:
         send_sms(order.phone, "order_shipped", order.number, order.shipping_name, order.tracking_code)
     else:
-        send_sms(order.phone, "order_status", order.number, order.get_status_display())
+        send_sms(order.phone, "order_status", order.number, ORDER_STATUS_SMS[order.status])
 
 
 @transaction.atomic
@@ -286,9 +299,8 @@ def request_return(order, data):
         raise CheckoutError("کالاها و تعدادشان را درست انتخاب کنید.", field="items")
     req = ReturnRequest.objects.create(order=order, reason=data["reason"], wants=data["wants"], text=data.get("text", "").strip())
     ReturnItem.objects.bulk_create([ReturnItem(request=req, order_item=item, qty=qty) for item, qty in chosen])
-    store_phone = StoreSettings.load().order_notify_phone
-    if store_phone:
-        transaction.on_commit(lambda: send_sms(store_phone, "return_status", order.number, "درخواست مرجوعی جدید"))
+    for phone in StoreSettings.load().notify_phones():
+        transaction.on_commit(lambda phone=phone: send_sms(phone, "return_status", order.number, RETURN_STATUS_SMS["new"]))
     return req
 
 
@@ -308,6 +320,6 @@ def change_return_status(req, new_status, by=None, admin_note=None):
                 if ri.order_item.variant_id:
                     move_stock(ri.order_item.variant, ri.qty, StockMovement.Reason.RETURN, reference=req.order.number, user=by)
         req.status = new_status
-        transaction.on_commit(lambda: send_sms(req.order.phone, "return_status", req.order.number, req.get_status_display()))
+        transaction.on_commit(lambda: send_sms(req.order.phone, "return_status", req.order.number, RETURN_STATUS_SMS[req.status]))
     req.save()
     return req

@@ -85,3 +85,33 @@ class StaffLoginTests(TestCase):
         client.get("/api/auth/csrf/")
         token = client.cookies["csrftoken"].value
         self.assertEqual(client.post("/api/auth/logout/", HTTP_X_CSRFTOKEN=token).status_code, 200)
+
+
+@override_settings(SMS_BACKEND="melipayamak", SMS_USERNAME="9123456789", SMS_API_KEY="key-123", SMS_PATTERN_ORDER_SHIPPED="4321", SMS_PATTERN_OTP="")
+class MelipayamakTests(TestCase):
+    def test_sends_pattern_code_and_args_with_api_key_as_password(self):
+        from urllib.parse import parse_qs
+
+        from .sms import send_sms
+
+        with mock.patch("apps.accounts.sms.urllib.request.urlopen") as urlopen, self.assertLogs("sms", "INFO") as logs:
+            urlopen.return_value.__enter__.return_value.read.return_value = b'{"Value":"6271394011236751234","RetStatus":1,"StrRetStatus":"Ok"}'
+            send_sms("09121234567", "order_shipped", "1405001", "پست", "")
+        sent = {k: v[0] for k, v in parse_qs(urlopen.call_args.args[0].data.decode()).items()}
+        # An empty variable is sent as "-", which Melipayamak accepts.
+        self.assertEqual(sent, {"username": "9123456789", "password": "key-123", "to": "09121234567", "bodyId": "4321", "text": "1405001;پست;-"})
+        self.assertIn("sent", logs.output[0])
+
+    def test_error_code_is_logged(self):
+        from .sms import send_sms
+
+        with mock.patch("apps.accounts.sms.urllib.request.urlopen") as urlopen, self.assertLogs("sms", "ERROR"):
+            urlopen.return_value.__enter__.return_value.read.return_value = b'{"Value":"0","RetStatus":0,"StrRetStatus":"InvalidUserPass"}'
+            send_sms("09121234567", "order_shipped", "1405001", "پست", "1")
+
+    def test_missing_pattern_sends_nothing(self):
+        from .sms import send_sms
+
+        with mock.patch("apps.accounts.sms.urllib.request.urlopen") as urlopen, self.assertLogs("sms", "ERROR"):
+            send_sms("09121234567", "otp", "12345")
+        urlopen.assert_not_called()

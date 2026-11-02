@@ -90,7 +90,7 @@
 
 .cat:hover .arch {
   transform: translateY(-6px);
-  box-shadow: 0 22px 36px -24px color-mix(in oklab, var(--ink), transparent 45%);
+  box-shadow: 0 22px 36px -24px color-mix(in oklab, var(--shade), transparent 45%);
 }
 
 .cat:hover .arch::after {

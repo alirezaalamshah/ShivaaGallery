@@ -49,3 +49,22 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.receiver_name} · {self.city}"
+
+
+class CustomerNote(models.Model):
+    """
+    What the shop knows about a customer beyond their orders, keyed by mobile number so it also
+    covers shop customers who never made an account. Only the admin sees it.
+    """
+
+    phone = models.CharField("موبایل", max_length=11, unique=True, validators=[iran_mobile])
+    name = models.CharField("نام", max_length=80, blank=True, help_text="برای مشتری حضوری که نامش جای دیگری ثبت نشده")
+    note = models.TextField("یادداشت مدیر", max_length=2000, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "یادداشت مشتری"
+        verbose_name_plural = "یادداشت‌های مشتری"
+
+    def __str__(self):
+        return self.phone

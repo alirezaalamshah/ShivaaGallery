@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.accounts.roles import seller_group
 from apps.catalog.models import Category, Color, Product, Size, SizeSystem, Variant
@@ -7,7 +10,7 @@ from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
 
-from .models import Sale
+from .models import Sale, TillClose
 
 User = get_user_model()
 
@@ -151,4 +154,112 @@ class TeamTests(TillFixture):
     def test_username_must_be_free(self):
         self.client.force_login(self.admin)
         res = self.client.post("/api/admin/team/", {"username": "SARA", "password": "pass-123"}, content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+
+
+class ReturnAndExchangeTests(TillFixture):
+    def first_sale(self, discount=0):
+        res = self.sell(discount=discount, cash=2_800_000 - discount)
+        self.assertEqual(res.status_code, 201, res.content)
+        return Sale.objects.get(pk=res.json()["id"])
+
+    def ticket(self, user=None, **body):
+        self.client.force_login(user or self.seller)
+        return self.client.post("/api/admin/pos/sales/", body, content_type="application/json")
+
+    def test_exchange_takes_the_piece_back_at_what_was_paid_and_settles_the_difference(self):
+        sale = self.first_sale(discount=280_000)  # 10% off: one M cost the customer 900,000
+        m_line = sale.items.get(variant=self.m)
+        move_stock(self.l, 1, StockMovement.Reason.RECEIVE)
+        res = self.ticket(lines=[{"variant": self.l.pk, "qty": 1}], returns=[{"item": m_line.pk, "qty": 1}], cash=-100_000)
+        self.assertEqual(res.status_code, 201, res.content)
+        x = res.json()
+        self.assertEqual((x["subtotal"], x["returned_total"], x["total"], x["cash"]), (800_000, 900_000, -100_000, -100_000))
+        self.assertEqual(x["returns"][0]["from_sale"], sale.number)
+        self.m.refresh_from_db()
+        self.l.refresh_from_db()
+        self.assertEqual((self.m.stock, self.l.stock), (2, 0))
+
+    def test_cannot_take_back_more_than_was_sold(self):
+        line = self.first_sale().items.get(variant=self.m)
+        self.assertEqual(self.ticket(returns=[{"item": line.pk, "qty": 3}], cash=-3_000_000).status_code, 409)
+        self.assertEqual(self.ticket(returns=[{"item": line.pk, "qty": 2}], cash=-2_000_000).status_code, 201)
+        self.assertEqual(self.ticket(returns=[{"item": line.pk, "qty": 1}], cash=-1_000_000).status_code, 409)
+
+    def test_refund_must_be_paid_out_not_in(self):
+        line = self.first_sale().items.get(variant=self.m)
+        res = self.ticket(returns=[{"item": line.pk, "qty": 1}], cash=1_000_000)
+        self.assertEqual(res.status_code, 409)
+
+    def test_seller_respects_the_return_window_and_exchange_only_policy_but_admin_does_not(self):
+        sale = self.first_sale()
+        line = sale.items.get(variant=self.m)
+        Sale.objects.filter(pk=sale.pk).update(created_at=timezone.now() - timedelta(days=30))
+        self.assertIn("مهلت", self.ticket(returns=[{"item": line.pk, "qty": 1}], cash=-1_000_000).json()["detail"])
+        Sale.objects.filter(pk=sale.pk).update(created_at=timezone.now())
+        store = StoreSettings.load()
+        store.returns_type = StoreSettings.ReturnType.EXCHANGE
+        store.save()
+        self.assertIn("فقط تعویض", self.ticket(returns=[{"item": line.pk, "qty": 1}], card=-1_000_000).json()["detail"])
+        self.assertEqual(self.ticket(user=self.admin, returns=[{"item": line.pk, "qty": 1}], card=-1_000_000).status_code, 201)
+
+    def test_voiding_follows_returns(self):
+        sale = self.first_sale()
+        line = sale.items.get(variant=self.m)
+        back = self.ticket(returns=[{"item": line.pk, "qty": 1}], cash=-1_000_000).json()
+        self.client.force_login(self.admin)
+        res = self.client.post(f"/api/admin/pos/sales/{sale.pk}/void/", {}, content_type="application/json")
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(self.client.post(f"/api/admin/pos/sales/{back['id']}/void/", {}, content_type="application/json").status_code, 200)
+        self.m.refresh_from_db()
+        self.assertEqual(self.m.stock, 1)  # the returned piece left stock again
+        self.assertEqual(self.client.post(f"/api/admin/pos/sales/{sale.pk}/void/", {}, content_type="application/json").status_code, 200)
+
+    def test_lookup_finds_tickets_by_number_or_phone_with_what_is_left(self):
+        sale = self.first_sale()
+        Sale.objects.filter(pk=sale.pk).update(customer_phone="09125550000")
+        self.client.force_login(self.seller)
+        rows = self.client.get("/api/admin/pos/returnable/?q=۰۹۱۲۵۵۵۰۰۰۰").json()
+        self.assertEqual(rows[0]["number"], sale.number)
+        self.assertEqual({i["returnable"] for i in rows[0]["items"]}, {2, 1})
+        self.assertEqual(self.client.get(f"/api/admin/pos/returnable/?q={sale.number}").json()[0]["id"], sale.pk)
+
+    def test_day_totals_count_money_handed_back(self):
+        line = self.first_sale().items.get(variant=self.m)
+        self.ticket(returns=[{"item": line.pk, "qty": 1}], cash=-1_000_000)
+        t = self.client.get("/api/admin/pos/sales/").json()["totals"]
+        self.assertEqual((t["cash"], t["returned"], t["pieces_returned"]), (1_800_000, 1_000_000, 1))
+
+
+class CustomerLookupTests(TillFixture):
+    def test_known_customer_is_recognised(self):
+        self.sell(customer_phone="09125550000", customer_name="نرگس")
+        self.client.force_login(self.seller)
+        res = self.client.get("/api/admin/pos/customer/?phone=09125550000").json()
+        self.assertEqual((res["found"], res["name"], res["purchases"]), (True, "نرگس", 1))
+        self.assertFalse(self.client.get("/api/admin/pos/customer/?phone=09129999999").json()["found"])
+
+
+class TillCloseTests(TillFixture):
+    def test_expected_cash_and_next_days_opening(self):
+        from apps.finance.models import Expense
+
+        self.sell()  # 2,800,000 cash
+        Expense.objects.create(amount=300_000, from_till=True, category="other")
+        Expense.objects.create(amount=5_000_000, from_till=False, category="rent")
+        self.client.force_login(self.seller)
+        drawer = self.client.get("/api/admin/pos/close/").json()["drawer"]
+        self.assertEqual((drawer["opening_cash"], drawer["cash_sales"], drawer["cash_expenses"], drawer["expected_cash"]), (0, 2_800_000, 300_000, 2_500_000))
+        res = self.client.post("/api/admin/pos/close/", {"counted_cash": 2_450_000, "left_in_drawer": 500_000}, content_type="application/json")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["difference"], -50_000)
+        # Closing again the same day replaces the count.
+        self.client.post("/api/admin/pos/close/", {"counted_cash": 2_500_000, "left_in_drawer": 500_000}, content_type="application/json")
+        self.assertEqual(TillClose.objects.get().difference, 0)
+        TillClose.objects.update(day=timezone.localdate() - timedelta(days=1))
+        self.assertEqual(self.client.get("/api/admin/pos/close/").json()["drawer"]["opening_cash"], 500_000)
+
+    def test_cannot_keep_more_than_was_counted(self):
+        self.client.force_login(self.seller)
+        res = self.client.post("/api/admin/pos/close/", {"counted_cash": 100, "left_in_drawer": 200}, content_type="application/json")
         self.assertEqual(res.status_code, 400)

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import type { CSSProperties } from "react";
 
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { BottomNav } from "@/components/BottomNav";
@@ -9,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { NavProgress } from "@/components/NavProgress";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { StoreProvider } from "@/components/StoreProvider";
@@ -29,26 +29,20 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export async function generateViewport(): Promise<Viewport> {
   const store = await api.store();
-  return { themeColor: store.color_background, viewportFit: "cover", width: "device-width", initialScale: 1 };
+  return { themeColor: store.theme === "night" ? "#0e0c0a" : "#e5d7c1", viewportFit: "cover", width: "device-width", initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [store, categories] = await Promise.all([api.store(), api.categories()]);
-  const theme = {
-    "--ink": store.color_ink,
-    "--accent": store.color_accent,
-    "--ground": store.color_background,
-  } as CSSProperties;
-
   return (
-    <html lang="fa" dir="rtl" style={theme}>
+    <html lang="fa" dir="rtl" data-theme={store.theme}>
       <body>
         <StoreProvider store={store}>
           <AuthProvider>
           <CartProvider>
             <ToastProvider>
               <SiteChrome
-                header={<Header store={store} categories={categories} />}
+                header={<><AnnouncementBar items={store.announcements ?? []} /><Header store={store} categories={categories} /></>}
                 footer={<Footer store={store} categories={categories} />}
                 nav={<BottomNav />}
               >

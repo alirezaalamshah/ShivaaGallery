@@ -46,10 +46,10 @@ export function SalesDay() {
           <div className={s.stat}>
             <span>جمع فروش {admin ? "صندوق" : "شما"}</span>
             <b className="num">{faNum(t.total)}</b>
-            <small>{faNum(t.count)} فاکتور · {faNum(t.pieces)} عدد{t.discount ? ` · ${faNum(t.discount)} تخفیف` : ""}</small>
+            <small>{faNum(t.count)} فاکتور · {faNum(t.pieces)} عدد{t.discount ? ` · ${faNum(t.discount)} تخفیف` : ""}{t.returned ? ` · ${faNum(t.pieces_returned)} عدد پس‌گرفته (${faNum(t.returned)})` : ""}</small>
           </div>
           <div className={s.stat}>
-            <span>نقد (باید در صندوق باشد)</span>
+            <span>نقد خالص (پس‌دادنی‌ها کم شده)</span>
             <b className="num">{faNum(t.cash)}</b>
             <small>{store.currency_label}</small>
           </div>
@@ -79,8 +79,8 @@ export function SalesDay() {
                     <td className="num" dir="ltr">#{toFaDigits(x.number)}</td>
                     <td className="num">{new Date(x.created_at).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}</td>
                     {admin && <td>{x.seller}</td>}
-                    <td className="num">{faNum(x.item_count ?? 0)}</td>
-                    <td className="num">{faNum(x.total)}</td>
+                    <td className="num">{faNum(x.item_count ?? 0)}{x.returned_count ? ` · ${faNum(x.returned_count)} پس‌گرفته` : ""}</td>
+                    <td className={`num ${x.total < 0 ? "err" : ""}`}>{faNum(x.total)}</td>
                     <td className="muted">{payText(x)}</td>
                     <td>{x.customer_name || (x.customer_phone ? toFaDigits(x.customer_phone) : "—")}</td>
                     <td>{x.status === "voided" ? <span className="pill" data-status="cancelled">باطل شده</span> : <span className="pill" data-status="delivered">ثبت شده</span>}</td>
@@ -147,10 +147,24 @@ function SaleModal({ sale, admin, onClose, onVoided }: { sale: Sale; admin: bool
           </li>
         ))}
       </ul>
+      {!!sale.returns?.length && (
+        <>
+          <b>پس گرفته شد</b>
+          <ul className={p.receiptLines}>
+            {sale.returns.map((r, n) => (
+              <li key={n}>
+                <span>{r.product_name}، {r.color_name}، سایز <span className="num">{r.size_label}</span> × <span className="num">{faNum(r.qty)}</span> · از فاکتور <span className="num" dir="ltr">{toFaDigits(r.from_sale)}</span></span>
+                <b className="num">− {faNum(r.line_total)}</b>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <dl className={s.kv}>
-        <dt>جمع کالاها</dt><dd className="num">{faNum(sale.subtotal)}</dd>
+        {sale.subtotal > 0 && <><dt>جمع کالاها</dt><dd className="num">{faNum(sale.subtotal)}</dd></>}
         {sale.discount > 0 && <><dt>تخفیف</dt><dd className="num">− {faNum(sale.discount)}</dd></>}
-        <dt>مبلغ کل</dt><dd className="num"><b>{faNum(sale.total)} {store.currency_label}</b></dd>
+        {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">− {faNum(sale.returned_total)}</dd></>}
+        <dt>{sale.total < 0 ? "پرداخت به مشتری" : "مبلغ کل"}</dt><dd className="num"><b>{faNum(Math.abs(sale.total))} {store.currency_label}</b></dd>
         <dt>پرداخت</dt><dd>{payText(sale)}</dd>
       </dl>
       {sale.status === "voided" && (
@@ -158,7 +172,7 @@ function SaleModal({ sale, admin, onClose, onVoided }: { sale: Sale; admin: bool
       )}
       {voiding && (
         <div className={s.stack} style={{ marginTop: 12 }}>
-          <p className="hint">کالاهای این فاکتور به موجودی برمی‌گردند و مبلغش از فروش روز کم می‌شود. پول را جداگانه به مشتری برگردانید.</p>
+          <p className="hint">کالاهای این فاکتور به موجودی برمی‌گردند (و کالاهایی که در آن پس گرفته شده دوباره از موجودی کم می‌شوند) و مبلغش از فروش روز کم می‌شود. پول را جداگانه با مشتری حساب کنید.</p>
           <input className="input" placeholder="دلیل ابطال (مثلاً: مشتری همه را پس آورد)" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
           <div className={s.actions}>
             <button type="button" className={`${s.btn} ${s.btnDanger}`} disabled={busy} onClick={doVoid}>بله، باطل کن</button>

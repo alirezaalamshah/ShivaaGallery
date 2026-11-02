@@ -9,6 +9,7 @@ router.register("categories", views.CategoryViewSet, basename="category")
 router.register("facets", views.FacetViewSet, basename="facet")
 
 urlpatterns = [
+    path("home/", views.home),
     path("favorites/", customer_views.favorites),
     path("favorites/<int:product_id>/", customer_views.favorite_remove),
     path("stock-alerts/", customer_views.stock_alert),

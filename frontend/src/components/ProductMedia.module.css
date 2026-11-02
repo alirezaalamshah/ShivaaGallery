@@ -21,12 +21,12 @@
 /* Arch window with a dotted gold ring, echoing the logo. */
 .arch {
   position: relative;
-  color: color-mix(in oklab, var(--accent), var(--ink) 18%);
+  color: color-mix(in oklab, var(--accent), var(--strong) 18%);
   width: 58%;
   aspect-ratio: 3 / 4;
   border-radius: 999px 999px 14px 14px;
   background: linear-gradient(170deg, color-mix(in oklab, currentColor 82%, #fff), currentColor);
-  box-shadow: 0 24px 40px -26px color-mix(in oklab, var(--ink), transparent 40%);
+  box-shadow: 0 24px 40px -26px color-mix(in oklab, var(--shade), transparent 40%);
   display: grid;
   place-items: center;
   transition: transform 0.9s var(--ease-out);

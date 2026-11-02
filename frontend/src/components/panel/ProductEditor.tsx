@@ -18,9 +18,9 @@ import type { AdminCategory, AdminColor, AdminProduct, AdminSizeSystem } from ".
 import { Card, ConfirmButton, Field, MoneyInput, PageHead, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
-type Basic = { name: string; category: number | null; description: string; details: string; price: number | null; is_active: boolean; is_featured: boolean };
+type Basic = { name: string; category: number | null; description: string; details: string; price: number | null; cost_price: number | null; is_active: boolean; is_featured: boolean };
 
-const EMPTY: Basic = { name: "", category: null, description: "", details: "", price: null, is_active: true, is_featured: false };
+const EMPTY: Basic = { name: "", category: null, description: "", details: "", price: null, cost_price: null, is_active: true, is_featured: false };
 const key = cellKey;
 const MAX_STOCK = 999;
 // An earlier panel stored "available" as 9999 instead of a count.
@@ -60,7 +60,7 @@ export function ProductEditor({ id }: { id?: string }) {
     loaded.current = true;
     setForm({
       name: product.name, category: product.category, description: product.description, details: product.details.join("\n"),
-      price: product.price, is_active: product.is_active, is_featured: product.is_featured,
+      price: product.price, cost_price: product.cost_price, is_active: product.is_active, is_featured: product.is_featured,
     });
     const live = product.variants.filter((v) => v.is_active);
     setPicked({ colors: [...new Set(live.map((v) => v.color))], sizes: [...new Set(live.map((v) => v.size))] });
@@ -421,6 +421,14 @@ export function ProductEditor({ id }: { id?: string }) {
               <Field label="قیمت (تومان)" error={errors.price} hint="قیمت جدا و قیمت حراج هر رنگ و سایز را در جدول‌های زیر رنگ‌ها و سایزها بنویسید">
                 <MoneyInput id="p-price" value={form.price} onChange={(v) => set("price", v)} />
               </Field>
+              <Field label="قیمت خرید (تومان)" error={errors.cost_price} hint="فقط برای حساب سود؛ مشتری نمی‌بیند. اگر خالی بماند، سود این محصول در گزارش حساب نمی‌شود.">
+                <MoneyInput id="p-cost" value={form.cost_price} onChange={(v) => set("cost_price", v)} placeholder="اختیاری" />
+              </Field>
+              {form.cost_price != null && form.price ? (
+                <p className="hint" style={{ margin: 0 }}>
+                  سود هر عدد با قیمت عادی: <b className="num">{faNum(form.price - form.cost_price)}</b> ({faNum(Math.round(((form.price - form.cost_price) * 100) / form.price))}٪)
+                </p>
+              ) : null}
             </div>
           </Card>
           <Card title="نمایش">

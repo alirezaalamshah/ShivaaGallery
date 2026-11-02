@@ -100,9 +100,9 @@
 }
 
 .done .n {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  border-color: var(--fill);
+  color: var(--on-fill);
   animation: pop 0.5s var(--ease-spring);
 }
 
@@ -177,18 +177,18 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--fill);
   transform: scale(0);
   transition: transform 0.35s var(--ease-spring);
 }
 
 .opt:has(input:checked) {
-  border-color: var(--ink);
+  border-color: var(--strong);
   background: var(--band);
 }
 
 .opt:has(input:checked) .dot {
-  border-color: var(--ink);
+  border-color: var(--strong);
 }
 
 .opt:has(input:checked) .dot::after {
@@ -269,7 +269,7 @@
   margin-inline: -16px;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  box-shadow: 0 -20px 40px -30px color-mix(in oklab, var(--ink), transparent 50%);
+  box-shadow: 0 -20px 40px -30px color-mix(in oklab, var(--shade), transparent 50%);
   padding: 10px 16px 12px;
 }
 
@@ -380,8 +380,8 @@
   width: 100%;
   height: 54px;
   border-radius: 14px;
-  background: var(--ink);
-  color: var(--accent-hi);
+  background: var(--fill);
+  color: var(--on-fill);
   font-weight: 700;
   font-size: 15px;
   display: flex;

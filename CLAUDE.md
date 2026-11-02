@@ -28,13 +28,16 @@ You cannot reach the server. You only see what the owner pastes back.
 - `deploy/backend.env` holds a ready production `.env` with a fresh secret key. Only the domain needs changing.
 - `NEXT_PUBLIC_API_URL` is baked in at build time, so `frontend/.env.production` must exist before `npm run build`.
 - `deploy/initial-data/` is a one-time snapshot of the local database and uploaded photos. Copy it **only** on the first deploy. Copying it again wipes live orders.
-- The panel signs in with a Django username and password. Customer login uses an SMS code, and SMS stays on the `console` backend until a Melipayamak panel is bought.
+- The panel signs in with a Django username and password. Customer login uses an SMS code. Melipayamak's shared line sends only approved patterns, never free text: `SMS_USERNAME` and `SMS_API_KEY` (the key goes in place of the password) plus one `SMS_PATTERN_*` code per message, texts in `deploy/sms-patterns.md`. All seven patterns are approved and their codes are in `deploy/backend.env`. No links in SMS (needs a starred eNamad), and each sentence needs a verb, so statuses are sent in wordings that fit the pattern (`ORDER_STATUS_SMS`, `RETURN_STATUS_SMS` in `backend/apps/orders/services.py`).
+- API keys live in `API_key.txt` on the owner's computer, git-ignored. Never commit them; the owner pastes them into the server's `.env`.
 - Django 5.2 needs Python ≥ 3.10. Next.js needs Node ≥ 18.18; use 20 or newer.
 - Stock is shared by the shop and the site. Real counts per color and size; in-store sales are recorded at the till, `/panel/pos`. Stock of 9999 is left over from an older panel and means "count unknown".
-- Three roles: admin (`is_staff`), seller (member of the `seller` group, till only) and customer. See `backend/apps/accounts/roles.py`.
+- Three roles: admin (`is_staff`), seller (member of the `seller` group, till only: sales, in-store returns and exchanges, closing the till) and customer. See `backend/apps/accounts/roles.py`. Reports, expenses and customer profiles are admin only.
+- Profit uses `unit_cost`, the product's purchase price copied onto each sold line at the time of sale. Lines sold before a purchase price was entered have none and are reported separately.
 - `python manage.py expire_orders` cancels unpaid orders past their deadline; it belongs in a cPanel cron job every five minutes.
+- `python manage.py backup` zips the database (add `--media` for photos) into `~/shivagallery/backups`; daily and weekly cron jobs.
 - Online payment is `PAYMENT_GATEWAY` in `backend/.env`: `none`, `fake` (local testing only) or `zarinpal`. `SITE_URL` must be the storefront's address, because the gateway sends customers back there.
 
 ## Local development (Windows)
 
-`.\dev.ps1` starts the backend on :8000 and the site on :3100. Backend tests: `backend\.venv\Scripts\python manage.py test`.
+`.\dev.ps1` starts the backend on :8000 and the site on :3100. Backend tests: `backend\venv\Scripts\python manage.py test` (older setups use `.venv`).

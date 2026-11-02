@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Banners } from "@/components/home/Banners";
 import { CategoryRail } from "@/components/home/CategoryRail";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { StoreStory } from "@/components/home/StoreStory";
@@ -15,13 +16,16 @@ import type { CategoryNode } from "@/lib/types";
 const shelves = (roots: CategoryNode[]) => roots.flatMap((c) => (c.children.length ? c.children : [c]));
 
 export default async function HomePage() {
-  const [store, categories, latest, featured] = await Promise.all([
+  const [store, categories, latest, featured, home] = await Promise.all([
     api.store(),
     api.categories(),
     api.products({ ordering: "-created_at" }),
     api.products({ featured: true }),
+    api.home().catch(() => ({ hero: [], banners: [] })),
   ]);
   const storyProducts = [...featured.results, ...latest.results].filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i);
+  // The ring shows the admin's picks, in their order; with none picked, featured then newest.
+  const ringProducts = home.hero.length ? home.hero : storyProducts;
   const title = splitHighlight(store.hero_title || store.name);
   let wordIndex = 0;
 
@@ -58,7 +62,7 @@ export default async function HomePage() {
               {store.returns.enabled && <span>{faNum(store.returns.days)} روز مهلت مرجوعی</span>}
             </div>
           </div>
-          {storyProducts.length > 0 && <HeroCarousel products={storyProducts} mark={store.name_latin || store.name} />}
+          {ringProducts.length > 0 && <HeroCarousel products={ringProducts} mark={store.name_latin || store.name} />}
         </div>
       </section>
 
@@ -85,6 +89,8 @@ export default async function HomePage() {
           <CategoryRail categories={shelves(categories)} />
         </div>
       </section>
+
+      {home.banners.length > 0 && <Banners banners={home.banners} />}
 
       <section className="sec" style={{ paddingTop: 0 }}>
         <div className="wrap">

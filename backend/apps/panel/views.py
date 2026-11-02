@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.db import transaction
-from django.db.models import Count, Max, ProtectedError, Q, Sum
+from django.db.models import Count, ProtectedError, Q, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from rest_framework import filters, permissions, status, viewsets
@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from apps.accounts.roles import role_of, seller_group
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, SizeSystem, StockAlert, Variant
 from apps.core.jalali import jalali_datetime
-from apps.core.models import StoreSettings
+from apps.core.models import Banner, StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import InsufficientStock, move_stock
 from apps.orders.models import DiscountCode, Order, ReturnRequest, ShippingMethod
@@ -25,7 +25,7 @@ from apps.orders.services import CheckoutError, change_return_status, change_sta
 from apps.pos.models import Sale
 
 from . import serializers as s
-from .images import LOGO_SIZE, prepare_photo
+from .images import BANNER_SIZE, LOGO_SIZE, prepare_photo
 
 # With four or five pieces of each model, one left is worth a warning.
 LOW_STOCK = 1
@@ -91,6 +91,9 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
                 qs = qs.filter(is_active=p["active"] == "true")
             if p.get("stock") == "out":
                 qs = qs.filter(out_count__gt=0)
+            ids = [int(x) for x in p.get("ids", "").split(",") if x.isdigit()]
+            if ids:
+                qs = qs.filter(pk__in=ids)
             return qs.distinct()
         return qs.prefetch_related("images", "variants__color", "variants__size")
 
@@ -443,29 +446,6 @@ def dashboard(request):
     })
 
 
-@api_view(["GET"])
-@permission_classes([IsStaff])
-def customers(request):
-    """Customers who have ordered, with how much they have bought, most recent first."""
-    qs = (
-        get_user_model().objects.filter(is_staff=False, orders__isnull=False).exclude(groups__name="seller")
-        .annotate(
-            order_count=Count("orders", distinct=True),
-            spent=Coalesce(Sum("orders__total", filter=Q(orders__status__in=Order.SOLD)), 0),
-            last_order=Max("orders__created_at"),
-        )
-        .order_by("-last_order")
-    )
-    q = request.query_params.get("search", "").strip()
-    if q:
-        qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(orders__receiver_name__icontains=q)).distinct()
-    rows = []
-    for u in qs[:300]:
-        name = u.get_full_name() or u.orders.order_by("-created_at").values_list("receiver_name", flat=True).first() or ""
-        rows.append({"id": u.pk, "phone": u.username, "name": name, "order_count": u.order_count, "spent": u.spent, "last_order": u.last_order})
-    return Response(rows)
-
-
 def member_row(u):
     return {
         "id": u.pk, "username": u.username, "first_name": u.first_name, "last_name": u.last_name,
@@ -517,3 +497,25 @@ def team_member(request, pk):
         user.set_password(v["password"])
     user.save()
     return Response(member_row(user))
+
+
+class BannerViewSet(StaffMixin, viewsets.ModelViewSet):
+    """Campaigns on the site. The picture is sent separately to /image/, like product photos."""
+
+    queryset = Banner.objects.all()
+    serializer_class = s.BannerAdminSerializer
+    pagination_class = None
+
+    @action(detail=True, methods=["post", "delete"], parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def image(self, request, pk=None):
+        banner = self.get_object()
+        if request.method == "DELETE":
+            banner.image.delete(save=True)
+        else:
+            upload = request.FILES.get("image")
+            if not upload:
+                return Response({"detail": "عکسی فرستاده نشد."}, status=status.HTTP_400_BAD_REQUEST)
+            content = prepare_photo(upload, BANNER_SIZE)
+            banner.image.delete(save=False)
+            banner.image.save(content.name, content, save=True)
+        return Response(self.get_serializer(banner).data)

@@ -24,12 +24,17 @@ const NAV: { group: string; items: { href: string; label: string; icon: IconName
     { href: "/panel/customers", label: "مشتری‌ها", icon: "user" },
     { href: "/panel/reviews", label: "نظرات خریداران", icon: "heart", badge: "reviews_pending" },
   ] },
+  { group: "حساب و کتاب", items: [
+    { href: "/panel/reports", label: "سود و زیان و گزارش‌ها", icon: "chart" },
+    { href: "/panel/expenses", label: "هزینه‌ها", icon: "wallet" },
+  ] },
   { group: "کاتالوگ", items: [
     { href: "/panel/products", label: "محصولات", icon: "grid" },
     { href: "/panel/categories", label: "دسته‌ها", icon: "filter" },
     { href: "/panel/attributes", label: "رنگ و سایز", icon: "ruler" },
   ] },
   { group: "فروشگاه", items: [
+    { href: "/panel/home", label: "صفحه‌ی اصلی و بنرها", icon: "image" },
     { href: "/panel/shipping", label: "روش‌های ارسال", icon: "truck" },
     { href: "/panel/discounts", label: "کدهای تخفیف", icon: "card" },
     { href: "/panel/team", label: "کاربران و دسترسی", icon: "lock" },

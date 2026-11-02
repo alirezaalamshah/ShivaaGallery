@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  color: color-mix(in oklab, var(--accent-ink), var(--ink) 45%);
+  color: color-mix(in oklab, var(--accent-ink), var(--strong) 45%);
   font-size: clamp(15px, 1.6vw, 19px);
   letter-spacing: 0.38em;
   animation: up 0.9s var(--ease-out) both;
@@ -200,7 +200,7 @@
   background: var(--surface);
   border-radius: 18px;
   padding: 7px 7px 11px;
-  box-shadow: 0 30px 50px -24px color-mix(in oklab, var(--ink), transparent 55%), 0 0 0 1px color-mix(in oklab, var(--accent), transparent 62%);
+  box-shadow: 0 30px 50px -24px color-mix(in oklab, var(--shade), transparent 55%), 0 0 0 1px color-mix(in oklab, var(--accent), transparent 62%);
   transform: rotate(var(--r, 0deg));
   animation: float 6s ease-in-out infinite;
   animation-delay: var(--fd, 0s);
