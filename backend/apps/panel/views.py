@@ -10,13 +10,13 @@ from django.utils import timezone
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.accounts.roles import role_of, seller_group
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, SizeSystem, StockAlert, Variant
 from apps.core.jalali import jalali_datetime
+from apps.core.pagination import StockPages
 from apps.core.models import Banner, StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import InsufficientStock, move_stock
@@ -211,7 +211,7 @@ class VariantViewSet(StaffMixin, viewsets.mixins.ListModelMixin, viewsets.mixins
 
     filter_backends = [filters.SearchFilter]
     search_fields = ["product__name", "sku", "color__name", "size__label"]
-    pagination_class = type("StockPages", (PageNumberPagination,), {"page_size": 80})
+    pagination_class = StockPages
 
     def get_queryset(self):
         qs = Variant.objects.select_related("product", "color", "size").prefetch_related("product__images")

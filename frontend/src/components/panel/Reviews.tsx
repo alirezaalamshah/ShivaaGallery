@@ -8,7 +8,7 @@ import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
-import { Card, ConfirmButton, Empty, PageHead } from "./ui";
+import { Card, ConfirmButton, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
 type Review = {
@@ -109,13 +109,7 @@ export function Reviews() {
         ) : (
           !loading && <Empty icon="heart" title={status === "pending" ? "نظری در انتظار بررسی نیست" : "نظری پیدا نشد"} />
         )}
-        {data && (data.next || data.previous) && (
-          <div className={s.toolbar} style={{ justifyContent: "center", marginTop: 14, marginBottom: 0 }}>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.previous} onClick={() => setPage(page - 1)}>قبلی</button>
-            <span className="muted num">صفحه‌ی {faNum(page)}</span>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.next} onClick={() => setPage(page + 1)}>بعدی</button>
-          </div>
-        )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );

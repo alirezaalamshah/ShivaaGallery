@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { api, toQuery } from "@/lib/api";
 import { faNum } from "@/lib/format";
+import { pageWindow } from "@/lib/paging";
 import type { CategoryNode } from "@/lib/types";
 
 import { FilterBar } from "./FilterBar";
@@ -11,7 +12,6 @@ import styles from "./Listing.module.css";
 export type SearchParams = Record<string, string | string[] | undefined>;
 
 const FILTER_KEYS = ["color", "size", "min_price", "max_price", "in_stock", "on_sale", "ordering", "search", "page"] as const;
-const PAGE_SIZE = 24;
 
 export function readFilters(sp: SearchParams) {
   const out: Record<string, string> = {};
@@ -46,7 +46,7 @@ export async function Listing({
     api.facets(),
   ]);
   const current = Number(filters.page ?? 1);
-  const pages = Math.max(1, Math.ceil(page.count / PAGE_SIZE));
+  const pages = page.pages;
   const pageHref = (n: number) => `${basePath}${toQuery({ ...filters, page: n > 1 ? n : undefined })}`;
 
   return (
@@ -88,11 +88,15 @@ export async function Listing({
 
       {pages > 1 && (
         <nav className={styles.pager} aria-label="صفحه‌ها">
-          {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-            <Link key={n} href={pageHref(n)} className="chip num" aria-current={n === current ? "page" : undefined}>
-              {faNum(n)}
-            </Link>
-          ))}
+          {pageWindow(current, pages).map((n, i) =>
+            n === null ? (
+              <span key={`gap-${i}`} className={styles.gap}>…</span>
+            ) : (
+              <Link key={n} href={pageHref(n)} className="chip num" aria-current={n === current ? "page" : undefined}>
+                {faNum(n)}
+              </Link>
+            ),
+          )}
         </nav>
       )}
     </div>

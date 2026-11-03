@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faDateTime, faNum } from "@/lib/format";
 
+import { DateTimeInput } from "./DateInput";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import { PhotoCropper } from "./PhotoCropper";
 import { Card, ConfirmButton, Empty, Field, Modal, PageHead, Switch, SwitchRow } from "./ui";
@@ -175,14 +176,6 @@ type Draft = Omit<Banner, "id" | "placement_label" | "live" | "image"> & { id?: 
 
 const blank = (): Draft => ({ placement: "home", title: "", text: "", image: null, link: "", button_label: "", starts_at: null, ends_at: null, is_active: true, sort: 0 });
 
-/** ISO time ⇄ the value of a datetime-local input, in the browser's time zone. */
-const toLocal = (iso: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-const fromLocal = (v: string) => (v ? new Date(v).toISOString() : null);
-
 function period(b: Banner) {
   if (b.starts_at && b.ends_at) return `${faDateTime(b.starts_at)} تا ${faDateTime(b.ends_at)}`;
   if (b.starts_at) return `از ${faDateTime(b.starts_at)}`;
@@ -317,10 +310,10 @@ function Banners() {
               </Field>
             )}
             <Field label="شروع نمایش (اختیاری)" error={errors.starts_at}>
-              <input type="datetime-local" className="input ltr" value={toLocal(draft.starts_at)} onChange={(e) => setDraft({ ...draft, starts_at: fromLocal(e.target.value) })} />
+              <DateTimeInput value={draft.starts_at} onChange={(v) => setDraft({ ...draft, starts_at: v })} />
             </Field>
             <Field label="پایان نمایش (اختیاری)" error={errors.ends_at}>
-              <input type="datetime-local" className="input ltr" value={toLocal(draft.ends_at)} onChange={(e) => setDraft({ ...draft, ends_at: fromLocal(e.target.value) })} />
+              <DateTimeInput value={draft.ends_at} defaultTime="23:55" onChange={(v) => setDraft({ ...draft, ends_at: v })} />
             </Field>
             <Field label="ترتیب" hint="عدد کمتر، جلوتر" error={errors.sort}>
               <input className="input ltr num" inputMode="numeric" value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value.replace(/\D/g, "")) || 0 })} />

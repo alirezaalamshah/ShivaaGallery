@@ -7,6 +7,7 @@ import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum } from "@/lib/format";
 
+import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
 import { adminCall, useAdmin } from "../hooks";
 import { Card, Field, MoneyInput } from "../ui";
@@ -72,7 +73,7 @@ export function TillClose() {
       {admin && (
         <div className={p.dayNav}>
           <b>{day === today ? "امروز، " : ""}{faDate(`${day}T12:00:00`)}</b>
-          <input type="date" className="input ltr" aria-label="انتخاب روز" value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} />
+          <DateInput label="انتخاب روز" value={day} max={today} onChange={setDay} style={{ width: "auto" }} />
         </div>
       )}
 

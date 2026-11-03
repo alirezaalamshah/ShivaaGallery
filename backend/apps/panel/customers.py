@@ -77,6 +77,8 @@ def _customers_by_phone():
     return list(rows.values())
 
 
+CUSTOMERS_PAGE = 50
+
 ORDERINGS = {
     "recent": lambda r: (r["last_purchase"] or r["joined"] or timezone.now().replace(year=2000)),
     "spent": lambda r: r["total_spent"],
@@ -107,7 +109,10 @@ def _listed(params):
 @permission_classes([IsStaff])
 def customers(request):
     rows = _listed(request.query_params)
-    return Response({"count": len(rows), "results": rows[:500]})
+    page = request.query_params.get("page", "")
+    page = int(page) if page.isdigit() and int(page) > 0 else 1
+    start = (page - 1) * CUSTOMERS_PAGE
+    return Response({"count": len(rows), "pages": max(1, -(-len(rows) // CUSTOMERS_PAGE)), "results": rows[start:start + CUSTOMERS_PAGE]})
 
 
 @api_view(["GET"])

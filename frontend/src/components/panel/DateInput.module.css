@@ -1,0 +1,217 @@
+/* the field: looks like every other input, opens the calendar */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 170px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.field svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--accent-ink);
+}
+
+.field > span {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.placeholder {
+  color: var(--faint);
+}
+
+.field[data-invalid] {
+  border-color: var(--sale);
+}
+
+/* the calendar */
+.pop {
+  position: fixed;
+  z-index: 95;
+  width: 300px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 28px 56px -24px rgb(0 0 0 / 0.4);
+  animation: pop 0.2s var(--ease-out);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.title button {
+  height: 34px;
+  padding-inline: 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.nav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav svg {
+  width: 18px;
+  height: 18px;
+}
+
+.flip svg {
+  transform: scaleX(-1);
+}
+
+.title button:hover,
+.nav:hover {
+  background: var(--band);
+  color: var(--text);
+}
+
+.week,
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.week span {
+  padding-block: 4px 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.week span:last-child,
+.day[data-friday] {
+  color: var(--sale);
+}
+
+.day,
+.cell {
+  border-radius: 10px;
+  font-size: 14px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.day {
+  height: 36px;
+}
+
+.day[data-today] {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  font-weight: 700;
+}
+
+.day:hover:not(:disabled),
+.cell:hover {
+  background: var(--band);
+}
+
+.day[aria-pressed="true"],
+.cell[aria-pressed="true"],
+.day[aria-pressed="true"]:hover,
+.cell[aria-pressed="true"]:hover {
+  background: var(--fill);
+  color: var(--on-fill);
+  font-weight: 700;
+}
+
+.day:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.cell {
+  height: 46px;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.foot button {
+  height: 32px;
+  padding-inline: 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  transition: background 0.2s;
+}
+
+.foot button:hover:not(:disabled) {
+  background: var(--band);
+}
+
+.foot button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* day and time side by side */
+.dateTime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateTime > button {
+  flex: 1;
+  min-width: 0;
+}
+
+.time {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.time select {
+  width: 86px;
+  padding-inline: 14px 30px;
+  text-align: center;
+}

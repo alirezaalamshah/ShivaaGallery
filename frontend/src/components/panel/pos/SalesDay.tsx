@@ -7,6 +7,7 @@ import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
+import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
 import { adminCall, refreshSite, useAdmin } from "../hooks";
 import { Card, Empty, Modal } from "../ui";
@@ -38,7 +39,7 @@ export function SalesDay() {
         <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setDay(shift(day, -1))}>روز قبل</button>
         <b>{day === today ? "امروز، " : ""}{faDate(`${day}T12:00:00`)}</b>
         <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={day >= today} onClick={() => setDay(shift(day, 1))}>روز بعد</button>
-        <input type="date" className="input ltr" aria-label="انتخاب روز" value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} />
+        <DateInput label="انتخاب روز" value={day} max={today} onChange={setDay} style={{ width: "auto" }} />
       </div>
 
       {t && (

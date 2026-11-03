@@ -11,7 +11,7 @@ import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
-import { Card, Empty, PageHead } from "./ui";
+import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
 type Row = {
@@ -131,13 +131,7 @@ export function Stock() {
           !loading && <Empty icon="grid" title={search ? "چیزی پیدا نشد" : "رنگ و سایزی ثبت نشده"} />
         )}
 
-        {data && (data.next || data.previous) && (
-          <div className={s.toolbar} style={{ justifyContent: "center", marginTop: 14, marginBottom: 0 }}>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.previous} onClick={() => setPage(page - 1)}>قبلی</button>
-            <span className="muted num">صفحه‌ی {faNum(page)}</span>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.next} onClick={() => setPage(page + 1)}>بعدی</button>
-          </div>
-        )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
         <p className="hint" style={{ marginTop: 14 }}>
           «+۱» یک عدد اضافه می‌کند. برای عوض کردن چند عدد با هم یا تعریف رنگ و سایز جدید، محصول را باز کنید. فروش مغازه را در صندوق ثبت کنید تا فاکتور و گزارش روزانه داشته باشد. همه‌ی تغییرها در دفتر موجودی ثبت می‌شوند.
         </p>

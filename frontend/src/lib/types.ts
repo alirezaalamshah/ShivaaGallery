@@ -87,7 +87,7 @@ export type ProductDetail = ProductSummary & {
   breadcrumbs: CategoryBrief[];
 };
 
-export type Page<T> = { count: number; next: string | null; previous: string | null; results: T[] };
+export type Page<T> = { count: number; pages: number; next: string | null; previous: string | null; results: T[] };
 
 export type Facets = {
   colors: Color[];

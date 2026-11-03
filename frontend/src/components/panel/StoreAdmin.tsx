@@ -7,10 +7,11 @@ import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
+import { DateTimeInput } from "./DateInput";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
 import { PhotoCropper } from "./PhotoCropper";
-import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, Switch, SwitchRow } from "./ui";
+import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, Pager, Switch, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
 /* ---------- inventory ledger ---------- */
@@ -77,13 +78,7 @@ export function Inventory() {
         ) : (
           !loading && <Empty icon="ret" title="گردشی پیدا نشد" />
         )}
-        {data && (data.next || data.previous) && (
-          <div className={s.toolbar} style={{ justifyContent: "center", marginTop: 14, marginBottom: 0 }}>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.previous} onClick={() => setPage(page - 1)}>قبلی</button>
-            <span className="muted num">صفحه‌ی {faNum(page)}</span>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.next} onClick={() => setPage(page + 1)}>بعدی</button>
-          </div>
-        )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );
@@ -224,7 +219,7 @@ export function Discounts() {
             {draft.kind === "percent" && <Field label="سقف مبلغ تخفیف (اختیاری)"><MoneyInput id="dc-max" value={draft.max_amount} onChange={(v) => setDraft({ ...draft, max_amount: v })} /></Field>}
             <Field label="حداقل مبلغ خرید (اختیاری)"><MoneyInput id="dc-min" value={draft.min_subtotal} onChange={(v) => setDraft({ ...draft, min_subtotal: v })} /></Field>
             <Field label="حداکثر دفعات استفاده (اختیاری)"><MoneyInput id="dc-uses" value={draft.max_uses} onChange={(v) => setDraft({ ...draft, max_uses: v })} /></Field>
-            <Field label="تاریخ پایان (اختیاری)" full><input id="dc-end" type="datetime-local" className="input ltr" value={draft.ends_at ? draft.ends_at.slice(0, 16) : ""} onChange={(e) => setDraft({ ...draft, ends_at: e.target.value ? new Date(e.target.value).toISOString() : null })} /></Field>
+            <Field label="تاریخ پایان (اختیاری)" full><DateTimeInput id="dc-end" value={draft.ends_at} defaultTime="23:55" onChange={(v) => setDraft({ ...draft, ends_at: v })} /></Field>
           </div>
           <SwitchRow title="هر مشتری فقط یک بار" hint="خاموش باشد، یک مشتری می‌تواند این کد را در چند سفارش استفاده کند" checked={draft.once_per_customer} onChange={(v) => setDraft({ ...draft, once_per_customer: v })} />
         </Modal>

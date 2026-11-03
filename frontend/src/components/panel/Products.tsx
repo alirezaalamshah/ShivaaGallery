@@ -12,7 +12,7 @@ import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { AdminCategory, AdminProductRow, Paged } from "./types";
-import { Card, Empty, PageHead, Switch } from "./ui";
+import { Card, Empty, PageHead, Pager, Switch } from "./ui";
 import s from "./panel.module.css";
 
 /** Categories as "parent › child" labels, in tree order, for select boxes. */
@@ -130,13 +130,7 @@ export function ProductsList() {
             </Empty>
           )
         )}
-        {data && (data.next || data.previous) && (
-          <div className={s.toolbar} style={{ justifyContent: "center", marginTop: 14, marginBottom: 0 }}>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.previous} onClick={() => setPage(page - 1)}>قبلی</button>
-            <span className="muted num">صفحه‌ی {faNum(page)}</span>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.next} onClick={() => setPage(page + 1)}>بعدی</button>
-          </div>
-        )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );

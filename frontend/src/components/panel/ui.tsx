@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import { Icon, type IconName } from "@/components/Icon";
 import { faNum, toEnDigits } from "@/lib/format";
+import { pageWindow } from "@/lib/paging";
 
 import s from "./panel.module.css";
 
@@ -126,6 +127,30 @@ export function ConfirmButton({ label, confirmLabel = "مطمئنی؟ حذف ش�
         </button>
       </div>
     </details>
+  );
+}
+
+/** Previous / next with page numbers around the current page. Jumps back to the top of the list on change. */
+export function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
+  if (pages <= 1) return null;
+  const go = (n: number) => {
+    onChange(n);
+    scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return (
+    <nav className={s.pager} aria-label="صفحه‌ها">
+      <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={page <= 1} onClick={() => go(page - 1)}>قبلی</button>
+      {pageWindow(page, pages).map((n, i) =>
+        n === null ? (
+          <span key={`gap-${i}`} className={s.pagerGap}>…</span>
+        ) : (
+          <button key={n} type="button" className={`${s.pagerNum} num`} aria-current={n === page ? "page" : undefined} onClick={() => go(n)}>
+            {faNum(n)}
+          </button>
+        ),
+      )}
+      <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={page >= pages} onClick={() => go(page + 1)}>بعدی</button>
+    </nav>
   );
 }
 

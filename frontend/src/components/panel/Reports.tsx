@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useStore } from "@/components/StoreProvider";
 import { faDate, faNum } from "@/lib/format";
 
+import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
 import { useAdmin } from "./hooks";
 import { Card, Empty, PageHead } from "./ui";
@@ -71,8 +72,8 @@ export function Reports() {
           </select>
           {range === "custom" && (
             <>
-              <input type="date" className="input ltr" aria-label="از" value={custom.from} onChange={(e) => setCustom({ ...custom, from: e.target.value })} style={{ width: "auto" }} />
-              <input type="date" className="input ltr" aria-label="تا" value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} style={{ width: "auto" }} />
+              <DateInput label="از" placeholder="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => setCustom({ ...custom, from: v })} style={{ width: "auto" }} />
+              <DateInput label="تا" placeholder="تا" value={custom.to} min={custom.from || undefined} clearable onChange={(v) => setCustom({ ...custom, to: v })} style={{ width: "auto" }} />
             </>
           )}
           {data && <span className="muted">{faDate(`${data.from}T12:00:00`)} تا {faDate(`${data.to}T12:00:00`)}</span>}

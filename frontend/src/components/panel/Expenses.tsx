@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faDate, faNum } from "@/lib/format";
 
+import { DateInput } from "./DateInput";
 import { RANGES, isoDay, rangeOf, type RangeValue } from "./dates";
 import { adminCall, useAdmin } from "./hooks";
 import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, SwitchRow } from "./ui";
@@ -78,8 +79,8 @@ export function Expenses() {
           </select>
           {range === "custom" && (
             <>
-              <input type="date" className="input ltr" aria-label="از" value={custom.from} onChange={(e) => setCustom({ ...custom, from: e.target.value })} style={{ width: "auto" }} />
-              <input type="date" className="input ltr" aria-label="تا" value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} style={{ width: "auto" }} />
+              <DateInput label="از" placeholder="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => setCustom({ ...custom, from: v })} style={{ width: "auto" }} />
+              <DateInput label="تا" placeholder="تا" value={custom.to} min={custom.from || undefined} clearable onChange={(v) => setCustom({ ...custom, to: v })} style={{ width: "auto" }} />
             </>
           )}
         </div>
@@ -126,7 +127,7 @@ export function Expenses() {
         >
           <div className={s.formGrid}>
             <Field label="تاریخ" error={errors.day}>
-              <input type="date" className="input ltr" value={draft.day} max={isoDay(new Date())} onChange={(e) => setDraft({ ...draft, day: e.target.value })} />
+              <DateInput value={draft.day} max={isoDay(new Date())} invalid={!!errors.day} onChange={(v) => setDraft({ ...draft, day: v })} />
             </Field>
             <Field label="دسته" error={errors.category}>
               <select className="input" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>

@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, useAdmin } from "./hooks";
-import { Card, Empty, PageHead } from "./ui";
+import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
 type Row = {
@@ -49,12 +49,16 @@ export function Customers() {
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("");
   const [ordering, setOrdering] = useState("recent");
+  const [page, setPage] = useState(1);
   useEffect(() => {
-    const t = setTimeout(() => setSearch(q.trim()), 300);
+    const t = setTimeout(() => {
+      setSearch(q.trim());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(t);
   }, [q]);
   const params = new URLSearchParams({ ordering, ...(kind && { kind }), ...(search && { search }) }).toString();
-  const { data, loading } = useAdmin<{ count: number; results: Row[] }>(`/customers?${params}`);
+  const { data, loading } = useAdmin<{ count: number; pages: number; results: Row[] }>(`/customers?${params}&page=${page}`);
 
   return (
     <>
@@ -72,10 +76,10 @@ export function Customers() {
           </label>
           <div className={s.tabs} role="group" aria-label="نوع مشتری">
             {KINDS.map((k) => (
-              <button key={k.value} type="button" className={s.tab} aria-pressed={kind === k.value} onClick={() => setKind(k.value)}>{k.label}</button>
+              <button key={k.value} type="button" className={s.tab} aria-pressed={kind === k.value} onClick={() => { setKind(k.value); setPage(1); }}>{k.label}</button>
             ))}
           </div>
-          <select className="input" aria-label="مرتب‌سازی" value={ordering} onChange={(e) => setOrdering(e.target.value)} style={{ width: "auto" }}>
+          <select className="input" aria-label="مرتب‌سازی" value={ordering} onChange={(e) => { setOrdering(e.target.value); setPage(1); }} style={{ width: "auto" }}>
             {ORDERINGS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -109,6 +113,7 @@ export function Customers() {
         ) : (
           !loading && <Empty icon="user" title={search || kind ? "مشتری‌ای پیدا نشد" : "هنوز مشتری‌ای نیست"} />
         )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );

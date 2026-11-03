@@ -49,6 +49,14 @@ class PanelTests(TestCase):
         self.client.force_login(self.customer)
         self.assertEqual(self.client.get("/api/admin/dashboard/").status_code, 403)
 
+    def test_lists_report_how_many_pages_they_have(self):
+        Product.objects.bulk_create(Product(name=f"مانتو {i}", slug=f"m-{i}", category=self.cat, price=1000) for i in range(30))
+        res = self.client.get("/api/admin/products/?page=2").json()
+        self.assertEqual((res["count"], res["pages"], len(res["results"])), (30, 2, 6))
+        User.objects.bulk_create(User(username=f"0912000{i:04d}") for i in range(54))
+        res = self.client.get("/api/admin/customers/?page=2").json()
+        self.assertEqual((res["count"], res["pages"], len(res["results"])), (55, 2, 5))
+
     def test_create_product_then_matrix_sets_variants_and_stock(self):
         res = self.client.post("/api/admin/products/", {"name": "مانتو تست", "category": self.cat.pk, "price": 2_000_000, "details": ["جنس: کتان"]}, content_type="application/json")
         self.assertEqual(res.status_code, 201, res.content)

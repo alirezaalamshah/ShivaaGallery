@@ -1582,3 +1582,40 @@
   font-size: 12px;
   padding-inline: 4px;
 }
+
+/* pager */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.pagerNum {
+  min-width: 34px;
+  height: 34px;
+  padding-inline: 8px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.pagerNum:hover {
+  background: var(--band);
+  color: var(--text);
+}
+
+.pagerNum[aria-current="page"] {
+  background: var(--fill);
+  color: var(--on-fill);
+  font-weight: 700;
+}
+
+.pagerGap {
+  min-width: 20px;
+  text-align: center;
+  color: var(--faint);
+}

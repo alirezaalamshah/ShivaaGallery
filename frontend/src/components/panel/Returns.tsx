@@ -9,7 +9,7 @@ import type { ReturnRequest } from "@/lib/types";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
-import { Card, Empty, PageHead } from "./ui";
+import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
 type AdminReturn = ReturnRequest & {
@@ -38,9 +38,10 @@ const PILL: Record<string, string> = { pending: "awaiting_payment", approved: "p
 export function Returns() {
   const toast = useToast();
   const [status, setStatus] = useState("open");
+  const [page, setPage] = useState(1);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
-  const { data, setData, loading } = useAdmin<Paged<AdminReturn>>(`/returns${status ? `?status=${status}` : ""}`);
+  const { data, setData, loading } = useAdmin<Paged<AdminReturn>>(`/returns?page=${page}${status ? `&status=${status}` : ""}`);
 
   const update = async (r: AdminReturn, next?: string) => {
     setBusy(r.id);
@@ -66,7 +67,7 @@ export function Returns() {
         <div className={s.toolbar}>
           <div className={s.tabs} role="group" aria-label="وضعیت">
             {TABS.map((t) => (
-              <button key={t.value} type="button" className={s.tab} aria-pressed={status === t.value} onClick={() => setStatus(t.value)}>{t.label}</button>
+              <button key={t.value} type="button" className={s.tab} aria-pressed={status === t.value} onClick={() => { setStatus(t.value); setPage(1); }}>{t.label}</button>
             ))}
           </div>
         </div>
@@ -124,6 +125,7 @@ export function Returns() {
         ) : (
           !loading && <Empty icon="ret" title={status === "open" ? "درخواست بازی نیست" : "درخواستی پیدا نشد"} />
         )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );

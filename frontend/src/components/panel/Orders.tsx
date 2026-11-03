@@ -10,10 +10,11 @@ import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
 import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
+import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
 import { adminCall, useAdmin } from "./hooks";
 import type { AdminOrder, AdminOrderRow, Paged } from "./types";
-import { Card, ConfirmButton, Empty, Field, PageHead } from "./ui";
+import { Card, ConfirmButton, Empty, Field, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
 const TABS = [
@@ -79,11 +80,11 @@ export function OrdersList() {
             <>
               <label className={s.inlineField}>
                 <span>از</span>
-                <input type="date" className="input ltr" value={custom.from} onChange={(e) => { setCustom({ ...custom, from: e.target.value }); setPage(1); }} />
+                <DateInput label="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => { setCustom({ ...custom, from: v }); setPage(1); }} />
               </label>
               <label className={s.inlineField}>
                 <span>تا</span>
-                <input type="date" className="input ltr" value={custom.to} onChange={(e) => { setCustom({ ...custom, to: e.target.value }); setPage(1); }} />
+                <DateInput label="تا" value={custom.to} min={custom.from || undefined} clearable onChange={(v) => { setCustom({ ...custom, to: v }); setPage(1); }} />
               </label>
             </>
           )}
@@ -119,13 +120,7 @@ export function OrdersList() {
         ) : (
           !loading && <Empty icon="bag" title="سفارشی پیدا نشد" />
         )}
-        {data && (data.next || data.previous) && (
-          <div className={s.toolbar} style={{ justifyContent: "center", marginTop: 14, marginBottom: 0 }}>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.previous} onClick={() => setPage(page - 1)}>قبلی</button>
-            <span className="muted num">صفحه‌ی {faNum(page)}</span>
-            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={!data.next} onClick={() => setPage(page + 1)}>بعدی</button>
-          </div>
-        )}
+        {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
     </>
   );
