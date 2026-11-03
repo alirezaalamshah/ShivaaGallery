@@ -16,13 +16,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from apps.accounts.models import Address, CustomerNote
+from apps.accounts.roles import needs
 from apps.catalog.models import Favorite, Review, StockAlert
 from apps.core.jalali import jalali_datetime
 from apps.core.validators import iran_mobile
 from apps.orders.models import Order, OrderItem, ReturnRequest
 from apps.pos.models import Sale, SaleItem
 
-from .views import IsStaff
 
 
 def _customers_by_phone():
@@ -41,7 +41,7 @@ def _customers_by_phone():
         if last and (r["last_purchase"] is None or last > r["last_purchase"]):
             r["last_purchase"] = last
 
-    customers = get_user_model().objects.filter(is_staff=False).exclude(groups__name="seller")
+    customers = get_user_model().objects.filter(is_staff=False, is_superuser=False, staff_access__isnull=True)
     for u in customers:
         r = row(u.username)
         r.update(has_account=True, joined=u.date_joined, name=u.get_full_name())
@@ -106,7 +106,7 @@ def _listed(params):
 
 
 @api_view(["GET"])
-@permission_classes([IsStaff])
+@permission_classes([needs("customers.view")])
 def customers(request):
     rows = _listed(request.query_params)
     page = request.query_params.get("page", "")
@@ -116,7 +116,7 @@ def customers(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsStaff])
+@permission_classes([needs("customers.export")])
 def customers_export(request):
     """The listed customers (same search and filters) as a CSV file that Excel opens with Persian text intact."""
     res = HttpResponse(content_type="text/csv; charset=utf-8")
@@ -143,7 +143,7 @@ def _top(counter, n=3):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsStaff])
+@permission_classes([needs("customers.view", write="customers.edit")])
 def customer_detail(request, phone):
     try:
         iran_mobile(phone)
@@ -157,7 +157,7 @@ def customer_detail(request, phone):
             setattr(note, k, v.strip())
         note.save()
 
-    user = get_user_model().objects.filter(username=phone, is_staff=False).first()
+    user = get_user_model().objects.filter(username=phone, is_staff=False, staff_access__isnull=True).first()
     orders = list(Order.objects.filter(phone=phone).annotate(item_count=Sum("items__qty")).order_by("-created_at"))
     sales = list(Sale.objects.filter(customer_phone=phone).select_related("seller").prefetch_related("items", "returned").order_by("-created_at"))
     note = CustomerNote.objects.filter(phone=phone).first()

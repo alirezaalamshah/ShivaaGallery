@@ -11,6 +11,7 @@ import { navStart } from "@/components/NavProgress";
 import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import type { AdminCategory, AdminProductRow, Paged } from "./types";
 import { Card, Empty, PageHead, Pager, Switch } from "./ui";
 import s from "./panel.module.css";
@@ -38,6 +39,7 @@ export function ProductsList() {
   const [active, setActive] = useState("");
   const [stock, setStock] = useState(params.get("stock") ?? "");
   const [page, setPage] = useState(1);
+  const canEdit = useCan()("products.edit");
   useEffect(() => {
     const t = setTimeout(() => setSearch(q.trim()), 300);
     return () => clearTimeout(t);
@@ -59,7 +61,7 @@ export function ProductsList() {
   return (
     <>
       <PageHead title="محصولات" sub={data ? `${faNum(data.count)} محصول` : undefined}>
-        <Link href="/panel/products/new" className={s.btn}><Icon name="plus" /> محصول جدید</Link>
+        {canEdit && <Link href="/panel/products/new" className={s.btn}><Icon name="plus" /> محصول جدید</Link>}
       </PageHead>
       <Card>
         <div className={s.toolbar}>
@@ -112,12 +114,12 @@ export function ProductsList() {
                       {p.variant_count === 0 && <small className={s.danger} style={{ display: "block", fontSize: 11.5 }}>رنگ و سایز ندارد</small>}
                     </td>
                     <td>
-                      <button type="button" className="icon-btn" aria-pressed={p.is_featured} aria-label="محصول ویژه" onClick={() => patch(p, { is_featured: !p.is_featured })} style={{ color: p.is_featured ? "var(--accent-ink)" : "var(--faint)" }}>
+                      <button type="button" className="icon-btn" aria-pressed={p.is_featured} aria-label="محصول ویژه" disabled={!canEdit} onClick={() => patch(p, { is_featured: !p.is_featured })} style={{ color: p.is_featured ? "var(--accent-ink)" : "var(--faint)" }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill={p.is_featured ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" strokeLinejoin="round" /></svg>
                       </button>
                     </td>
-                    <td><Switch checked={p.is_active} onChange={(v) => patch(p, { is_active: v })} label={`نمایش ${p.name} در سایت`} /></td>
-                    <td><Link href={`/panel/products/${p.id}`} className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>ویرایش</Link></td>
+                    <td><Switch checked={p.is_active} disabled={!canEdit} onChange={(v) => patch(p, { is_active: v })} label={`نمایش ${p.name} در سایت`} /></td>
+                    <td><Link href={`/panel/products/${p.id}`} className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>{canEdit ? "ویرایش" : "دیدن"}</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -126,7 +128,7 @@ export function ProductsList() {
         ) : (
           !loading && (
             <Empty icon="grid" title="محصولی پیدا نشد">
-              <Link href="/panel/products/new" className={s.btn}><Icon name="plus" /> افزودن اولین محصول</Link>
+              {canEdit && <Link href="/panel/products/new" className={s.btn}><Icon name="plus" /> افزودن اولین محصول</Link>}
             </Empty>
           )
         )}

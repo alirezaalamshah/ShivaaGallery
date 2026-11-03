@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum } from "@/lib/format";
 
 import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
+import { useCan } from "../access";
 import { adminCall, useAdmin } from "../hooks";
 import { Card, Field, MoneyInput } from "../ui";
 import s from "../panel.module.css";
@@ -24,8 +24,8 @@ const diffText = (n: number) => (n === 0 ? "برابر است" : n > 0 ? `${faNu
 export function TillClose() {
   const store = useStore();
   const toast = useToast();
-  const { me } = useAuth();
-  const admin = me?.role === "admin";
+  // Only those allowed may look back at, or close, earlier days.
+  const past = useCan()("pos.close_past");
   const today = isoDay(new Date());
   const [day, setDay] = useState(today);
   const { data, reload } = useAdmin<{ drawer: Drawer; closed: TillCloseRow | null; history: TillCloseRow[] }>(`/pos/close?date=${day}`);
@@ -70,7 +70,7 @@ export function TillClose() {
 
   return (
     <>
-      {admin && (
+      {past && (
         <div className={p.dayNav}>
           <b>{day === today ? "امروز، " : ""}{faDate(`${day}T12:00:00`)}</b>
           <DateInput label="انتخاب روز" value={day} max={today} onChange={setDay} style={{ width: "auto" }} />
@@ -134,7 +134,7 @@ export function TillClose() {
               </thead>
               <tbody>
                 {data.history.map((c) => (
-                  <tr key={c.day} className={admin ? s.rowLink : undefined} onClick={admin ? () => setDay(c.day) : undefined}>
+                  <tr key={c.day} className={past ? s.rowLink : undefined} onClick={past ? () => setDay(c.day) : undefined}>
                     <td>{faDate(`${c.day}T12:00:00`)}</td>
                     <td className="num">{faNum(c.expected_cash)}</td>
                     <td className="num">{faNum(c.counted_cash)}</td>

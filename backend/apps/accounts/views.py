@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from .models import Address
-from .roles import is_seller
+from .roles import is_panel_user
 from .otp import OtpError, RESEND_AFTER, expose_code_in_response, request_code, verify_code
 from .serializers import AddressSerializer, OtpRequestSerializer, OtpVerifySerializer, StaffLoginSerializer, me_payload
 
@@ -66,7 +66,7 @@ def staff_login(request):
     s = StaffLoginSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     user = authenticate(request, **s.validated_data)
-    if user is None or not (user.is_staff or is_seller(user)):
+    if user is None or not is_panel_user(user):
         return Response({"detail": "نام کاربری یا رمز عبور درست نیست."}, status=status.HTTP_400_BAD_REQUEST)
     login(request, user)
     return Response(me_payload(user))

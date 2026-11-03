@@ -38,15 +38,15 @@ export function AccountView() {
 
   if (!me) return <div className={styles.page} aria-busy="true" />;
 
-  if (me.role === "admin" || me.role === "seller") {
+  if (me.role === "admin" || me.role === "staff") {
     const admin = me.role === "admin";
     return (
       <div className={styles.page}>
         <div className={styles.loginCard}>
-          <h1>{admin ? "شما با حساب مدیر وارد شده‌اید" : "شما با حساب فروشنده وارد شده‌اید"}</h1>
-          <p>{admin ? "برای مدیریت فروشگاه به پنل بروید." : "برای ثبت فروش به صندوق بروید."}</p>
+          <h1>{admin ? "شما با حساب مدیر وارد شده‌اید" : "شما با حساب کاربر پنل وارد شده‌اید"}</h1>
+          <p>{admin ? "برای مدیریت فروشگاه به پنل بروید." : "برای کار با پنل فروشگاه به پنل بروید."}</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link href={admin ? "/panel" : "/panel/pos"} className="btn btn-ink">{admin ? "ورود به پنل" : "ورود به صندوق"}</Link>
+            <Link href="/panel" className="btn btn-ink">ورود به پنل</Link>
             <button type="button" className="btn btn-ghost" onClick={logout}>خروج</button>
           </div>
         </div>

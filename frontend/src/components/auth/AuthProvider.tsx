@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 import { call } from "@/lib/client";
 
-export type Role = "admin" | "seller" | "customer";
+export type Role = "admin" | "staff" | "customer";
 
 export type Me = {
   authenticated: boolean;
@@ -15,6 +15,8 @@ export type Me = {
   last_name?: string;
   is_staff?: boolean;
   username?: string;
+  /** Panel permissions (see backend/apps/accounts/roles.py); every one for the admin. */
+  perms?: string[];
 };
 
 type Auth = { me: Me | null; refresh: () => Promise<Me>; setMe: (me: Me) => void; logout: () => Promise<void> };

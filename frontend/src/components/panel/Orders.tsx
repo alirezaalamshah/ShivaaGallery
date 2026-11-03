@@ -13,6 +13,7 @@ import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
 import { adminCall, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import type { AdminOrder, AdminOrderRow, Paged } from "./types";
 import { Card, ConfirmButton, Empty, Field, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
@@ -33,6 +34,7 @@ export function OrdersList() {
   const params = useSearchParams();
   const status = params.get("status") ?? "";
   const user = params.get("user") ?? "";
+  const can = useCan();
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -50,9 +52,11 @@ export function OrdersList() {
     <>
       <PageHead title="سفارش‌ها" sub={data ? `${faNum(data.count)} سفارش${user && data.results[0] ? ` · مشتری ${toFaDigits(data.results[0].phone)}` : ""}` : undefined}>
         {user && <Link href="/panel/orders" className={`${s.btn} ${s.btnGhost}`}>همه‌ی مشتری‌ها</Link>}
-        <a href={`/api/admin/orders/export?${filters}`} className={`${s.btn} ${s.btnGhost}`} download>
-          خروجی اکسل
-        </a>
+        {can("orders.export") && (
+          <a href={`/api/admin/orders/export?${filters}`} className={`${s.btn} ${s.btnGhost}`} download>
+            خروجی اکسل
+          </a>
+        )}
       </PageHead>
       <Card>
         <div className={s.toolbar}>
@@ -135,6 +139,7 @@ export function OrderDetail({ id }: { id: string }) {
   const [shipping, setShipping] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const manage = useCan()("orders.manage");
 
   if (error) return <Empty icon="bag" title={error} />;
   if (!order) return <PageHead title="سفارش" sub="در حال بارگذاری…" />;
@@ -214,6 +219,7 @@ export function OrderDetail({ id }: { id: string }) {
         </div>
 
         <div className={s.stack}>
+          {manage && (
           <Card title="تغییر وضعیت">
             {order.next_statuses.length ? (
               <div style={{ display: "grid", gap: 12 }}>
@@ -260,6 +266,7 @@ export function OrderDetail({ id }: { id: string }) {
               <p className="muted" style={{ margin: 0 }}>این سفارش در وضعیت نهایی است.</p>
             )}
           </Card>
+          )}
 
           {order.payments.length > 0 && (
             <Card title="پرداخت‌های آنلاین">
@@ -275,6 +282,8 @@ export function OrderDetail({ id }: { id: string }) {
             </Card>
           )}
 
+          {manage && (
+          <>
           <Card title="کد رهگیری مرسوله">
             <div style={{ display: "flex", gap: 8 }}>
               <input id="tracking" className="input ltr num" value={tracking ?? order.tracking_code} onChange={(e) => setTracking(e.target.value)} placeholder="مثلاً کد پست یا تیپاکس" />
@@ -286,6 +295,8 @@ export function OrderDetail({ id }: { id: string }) {
             <textarea id="admin-note" className="input" value={note ?? order.admin_note} onChange={(e) => setNote(e.target.value)} placeholder="فقط مدیر می‌بیند" />
             <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} style={{ marginTop: 8 }} disabled={busy || note === null} onClick={() => update({ admin_note: note ?? "" }, "یادداشت ذخیره شد.")}>ذخیره‌ی یادداشت</button>
           </Card>
+          </>
+          )}
 
           <Card title="تاریخچه">
             <ol className={s.timeline}>

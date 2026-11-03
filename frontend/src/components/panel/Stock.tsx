@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import { faNum } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import type { Paged } from "./types";
 import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
@@ -54,6 +55,7 @@ export function Stock() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<number | null>(null);
+  const can = useCan();
   useEffect(() => {
     const t = setTimeout(() => setSearch(q.trim()), 300);
     return () => clearTimeout(t);
@@ -78,8 +80,8 @@ export function Stock() {
   return (
     <>
       <PageHead title="موجودی انبار" sub="موجودی مغازه و سایت یکی است. جنس تازه را این‌جا اضافه کنید. فروش مغازه را در صندوق ثبت کنید تا سایت آن را نفروشد.">
-        <Link href="/panel/pos" className={s.btn}><Icon name="card" /> صندوق فروش</Link>
-        <Link href="/panel/inventory" className={`${s.btn} ${s.btnGhost}`}>دفتر موجودی</Link>
+        {can("pos.sell") && <Link href="/panel/pos" className={s.btn}><Icon name="card" /> صندوق فروش</Link>}
+        {can("stock.history") && <Link href="/panel/inventory" className={`${s.btn} ${s.btnGhost}`}>دفتر موجودی</Link>}
       </PageHead>
       <Card>
         <div className={s.toolbar}>
@@ -100,7 +102,7 @@ export function Stock() {
               <section key={g.id} className={s.stockGroup}>
                 <header>
                   <span className={s.thumb}><ProductMedia image={g.thumb} alt={g.name} sizes="46px" /></span>
-                  <Link href={`/panel/products/${g.id}`}><b>{g.name}</b></Link>
+                  {can("products.view") ? <Link href={`/panel/products/${g.id}`}><b>{g.name}</b></Link> : <b>{g.name}</b>}
                   {!g.active && <small className="muted">(در سایت نمایش داده نمی‌شود)</small>}
                 </header>
                 <ul>
@@ -116,9 +118,11 @@ export function Stock() {
                           {unknown ? "؟" : r.stock === 0 ? "تمام شد" : `${faNum(r.stock)} عدد`}
                         </span>
                         <span className={s.stockBtns}>
+                          {can("stock.edit") && (
                           <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={busy === r.id} onClick={() => receive(r)} aria-label={`یک عدد به ${r.product} ${r.color_name} سایز ${r.size_label} اضافه کن`}>
                             <Icon name="plus" /> ۱
                           </button>
+                          )}
                         </span>
                       </li>
                     );

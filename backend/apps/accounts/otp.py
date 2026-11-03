@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import OtpCode, hash_code
-from .roles import is_seller
+from .roles import is_panel_user
 from .sms import send_sms
 
 CODE_LENGTH = 5
@@ -53,8 +53,8 @@ def verify_code(phone, code):
     otp.save(update_fields=["used_at"])
     User = get_user_model()
     user, created = User.objects.get_or_create(username=phone)
-    if user.is_staff or user.is_superuser or is_seller(user):
-        # Staff and sellers sign in with a password; a phone code must never open the panel.
+    if is_panel_user(user):
+        # Admins and panel staff sign in with a password; a phone code must never open the panel.
         raise OtpError("این شماره برای ورود مشتری قابل استفاده نیست.")
     if created:
         user.set_unusable_password()

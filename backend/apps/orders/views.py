@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from apps.accounts.models import Address
-from apps.accounts.roles import is_seller
+from apps.accounts.roles import is_panel_user
 
 from .models import Order, OrderItem, ShippingMethod
 from .serializers import (
@@ -63,8 +63,8 @@ def orders(request):
         )
         return Response(OrderSummarySerializer(qs, many=True).data)
 
-    if request.user.is_staff or is_seller(request.user):
-        return Response({"detail": "با حساب مدیر یا فروشنده نمی‌شود سفارش ثبت کرد."}, status=status.HTTP_403_FORBIDDEN)
+    if is_panel_user(request.user):
+        return Response({"detail": "با حساب مدیر یا کاربر پنل نمی‌شود سفارش ثبت کرد."}, status=status.HTTP_403_FORBIDDEN)
     s = CheckoutSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     d = s.validated_data

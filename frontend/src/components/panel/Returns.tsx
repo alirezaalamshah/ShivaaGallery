@@ -8,6 +8,7 @@ import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 import type { ReturnRequest } from "@/lib/types";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import type { Paged } from "./types";
 import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
@@ -41,6 +42,7 @@ export function Returns() {
   const [page, setPage] = useState(1);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
+  const manage = useCan()("returns.manage");
   const { data, setData, loading } = useAdmin<Paged<AdminReturn>>(`/returns?page=${page}${status ? `&status=${status}` : ""}`);
 
   const update = async (r: AdminReturn, next?: string) => {
@@ -90,7 +92,7 @@ export function Returns() {
                   ))}
                 </ul>
                 {r.text && <p className="muted">«{r.text}»</p>}
-                {r.next_statuses.length > 0 ? (
+                {manage && r.next_statuses.length > 0 ? (
                   <>
                     <textarea
                       className="input"

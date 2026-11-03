@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import type { Paged } from "./types";
 import { Card, ConfirmButton, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
@@ -37,6 +38,7 @@ const TABS = [
 export function Reviews() {
   const toast = useToast();
   const [status, setStatus] = useState("pending");
+  const manage = useCan()("reviews.manage");
   const [page, setPage] = useState(1);
   const [replying, setReplying] = useState<number | null>(null);
   const [reply, setReply] = useState("");
@@ -97,12 +99,14 @@ export function Reviews() {
                     </div>
                   </div>
                 )}
+                {manage && (
                 <div className={s.actions}>
                   {r.status !== "approved" && <button type="button" className={`${s.btn} ${s.btnSm}`} onClick={() => save(r, { status: "approved" }, "نظر منتشر شد")}>تأیید و انتشار</button>}
                   {r.status !== "rejected" && <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => save(r, { status: "rejected" }, "نظر رد شد")}>رد</button>}
                   {replying !== r.id && <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => { setReply(r.reply); setReplying(r.id); }}>{r.reply ? "ویرایش پاسخ" : "پاسخ"}</button>}
                   <ConfirmButton label="حذف" small onConfirm={() => remove(r)} />
                 </div>
+                )}
               </li>
             ))}
           </ul>

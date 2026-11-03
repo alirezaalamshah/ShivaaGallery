@@ -7,7 +7,8 @@ from rest_framework import serializers, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.panel.views import IsStaff, StaffMixin
+from apps.accounts.roles import needs
+from apps.panel.views import StaffMixin
 from apps.pos.services import day_range
 
 from .models import Expense
@@ -23,6 +24,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 
 class ExpenseViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": "expenses.view", "write": "expenses.edit", "destroy": "expenses.delete"}
     """The shop's running costs. ?from=&to= (days) narrow the list; the response adds the total."""
 
     serializer_class = ExpenseSerializer
@@ -65,7 +67,7 @@ def _days(params):
 
 
 @api_view(["GET"])
-@permission_classes([IsStaff])
+@permission_classes([needs("reports.view")])
 def report(request):
     first, last = _days(request.query_params)
     start, end = day_range(first)[0], day_range(last)[1]

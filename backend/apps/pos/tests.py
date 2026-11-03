@@ -4,7 +4,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.accounts.roles import seller_group
+from apps.accounts.models import StaffAccess
+from apps.accounts.roles import TEMPLATES, normalize
 from apps.catalog.models import Category, Color, Product, Size, SizeSystem, Variant
 from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
@@ -13,6 +14,12 @@ from apps.inventory.services import move_stock
 from .models import Sale, TillClose
 
 User = get_user_model()
+SELLER = normalize(dict((k, p) for k, _, p in TEMPLATES)["seller"])
+
+
+def make_staff(user, perms=SELLER):
+    StaffAccess.objects.create(user=user, perms=normalize(perms))
+    return user
 
 
 class TillFixture(TestCase):
@@ -27,7 +34,7 @@ class TillFixture(TestCase):
         move_stock(self.l, 1, StockMovement.Reason.RECEIVE)
         self.admin = User.objects.create_user("admin", password="secret-1", is_staff=True)
         self.seller = User.objects.create_user("sara", password="secret-1", first_name="سارا")
-        self.seller.groups.add(seller_group())
+        make_staff(self.seller)
 
     def sell(self, user=None, **kw):
         self.client.force_login(user or self.seller)
@@ -39,7 +46,7 @@ class SellerAccessTests(TillFixture):
     def test_seller_signs_in_with_password_and_is_told_their_role(self):
         res = self.client.post("/api/auth/login/", {"username": "sara", "password": "secret-1"}, content_type="application/json")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["role"], "seller")
+        self.assertEqual(res.json()["role"], "staff")
 
     def test_seller_cannot_reach_the_rest_of_the_panel(self):
         self.client.force_login(self.seller)
@@ -55,7 +62,7 @@ class SellerAccessTests(TillFixture):
         from apps.accounts.otp import OtpError, request_code, verify_code
 
         seller = User.objects.create_user("09125550000", password="x")
-        seller.groups.add(seller_group())
+        make_staff(seller)
         _, code = request_code("09125550000")
         with self.assertRaises(OtpError):
             verify_code("09125550000", code)
@@ -108,7 +115,7 @@ class SaleTests(TillFixture):
     def test_seller_sees_only_own_sales_and_day_totals(self):
         self.sell(cash=1_000_000, card=1_800_000)
         other = User.objects.create_user("ali", password="x")
-        other.groups.add(seller_group())
+        make_staff(other)
         self.client.force_login(other)
         self.assertEqual(self.client.get("/api/admin/pos/sales/").json()["totals"]["count"], 0)
         self.client.force_login(self.admin)
@@ -136,10 +143,10 @@ class SaleTests(TillFixture):
 class TeamTests(TillFixture):
     def test_admin_creates_edits_and_disables_a_seller(self):
         self.client.force_login(self.admin)
-        res = self.client.post("/api/admin/team/", {"username": "neda", "password": "pass-123", "first_name": "ندا"}, content_type="application/json")
+        res = self.client.post("/api/admin/team/", {"username": "neda", "password": "pass-123", "first_name": "ندا", "perms": SELLER}, content_type="application/json")
         self.assertEqual(res.status_code, 201, res.content)
         neda = User.objects.get(username="neda")
-        self.assertEqual(res.json()["role"], "seller")
+        self.assertEqual(res.json()["role"], "staff")
         self.assertFalse(neda.is_staff)
         self.client.patch(f"/api/admin/team/{neda.pk}/", {"is_active": False, "password": "new-pass"}, content_type="application/json")
         neda.refresh_from_db()

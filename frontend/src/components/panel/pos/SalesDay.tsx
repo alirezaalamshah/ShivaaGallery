@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
+import { useCan } from "../access";
 import { adminCall, refreshSite, useAdmin } from "../hooks";
 import { Card, Empty, Modal } from "../ui";
 import s from "../panel.module.css";
@@ -25,8 +25,8 @@ const shift = (day: string, by: number) => {
 /** One day's till sales with the drawer totals per payment method, for closing the till. */
 export function SalesDay() {
   const store = useStore();
-  const { me } = useAuth();
-  const admin = me?.role === "admin";
+  const can = useCan();
+  const all = can("pos.all_sales");
   const today = isoDay(new Date());
   const [day, setDay] = useState(today);
   const [open, setOpen] = useState<Sale | null>(null);
@@ -45,7 +45,7 @@ export function SalesDay() {
       {t && (
         <div className={s.stats}>
           <div className={s.stat}>
-            <span>جمع فروش {admin ? "صندوق" : "شما"}</span>
+            <span>جمع فروش {all ? "صندوق" : "شما"}</span>
             <b className="num">{faNum(t.total)}</b>
             <small>{faNum(t.count)} فاکتور · {faNum(t.pieces)} عدد{t.discount ? ` · ${faNum(t.discount)} تخفیف` : ""}{t.returned ? ` · ${faNum(t.pieces_returned)} عدد پس‌گرفته (${faNum(t.returned)})` : ""}</small>
           </div>
@@ -72,14 +72,14 @@ export function SalesDay() {
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead>
-                <tr><th>فاکتور</th><th>ساعت</th>{admin && <th>فروشنده</th>}<th>عدد</th><th>مبلغ</th><th>پرداخت</th><th>مشتری</th><th>وضعیت</th></tr>
+                <tr><th>فاکتور</th><th>ساعت</th>{all && <th>فروشنده</th>}<th>عدد</th><th>مبلغ</th><th>پرداخت</th><th>مشتری</th><th>وضعیت</th></tr>
               </thead>
               <tbody>
                 {data.results.map((x) => (
                   <tr key={x.id} className={`${s.rowLink} ${x.status === "voided" ? p.voided : ""}`} onClick={async () => setOpen(await adminCall<Sale>(`/pos/sales/${x.id}`))}>
                     <td className="num" dir="ltr">#{toFaDigits(x.number)}</td>
                     <td className="num">{new Date(x.created_at).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}</td>
-                    {admin && <td>{x.seller}</td>}
+                    {all && <td>{x.seller}</td>}
                     <td className="num">{faNum(x.item_count ?? 0)}{x.returned_count ? ` · ${faNum(x.returned_count)} پس‌گرفته` : ""}</td>
                     <td className={`num ${x.total < 0 ? "err" : ""}`}>{faNum(x.total)}</td>
                     <td className="muted">{payText(x)}</td>
@@ -95,12 +95,12 @@ export function SalesDay() {
         )}
       </Card>
 
-      {open && <SaleModal sale={open} admin={admin} onClose={() => setOpen(null)} onVoided={(x) => { setOpen(x); reload(); }} />}
+      {open && <SaleModal sale={open} canVoid={can("pos.void")} onClose={() => setOpen(null)} onVoided={(x) => { setOpen(x); reload(); }} />}
     </>
   );
 }
 
-function SaleModal({ sale, admin, onClose, onVoided }: { sale: Sale; admin: boolean; onClose: () => void; onVoided: (s: Sale) => void }) {
+function SaleModal({ sale, canVoid, onClose, onVoided }: { sale: Sale; canVoid: boolean; onClose: () => void; onVoided: (s: Sale) => void }) {
   const store = useStore();
   const toast = useToast();
   const [voiding, setVoiding] = useState(false);
@@ -128,7 +128,7 @@ function SaleModal({ sale, admin, onClose, onVoided }: { sale: Sale; admin: bool
       footer={
         <>
           <a href={`/panel/pos/sales/${sale.id}/print`} target="_blank" rel="noopener" className={s.btn}>چاپ فاکتور</a>
-          {admin && sale.status === "completed" && !voiding && (
+          {canVoid && sale.status === "completed" && !voiding && (
             <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={() => setVoiding(true)}>ابطال فروش</button>
           )}
         </>

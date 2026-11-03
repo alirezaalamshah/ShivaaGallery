@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { ApiError } from "@/lib/client";
 import { faDate, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
+import { useCan } from "../access";
 import { adminCall, refreshSite } from "../hooks";
 import { MoneyInput, Modal } from "../ui";
 import s from "../panel.module.css";
@@ -77,6 +78,7 @@ export function Register() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PosProduct[]>([]);
   const [maxDiscount, setMaxDiscount] = useState<number | null>(null);
+  const canReturn = useCan()("pos.return");
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -351,9 +353,11 @@ export function Register() {
       <aside ref={ticketRef} className={p.ticket} aria-label="فاکتور">
         <h2>
           فاکتور <small className="num">{pieces ? `${faNum(pieces)} عدد` : ""}</small>
-          <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.backBtn}`} onClick={() => setPicking(true)}>
-            <Icon name="ret" /> مرجوعی یا تعویض
-          </button>
+          {canReturn && (
+            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.backBtn}`} onClick={() => setPicking(true)}>
+              <Icon name="ret" /> مرجوعی یا تعویض
+            </button>
+          )}
         </h2>
         {ticket.lines.length ? (
           <ul className={p.lines}>
@@ -409,6 +413,8 @@ export function Register() {
 
         <div className={p.sums}>
           <div><span>جمع کالاها</span><b className="num">{faNum(subtotal)}</b></div>
+          {/* A limit of zero means this seller may not give a discount. */}
+          {maxDiscount !== 0 && (
           <div className={p.discountRow}>
             <span>تخفیف</span>
             <span className={p.discountInput}>
@@ -419,8 +425,9 @@ export function Register() {
               </span>
             </span>
           </div>
+          )}
           {discount > 0 && <div className={p.minor}><span>مبلغ تخفیف</span><span className="num">− {faNum(discount)}</span></div>}
-          {maxDiscount !== null && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
+          {!!maxDiscount && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
           {returned > 0 && <div className={p.minor}><span>کالاهای پس‌گرفته</span><span className="num">− {faNum(returned)}</span></div>}
           <div className={`${p.total} ${refund ? p.refund : ""}`}>
             <span>{refund ? "پرداخت به مشتری" : "مبلغ قابل پرداخت"}</span>

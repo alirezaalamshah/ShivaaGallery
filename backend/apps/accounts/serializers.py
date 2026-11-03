@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.core.validators import iran_mobile
 
 from .models import Address
-from .roles import role_of
+from .roles import perms_of, role_of
 
 PERSIAN_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
@@ -72,4 +72,5 @@ def me_payload(user):
         "last_name": user.last_name,
         "is_staff": user.is_staff,
         "username": user.username,
+        "perms": sorted(perms_of(user)) if role in ("admin", "staff") else [],
     }

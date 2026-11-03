@@ -7,6 +7,8 @@ import { useAuth, type Me } from "@/components/auth/AuthProvider";
 import { useStore } from "@/components/StoreProvider";
 import { call } from "@/lib/client";
 
+import { canOpen, homeOf, isPanelUser } from "./access";
+import { MENU } from "./PanelShell";
 import s from "./panel.module.css";
 
 export function PanelLogin() {
@@ -20,9 +22,8 @@ export function PanelLogin() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (me?.role === "admin") router.replace(next.startsWith("/panel") ? next : "/panel");
-    // Sellers only have the till.
-    else if (me?.role === "seller") router.replace(next.startsWith("/panel/pos") ? next : "/panel/pos");
+    // Back to the page asked for, or the first page this user may open.
+    if (isPanelUser(me)) router.replace(canOpen(me, next) ? next : homeOf(me, MENU) ?? "/panel");
   }, [me, next, router]);
 
   const submit = async (e: React.FormEvent) => {

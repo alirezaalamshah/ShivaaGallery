@@ -9,6 +9,7 @@ import { Icon, type IconName } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
 import { faNum } from "@/lib/format";
 
+import { canOpen, homeOf, isPanelUser } from "./access";
 import { adminCall } from "./hooks";
 import s from "./panel.module.css";
 
@@ -42,8 +43,8 @@ const NAV: { group: string; items: { href: string; label: string; icon: IconName
   ] },
 ];
 
-// A seller sees only the till.
-const SELLER_NAV: typeof NAV = [{ group: "صندوق", items: [{ href: "/panel/pos", label: "صندوق فروش حضوری", icon: "card" }] }];
+/** Menu pages in order; a user who may not open a page lands on the first one they may. */
+export const MENU = NAV.flatMap((g) => g.items.map((it) => it.href));
 
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -52,20 +53,21 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const { me, logout } = useAuth();
   const [badges, setBadges] = useState<Badges>({});
   const role = me?.authenticated ? me.role : undefined;
-  const allowed = role === "admin" || (role === "seller" && path.startsWith("/panel/pos"));
+  const allowed = canOpen(me, path);
+  const home = homeOf(me, MENU);
   const isLogin = path === "/panel/login";
   const navs = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isLogin || !me) return;
-    if (role === "seller" && !path.startsWith("/panel/pos")) router.replace("/panel/pos");
-    else if (role !== "admin" && role !== "seller") router.replace(`/panel/login?next=${encodeURIComponent(path)}`);
-  }, [me, role, isLogin, path, router]);
+    if (!isPanelUser(me)) router.replace(`/panel/login?next=${encodeURIComponent(path)}`);
+    else if (!allowed && home) router.replace(home);
+  }, [me, isLogin, path, router, allowed, home]);
 
   useEffect(() => {
-    if (role !== "admin") return;
-    adminCall<Badges>("/dashboard").then(setBadges).catch(() => {});
-  }, [role, path]);
+    if (!isPanelUser(me)) return;
+    adminCall<Badges>("/badges").then(setBadges).catch(() => {});
+  }, [me, path]);
 
   // On phones the menu is one row that scrolls sideways; keep the open page in view.
   useEffect(() => {
@@ -76,6 +78,17 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }, [path, me]);
 
   if (isLogin) return <>{children}</>;
+  if (isPanelUser(me) && !home) {
+    return (
+      <div className={s.login}>
+        <div className={s.loginCard}>
+          <h1>هنوز به بخشی از پنل دسترسی ندارید</h1>
+          <p className="muted">از مدیر فروشگاه بخواهید در «کاربران و دسترسی» برای شما دسترسی تعیین کند.</p>
+          <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={async () => { await logout(); router.replace("/panel/login"); }}>خروج</button>
+        </div>
+      </div>
+    );
+  }
   if (!me || !allowed) return <div className={s.login} aria-busy="true" />;
   // Print pages are just the paper, without the panel around them.
   if (path.endsWith("/print")) return <>{children}</>;
@@ -92,11 +105,11 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           )}
           <span>
             <b>{store.name}</b>
-            <small>{role === "seller" ? "صندوق فروشگاه" : "پنل مدیریت"}</small>
+            <small>{role === "admin" ? "پنل مدیریت" : "پنل فروشگاه"}</small>
           </span>
         </div>
         <div className={s.navs} ref={navs}>
-          {(role === "seller" ? SELLER_NAV : NAV).map((g) => (
+          {NAV.map((g) => ({ ...g, items: g.items.filter((it) => canOpen(me, it.href)) })).filter((g) => g.items.length).map((g) => (
             <nav key={g.group} aria-label={g.group} style={{ display: "contents" }}>
               <div className={s.navGroup}>{g.group}</div>
               {g.items.map((it) => (

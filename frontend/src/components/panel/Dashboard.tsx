@@ -9,6 +9,7 @@ import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
 import { faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
+import { TILL, useCan } from "./access";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { AdminOrderRow } from "./types";
 import { Card, Empty, PageHead } from "./ui";
@@ -39,6 +40,7 @@ export function Dashboard() {
   const router = useRouter();
   const { data, reload } = useAdmin<Dash>("/dashboard");
   const [restock, setRestock] = useState<Record<number, string>>({});
+  const can = useCan();
 
   if (!data) return <PageHead title="داشبورد" sub="در حال بارگذاری…" />;
   const max = Math.max(1, ...data.sales_week.map((d) => d.total));
@@ -56,12 +58,16 @@ export function Dashboard() {
   return (
     <>
       <PageHead title="داشبورد" sub={`سلام! این‌جا خلاصه‌ی امروز ${store.name} است.`}>
-        <Link href="/panel/pos" className={s.btn}>
-          <Icon name="card" /> صندوق فروش
-        </Link>
-        <Link href="/panel/products/new" className={`${s.btn} ${s.btnGhost}`}>
-          <Icon name="plus" /> محصول جدید
-        </Link>
+        {can(...TILL) && (
+          <Link href="/panel/pos" className={s.btn}>
+            <Icon name="card" /> صندوق فروش
+          </Link>
+        )}
+        {can("products.edit") && (
+          <Link href="/panel/products/new" className={`${s.btn} ${s.btnGhost}`}>
+            <Icon name="plus" /> محصول جدید
+          </Link>
+        )}
       </PageHead>
 
       <div className={s.stats}>
@@ -169,6 +175,8 @@ export function Dashboard() {
                     <b style={{ display: "block", fontWeight: 600 }}>{v.product}</b>
                     <small className="muted">{v.color}، سایز {v.size}، <span className={v.stock ? "" : s.danger}>{v.stock ? `${faNum(v.stock)} عدد` : "تمام شده"}</span></small>
                   </Link>
+                  {can("stock.edit") && (
+                  <>
                   <input
                     aria-label={`موجودی جدید ${v.product}`}
                     className="input ltr num"
@@ -180,6 +188,8 @@ export function Dashboard() {
                     onKeyDown={(e) => e.key === "Enter" && saveStock(v.variant)}
                   />
                   <button type="button" className={`${s.btn} ${s.btnSm}`} disabled={!restock[v.variant]} onClick={() => saveStock(v.variant)}>ثبت</button>
+                  </>
+                  )}
                 </li>
               ))}
             </ul>

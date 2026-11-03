@@ -6,6 +6,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.catalog.models import Variant
+from apps.accounts.roles import can
 from apps.core.models import StoreSettings
 from apps.finance.models import Expense
 from apps.inventory.models import StockMovement
@@ -33,16 +34,16 @@ def returnable_qty(item):
 
 
 def return_problem(sale, user):
-    """Why pieces of this ticket may not be brought back, or None. The admin may always take them back."""
+    """Why pieces of this ticket may not be brought back, or None. Whoever may make exceptions always may."""
     if sale.status != Sale.Status.COMPLETED:
         return "این فاکتور باطل شده است."
-    if user.is_staff:
+    if can(user, "pos.return_any"):
         return None
     store = StoreSettings.load()
     if not store.returns_enabled:
-        return "طبق قوانین فروشگاه کالا پس گرفته نمی‌شود. فقط مدیر می‌تواند استثنا قائل شود."
+        return "طبق قوانین فروشگاه کالا پس گرفته نمی‌شود. فقط مدیر یا کسی که اجازه‌ی استثنا دارد می‌تواند استثنا قائل شود."
     if timezone.now() - sale.created_at > timedelta(days=store.returns_days):
-        return f"مهلت {store.returns_days} روزه‌ی مرجوعی این فاکتور تمام شده است. فقط مدیر می‌تواند آن را پس بگیرد."
+        return f"مهلت {store.returns_days} روزه‌ی مرجوعی این فاکتور تمام شده است. فقط مدیر یا کسی که اجازه‌ی استثنا دارد می‌تواند آن را پس بگیرد."
     return None
 
 
@@ -66,6 +67,10 @@ def create_sale(seller, data):
         back[line["item"]] = back.get(line["item"], 0) + line["qty"]
     if not merged and not back:
         raise SaleError("کالایی در فاکتور نیست.")
+    if merged and not can(seller, "pos.sell"):
+        raise SaleError("اجازه‌ی ثبت فروش ندارید.")
+    if back and not can(seller, "pos.return"):
+        raise SaleError("اجازه‌ی پس گرفتن کالا ندارید.")
 
     variants = Variant.objects.select_related("product", "color", "size").in_bulk(list(merged))
     missing = [vid for vid in merged if vid not in variants or not variants[vid].is_active]
@@ -77,10 +82,12 @@ def create_sale(seller, data):
     if discount > subtotal:
         raise SaleError("تخفیف از جمع فاکتور بیشتر است.")
     store = StoreSettings.load()
-    if not seller.is_staff:
+    if discount and not can(seller, "pos.discount_any"):
+        if not can(seller, "pos.discount"):
+            raise SaleError("اجازه‌ی تخفیف دادن ندارید.")
         limit = store.seller_max_discount
         if discount * 100 > subtotal * limit:
-            raise SaleError(f"فروشنده حداکثر {limit}٪ تخفیف می‌تواند بدهد.")
+            raise SaleError(f"حداکثر {limit}٪ تخفیف می‌توانید بدهید.")
 
     try:
         with transaction.atomic():
@@ -106,8 +113,8 @@ def create_sale(seller, data):
             paid = sum(pays.values())
             if paid != total:
                 raise SaleError(f"جمع پرداخت‌ها ({paid:,}) با مبلغ فاکتور ({total:,}) برابر نیست.")
-            if total < 0 and store.returns_type == StoreSettings.ReturnType.EXCHANGE and not seller.is_staff:
-                raise SaleError("طبق قوانین فروشگاه فقط تعویض انجام می‌شود و پول برگردانده نمی‌شود. فقط مدیر می‌تواند استثنا قائل شود.")
+            if total < 0 and store.returns_type == StoreSettings.ReturnType.EXCHANGE and not can(seller, "pos.return_any"):
+                raise SaleError("طبق قوانین فروشگاه فقط تعویض انجام می‌شود و پول برگردانده نمی‌شود. فقط مدیر یا کسی که اجازه‌ی استثنا دارد می‌تواند استثنا قائل شود.")
 
             sale = Sale.objects.create(
                 seller=seller, client_key=key, subtotal=subtotal, discount=discount, returned_total=returned_total, total=total,

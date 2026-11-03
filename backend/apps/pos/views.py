@@ -4,11 +4,11 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Max, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework import permissions, serializers, status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.roles import is_seller
+from apps.accounts.roles import ALL, can, needs
 from apps.accounts.serializers import OptionalPhoneField
 from apps.catalog.models import Product, Variant
 from apps.catalog.search import spellings
@@ -18,12 +18,9 @@ from .models import Sale, TillClose
 from .services import SaleError, close_till, create_sale, day_range, drawer, return_problem, returnable_qty, void_sale
 
 
-class IsSellerOrAdmin(permissions.BasePermission):
-    message = "فقط فروشنده یا مدیر فروشگاه به صندوق دسترسی دارد."
-
-    def has_permission(self, request, view):
-        u = request.user
-        return bool(u and u.is_authenticated and (u.is_staff or is_seller(u)))
+# Anyone allowed anything at the till may open it and see their own tickets.
+TILL = tuple(sorted(c for c in ALL if c.startswith("pos.")))
+SELLS = ("pos.sell", "pos.return")
 
 
 class LineSerializer(serializers.Serializer):
@@ -77,9 +74,9 @@ def sale_row(sale, with_items=True):
 
 
 def _visible_sales(request):
-    """A seller sees only their own sales; the admin sees everyone's."""
+    """Each seller sees only their own sales, unless allowed to see everyone's."""
     qs = Sale.objects.select_related("seller").prefetch_related("items", "returned__item__sale")
-    return qs if request.user.is_staff else qs.filter(seller=request.user)
+    return qs if can(request.user, "pos.all_sales") else qs.filter(seller=request.user)
 
 
 def _day(request):
@@ -95,7 +92,7 @@ def _image(request, product):
 
 
 @api_view(["GET"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs(SELLS)])
 def lookup(request):
     """
     Products for the till, with every color and size and how many are left. A scanned or
@@ -122,13 +119,16 @@ def lookup(request):
                 for v in p.variants.all()
             ],
         })
-    # The till shows the seller how much discount they may give; the admin has no limit.
-    max_discount = None if request.user.is_staff else StoreSettings.load().seller_max_discount
+    # The till shows the seller how much discount they may give: none, up to the store's limit, or any.
+    if can(request.user, "pos.discount_any"):
+        max_discount = None
+    else:
+        max_discount = StoreSettings.load().seller_max_discount if can(request.user, "pos.discount") else 0
     return Response({"exact": exact.id if exact else None, "products": rows, "max_discount": max_discount})
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs(TILL, write=SELLS)])
 def sales(request):
     if request.method == "POST":
         d = SaleInSerializer(data=request.data)
@@ -141,7 +141,7 @@ def sales(request):
 
     start, end = day_range(_day(request))
     qs = _visible_sales(request).filter(created_at__gte=start, created_at__lt=end)
-    if request.user.is_staff and request.query_params.get("seller", "").isdigit():
+    if can(request.user, "pos.all_sales") and request.query_params.get("seller", "").isdigit():
         qs = qs.filter(seller_id=request.query_params["seller"])
     q = request.query_params.get("search", "").strip()
     if q:
@@ -159,7 +159,7 @@ def sales(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs(TILL)])
 def sale_detail(request, pk):
     sale = _visible_sales(request).filter(pk=pk).first()
     if sale is None:
@@ -168,10 +168,8 @@ def sale_detail(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs(None, write="pos.void")])
 def sale_void(request, pk):
-    if not request.user.is_staff:
-        return Response({"detail": "فقط مدیر می‌تواند فروش را باطل کند."}, status=status.HTTP_403_FORBIDDEN)
     sale = _visible_sales(request).filter(pk=pk).first()
     if sale is None:
         return Response({"detail": "فاکتور پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
@@ -183,7 +181,7 @@ def sale_void(request, pk):
 
 
 @api_view(["GET"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs("pos.return")])
 def returnable(request):
     """
     Earlier tickets the customer may bring pieces back from, found by ticket number or the
@@ -217,7 +215,7 @@ def normalize_text(value):
 
 
 @api_view(["GET"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs(SELLS)])
 def customer(request):
     """Who this mobile number is, so the till can fill in the name and greet a returning customer."""
     from apps.accounts.models import CustomerNote
@@ -259,7 +257,7 @@ def close_row(c):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsSellerOrAdmin])
+@permission_classes([needs("pos.close", write="pos.close")])
 def till_close(request):
     """
     GET: the drawer numbers for a day (?date=), its close if it has one, and the recent closes.
@@ -272,14 +270,16 @@ def till_close(request):
         day = v.get("day") or timezone.localdate()
         if day > timezone.localdate():
             return Response({"detail": "روزی که هنوز نیامده بسته نمی‌شود."}, status=status.HTTP_400_BAD_REQUEST)
-        if day != timezone.localdate() and not request.user.is_staff:
-            return Response({"detail": "فروشنده فقط صندوق امروز را می‌بندد."}, status=status.HTTP_403_FORBIDDEN)
+        if day != timezone.localdate() and not can(request.user, "pos.close_past"):
+            return Response({"detail": "فقط صندوق امروز را می‌توانید ببندید."}, status=status.HTTP_403_FORBIDDEN)
         try:
             c = close_till(day, request.user, v["counted_cash"], v["left_in_drawer"], v.get("counted_card"), v.get("note", ""))
         except SaleError as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(close_row(c), status=status.HTTP_201_CREATED)
     day = _day(request)
+    if day != timezone.localdate() and not can(request.user, "pos.close_past"):
+        return Response({"detail": "فقط صندوق امروز را می‌توانید ببینید."}, status=status.HTTP_403_FORBIDDEN)
     done = TillClose.objects.filter(day=day).select_related("closed_by").first()
     history = TillClose.objects.select_related("closed_by")[:31]
     return Response({"drawer": drawer(day), "closed": close_row(done) if done else None, "history": [close_row(c) for c in history]})

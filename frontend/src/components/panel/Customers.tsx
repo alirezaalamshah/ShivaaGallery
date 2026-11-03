@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
 
 import { adminCall, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import { Card, Empty, PageHead, Pager } from "./ui";
 import s from "./panel.module.css";
 
@@ -50,6 +51,7 @@ export function Customers() {
   const [kind, setKind] = useState("");
   const [ordering, setOrdering] = useState("recent");
   const [page, setPage] = useState(1);
+  const can = useCan();
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(q.trim());
@@ -63,9 +65,11 @@ export function Customers() {
   return (
     <>
       <PageHead title="مشتری‌ها" sub="خریدهای اینترنتی و حضوری هر مشتری با شماره موبایلش یک‌جا جمع می‌شود. خرید حضوری وقتی این‌جا می‌آید که فروشنده موبایل مشتری را در صندوق بنویسد.">
-        <a href={`/api/admin/customers/export?${params}`} className={`${s.btn} ${s.btnGhost}`} download>
-          خروجی اکسل
-        </a>
+        {can("customers.export") && (
+          <a href={`/api/admin/customers/export?${params}`} className={`${s.btn} ${s.btnGhost}`} download>
+            خروجی اکسل
+          </a>
+        )}
       </PageHead>
       <Card>
         <div className={s.toolbar}>
@@ -147,6 +151,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
   const store = useStore();
   const toast = useToast();
   const { data, setData, error } = useAdmin<Detail>(`/customers/${phone}`);
+  const canEdit = useCan()("customers.edit");
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -257,6 +262,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
         </div>
 
         <div className={s.stack}>
+          {canEdit && (
           <Card title="یادداشت فروشگاه">
             <div className={s.stack}>
               <label className="field">
@@ -271,6 +277,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
               <button type="button" className={s.btn} disabled={busy} onClick={save}>ذخیره</button>
             </div>
           </Card>
+          )}
 
           <Card title="آدرس‌ها">
             {data.addresses.length || data.order_addresses.length ? (

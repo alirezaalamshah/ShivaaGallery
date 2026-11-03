@@ -1,6 +1,7 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from apps.accounts.roles import can
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, Size, SizeSystem, Variant
 from apps.core.models import Banner, StoreSettings
 from apps.core.validators import split_mobiles
@@ -115,7 +116,26 @@ class VariantSerializer(serializers.ModelSerializer):
         read_only_fields = ["color", "size", "stock"]
 
 
-class ProductListSerializer(serializers.ModelSerializer):
+class HidesCost:
+    """The purchase price is shown and taken only from those allowed to see it."""
+
+    def _sees_cost(self):
+        request = self.context.get("request")
+        return request is None or can(request.user, "cost.view")
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        if not self._sees_cost():
+            data.pop("cost_price", None)
+        return data
+
+    def validate(self, attrs):
+        if not self._sees_cost():
+            attrs.pop("cost_price", None)
+        return super().validate(attrs)
+
+
+class ProductListSerializer(HidesCost, serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name")
     thumb = serializers.SerializerMethodField()
     total_stock = serializers.IntegerField()
@@ -135,7 +155,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(first.image.url) if request else first.image.url
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(HidesCost, serializers.ModelSerializer):
     images = ImageSerializer(many=True, read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
 
@@ -331,12 +351,13 @@ class AdminReturnSerializer(ReturnSerializer):
         return [{"value": s, "label": labels[s]} for s in ReturnRequest.TRANSITIONS[obj.status]]
 
 
-class SellerSerializer(serializers.Serializer):
+class StaffMemberSerializer(serializers.Serializer):
     username = serializers.RegexField(r"^[A-Za-z0-9_.-]{3,30}$", error_messages={"invalid": "نام کاربری فقط حروف انگلیسی، عدد و . _ - (۳ تا ۳۰ حرف)."})
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     password = serializers.CharField(min_length=6, max_length=128, required=False, allow_blank=True, trim_whitespace=False)
     is_active = serializers.BooleanField(required=False)
+    perms = serializers.ListField(child=serializers.CharField(max_length=40), required=False, max_length=100)
 
 
 class BannerAdminSerializer(serializers.ModelSerializer):

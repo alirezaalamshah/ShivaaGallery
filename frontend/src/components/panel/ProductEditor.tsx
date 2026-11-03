@@ -11,6 +11,7 @@ import { ApiError, fieldErrors } from "@/lib/client";
 import { faNum, toEnDigits } from "@/lib/format";
 
 import { adminCall, refreshSite, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import { PhotoCropper } from "./PhotoCropper";
 import { cellKey, PriceMatrix, type Prices } from "./PriceMatrix";
 import { categoryOptions } from "./Products";
@@ -32,6 +33,8 @@ export function ProductEditor({ id }: { id?: string }) {
   const router = useRouter();
   const toast = useToast();
   const isNew = !id;
+  const can = useCan();
+  const canEdit = can("products.edit");
   const { data: product, setData: setProduct } = useAdmin<AdminProduct>(id ? `/products/${id}` : null);
   const { data: cats } = useAdmin<AdminCategory[]>("/categories");
   const { data: colors } = useAdmin<AdminColor[]>("/colors");
@@ -221,9 +224,11 @@ export function ProductEditor({ id }: { id?: string }) {
       <PageHead title={isNew ? "محصول جدید" : form.name || "ویرایش محصول"} sub={isNew ? "اطلاعات، عکس‌ها و رنگ و سایزها را وارد کنید و ذخیره بزنید." : undefined}>
         <Link href="/panel/products" className={`${s.btn} ${s.btnGhost}`}><Icon name="back" /> محصولات</Link>
         {!isNew && product && <a href={`/p/${product.slug}`} target="_blank" rel="noopener" className={`${s.btn} ${s.btnGhost}`}>مشاهده در سایت</a>}
-        <button type="button" className={s.btn} onClick={save} disabled={saving}>
-          <Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره"}
-        </button>
+        {canEdit && (
+          <button type="button" className={s.btn} onClick={save} disabled={saving}>
+            <Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره"}
+          </button>
+        )}
       </PageHead>
 
       <div className={s.cols}>
@@ -359,6 +364,7 @@ export function ProductEditor({ id }: { id?: string }) {
                                   aria-label={`موجودی ${c.name} سایز ${z.label}`}
                                   className={`num ${v === 0 || unknown ? s.zero : ""}`}
                                   inputMode="numeric"
+                                  readOnly={!can("stock.edit")}
                                   value={unknown ? "؟" : faNum(v)}
                                   onFocus={(e) => e.currentTarget.select()}
                                   onChange={(e) => {
@@ -421,10 +427,12 @@ export function ProductEditor({ id }: { id?: string }) {
               <Field label="قیمت (تومان)" error={errors.price} hint="قیمت جدا و قیمت حراج هر رنگ و سایز را در جدول‌های زیر رنگ‌ها و سایزها بنویسید">
                 <MoneyInput id="p-price" value={form.price} onChange={(v) => set("price", v)} />
               </Field>
+              {can("cost.view") && (
               <Field label="قیمت خرید (تومان)" error={errors.cost_price} hint="فقط برای حساب سود؛ مشتری نمی‌بیند. اگر خالی بماند، سود این محصول در گزارش حساب نمی‌شود.">
                 <MoneyInput id="p-cost" value={form.cost_price} onChange={(v) => set("cost_price", v)} placeholder="اختیاری" />
               </Field>
-              {form.cost_price != null && form.price ? (
+              )}
+              {can("cost.view") && form.cost_price != null && form.price ? (
                 <p className="hint" style={{ margin: 0 }}>
                   سود هر عدد با قیمت عادی: <b className="num">{faNum(form.price - form.cost_price)}</b> ({faNum(Math.round(((form.price - form.cost_price) * 100) / form.price))}٪)
                 </p>
@@ -435,7 +443,7 @@ export function ProductEditor({ id }: { id?: string }) {
             <SwitchRow title="نمایش در سایت" hint="خاموش باشد، مشتری این محصول را نمی‌بیند" checked={form.is_active} onChange={(v) => set("is_active", v)} />
             <SwitchRow title="محصول ویژه" hint="در صفحه‌ی اصلی و بخش‌های ویژه می‌آید" checked={form.is_featured} onChange={(v) => set("is_featured", v)} />
           </Card>
-          {!isNew && (
+          {!isNew && can("products.delete") && (
             <Card title="حذف محصول">
               <p className="hint" style={{ marginBottom: 12 }}>محصولی که سفارش داشته حذف نمی‌شود؛ آن را از نمایش در سایت خارج کنید.</p>
               <ConfirmButton label="حذف این محصول" onConfirm={remove} />

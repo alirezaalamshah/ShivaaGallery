@@ -21,6 +21,7 @@ router.register("banners", views.BannerViewSet, basename="admin-banner")
 urlpatterns = [
     path("store/", views.store_settings),
     path("dashboard/", views.dashboard),
+    path("badges/", views.badges),
     path("customers/", customers.customers),
     path("customers/export/", customers.customers_export),
     path("customers/<str:phone>/", customers.customer_detail),

@@ -13,7 +13,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from apps.accounts.roles import role_of, seller_group
+from apps.accounts.models import StaffAccess
+from apps.accounts.roles import ALL, CATALOG, IMPLIES, TEMPLATES, IsAdmin, PanelAccess, can, is_panel_user, needs, normalize
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, SizeSystem, StockAlert, Variant
 from apps.core.jalali import jalali_datetime
 from apps.core.pagination import StockPages
@@ -31,15 +32,10 @@ from .images import BANNER_SIZE, LOGO_SIZE, prepare_photo
 LOW_STOCK = 1
 
 
-class IsStaff(permissions.BasePermission):
-    message = "فقط مدیر فروشگاه به این بخش دسترسی دارد."
-
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
-
-
 class StaffMixin:
-    permission_classes = [IsStaff]
+    """Panel views: each sets `access`, the permission needed to read and to change (see `roles.PanelAccess`)."""
+
+    permission_classes = [PanelAccess]
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -49,18 +45,21 @@ class StaffMixin:
 
 
 class ColorViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": ("attributes.manage", "products.view"), "write": "attributes.manage"}
     queryset = Color.objects.all()
     serializer_class = s.ColorSerializer
     pagination_class = None
 
 
 class SizeSystemViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": ("attributes.manage", "categories.manage", "products.view"), "write": "attributes.manage"}
     queryset = SizeSystem.objects.prefetch_related("sizes")
     serializer_class = s.SizeSystemSerializer
     pagination_class = None
 
 
 class CategoryViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": ("categories.manage", "products.view"), "write": "categories.manage"}
     serializer_class = s.CategorySerializer
     pagination_class = None
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -70,6 +69,8 @@ class CategoryViewSet(StaffMixin, viewsets.ModelViewSet):
 
 
 class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
+    # The home page editor looks products up to put them in the slider.
+    access = {"read": ("products.view", "home.manage"), "write": "products.edit", "destroy": "products.delete"}
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "variants__sku"]
     ordering_fields = ["created_at", "price", "name", "total_stock"]
@@ -192,12 +193,16 @@ class ProductViewSet(StaffMixin, viewsets.ModelViewSet):
                         v.save(update_fields=changed)
                     target = stock.get(f"{color.pk}-{size.pk}")
                     if target is not None and target != v.stock:
+                        if not can(request.user, "stock.edit"):
+                            transaction.set_rollback(True)
+                            return Response({"detail": "اجازه‌ی تغییر موجودی ندارید. موجودی را همان‌طور که بود بگذارید."}, status=status.HTTP_403_FORBIDDEN)
                         move_stock(v, target - v.stock, StockMovement.Reason.ADJUST, note="جدول تنوع‌ها", user=request.user)
             product.variants.exclude(pk__in=wanted).update(is_active=False)
         return self._detail(product)
 
 
 class ProductImageViewSet(StaffMixin, viewsets.mixins.UpdateModelMixin, viewsets.mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    access = {"write": "products.edit"}
     queryset = ProductImage.objects.all()
     serializer_class = s.ImageSerializer
 
@@ -208,6 +213,8 @@ class ProductImageViewSet(StaffMixin, viewsets.mixins.UpdateModelMixin, viewsets
 
 class VariantViewSet(StaffMixin, viewsets.mixins.ListModelMixin, viewsets.mixins.UpdateModelMixin, viewsets.GenericViewSet):
     """Every color and size on sale, for the stock page where in-store sales and new stock are recorded."""
+
+    access = {"read": "stock.view", "write": "stock.edit"}
 
     filter_backends = [filters.SearchFilter]
     search_fields = ["product__name", "sku", "color__name", "size__label"]
@@ -254,18 +261,21 @@ class VariantViewSet(StaffMixin, viewsets.mixins.ListModelMixin, viewsets.mixins
 
 
 class ShippingMethodViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": "shipping.manage", "write": "shipping.manage"}
     queryset = ShippingMethod.objects.all()
     serializer_class = s.ShippingMethodSerializer
     pagination_class = None
 
 
 class DiscountCodeViewSet(StaffMixin, viewsets.ModelViewSet):
+    access = {"read": "discounts.manage", "write": "discounts.manage"}
     queryset = DiscountCode.objects.all()
     serializer_class = s.DiscountCodeSerializer
     pagination_class = None
 
 
 class OrderViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
+    access = {"read": "orders.view", "export": "orders.export", "update_status": "orders.manage"}
     filter_backends = [filters.SearchFilter]
     search_fields = ["number", "phone", "receiver_name"]
 
@@ -343,6 +353,8 @@ def filter_dates(qs, params, field="created_at"):
 class ReviewViewSet(StaffMixin, viewsets.mixins.ListModelMixin, viewsets.mixins.UpdateModelMixin, viewsets.mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """Buyers' reviews waiting for approval, and the published and rejected ones."""
 
+    access = {"read": "reviews.view", "write": "reviews.manage"}
+
     serializer_class = s.ReviewSerializer
 
     def get_queryset(self):
@@ -352,6 +364,7 @@ class ReviewViewSet(StaffMixin, viewsets.mixins.ListModelMixin, viewsets.mixins.
 
 
 class ReturnViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
+    access = {"read": "returns.view", "update_status": "returns.manage"}
     serializer_class = s.AdminReturnSerializer
 
     def get_queryset(self):
@@ -372,6 +385,7 @@ class ReturnViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class MovementViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
+    access = {"read": "stock.history"}
     serializer_class = s.MovementSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["variant__product__name", "variant__sku", "reference", "note"]
@@ -382,11 +396,17 @@ class MovementViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
         return qs.filter(reason=reason) if reason else qs
 
 
+# What the home page editor may change without access to the store settings.
+HOME_SETTINGS = {"hero_products"}
+
+
 @api_view(["GET", "PATCH"])
-@permission_classes([IsStaff])
+@permission_classes([needs(("settings.manage", "home.manage"), write=("settings.manage", "home.manage"))])
 def store_settings(request):
     store = StoreSettings.load()
     if request.method == "PATCH":
+        if not can(request.user, "settings.manage") and set(request.data) - HOME_SETTINGS:
+            return Response({"detail": "به تنظیمات فروشگاه دسترسی ندارید."}, status=status.HTTP_403_FORBIDDEN)
         data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
         logo = request.FILES.get("logo")
         if logo:
@@ -403,7 +423,7 @@ def store_settings(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsStaff])
+@permission_classes([needs("dashboard.view")])
 def dashboard(request):
     expire_unpaid_soon()
     now = timezone.now()
@@ -446,25 +466,51 @@ def dashboard(request):
     })
 
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def badges(request):
+    """The counts beside the menu items, only for the parts this user may open."""
+    if not is_panel_user(request.user):
+        return Response({"detail": "به پنل دسترسی ندارید."}, status=status.HTTP_403_FORBIDDEN)
+    out = {}
+    if can(request.user, "orders.view"):
+        expire_unpaid_soon()
+        out["orders_open"] = Order.objects.filter(status__in=Order.OPEN).count()
+    if can(request.user, "returns.view"):
+        out["returns_open"] = ReturnRequest.objects.filter(status__in=["pending", "approved"]).count()
+    if can(request.user, "reviews.view"):
+        out["reviews_pending"] = Review.objects.filter(status=Review.Status.PENDING).count()
+    return Response(out)
+
+
 def member_row(u):
     return {
         "id": u.pk, "username": u.username, "first_name": u.first_name, "last_name": u.last_name,
-        "role": "admin" if u.is_staff else "seller", "is_active": u.is_active,
+        "role": "admin" if u.is_staff else "staff", "is_active": u.is_active,
+        "perms": sorted(ALL) if u.is_staff else u.staff_access.perms,
         "last_login": u.last_login, "date_joined": u.date_joined,
     }
 
 
 def _team():
-    return get_user_model().objects.filter(Q(is_staff=True) | Q(groups__name="seller")).distinct().order_by("-is_staff", "username")
+    return get_user_model().objects.filter(Q(is_staff=True) | Q(staff_access__isnull=False)).select_related("staff_access").distinct().order_by("-is_staff", "username")
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsStaff])
+@permission_classes([IsAdmin])
 def team(request):
-    """The admins, and the sellers who may use only the till. Admins add and edit sellers here."""
+    """
+    The admins and the panel staff, with the list of permissions and the ready-made sets to pick from.
+    Admins add staff here and choose what each may see and do.
+    """
     if request.method == "GET":
-        return Response([member_row(u) for u in _team()])
-    d = s.SellerSerializer(data=request.data)
+        return Response({
+            "members": [member_row(u) for u in _team()],
+            "catalog": [{"key": key, "label": label, "perms": [{"code": c, "label": l} for c, l in perms]} for key, label, perms in CATALOG],
+            "templates": [{"key": key, "label": label, "perms": normalize(perms)} for key, label, perms in TEMPLATES],
+            "implies": IMPLIES,
+        })
+    d = s.StaffMemberSerializer(data=request.data)
     d.is_valid(raise_exception=True)
     v = d.validated_data
     if not v.get("password"):
@@ -475,32 +521,38 @@ def team(request):
         user = get_user_model().objects.create_user(
             v["username"], password=v["password"], first_name=v.get("first_name", ""), last_name=v.get("last_name", ""),
         )
-        user.groups.add(seller_group())
-    return Response(member_row(user), status=status.HTTP_201_CREATED)
+        StaffAccess.objects.create(user=user, perms=normalize(v.get("perms", [])))
+    return Response(member_row(_team().get(pk=user.pk)), status=status.HTTP_201_CREATED)
 
 
 @api_view(["PATCH"])
-@permission_classes([IsStaff])
+@permission_classes([IsAdmin])
 def team_member(request, pk):
     user = _team().filter(pk=pk).first()
     if user is None:
         return Response({"detail": "کاربر پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
     if user.is_staff:
         return Response({"detail": "حساب مدیرها از این‌جا تغییر نمی‌کند."}, status=status.HTTP_403_FORBIDDEN)
-    d = s.SellerSerializer(data=request.data, partial=True)
+    d = s.StaffMemberSerializer(data=request.data, partial=True)
     d.is_valid(raise_exception=True)
     v = d.validated_data
-    for field in ("first_name", "last_name", "is_active"):
-        if field in v:
-            setattr(user, field, v[field])
-    if v.get("password"):
-        user.set_password(v["password"])
-    user.save()
-    return Response(member_row(user))
+    with transaction.atomic():
+        for field in ("first_name", "last_name", "is_active"):
+            if field in v:
+                setattr(user, field, v[field])
+        if v.get("password"):
+            user.set_password(v["password"])
+        user.save()
+        if "perms" in v:
+            user.staff_access.perms = normalize(v["perms"])
+            user.staff_access.save(update_fields=["perms"])
+    return Response(member_row(_team().get(pk=user.pk)))
 
 
 class BannerViewSet(StaffMixin, viewsets.ModelViewSet):
     """Campaigns on the site. The picture is sent separately to /image/, like product photos."""
+
+    access = {"read": "home.manage", "write": "home.manage"}
 
     queryset = Banner.objects.all()
     serializer_class = s.BannerAdminSerializer

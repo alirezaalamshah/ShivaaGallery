@@ -11,6 +11,7 @@ import { faDate, faNum } from "@/lib/format";
 import { DateInput } from "./DateInput";
 import { RANGES, isoDay, rangeOf, type RangeValue } from "./dates";
 import { adminCall, useAdmin } from "./hooks";
+import { useCan } from "./access";
 import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
@@ -28,6 +29,7 @@ export function Expenses() {
   const store = useStore();
   const toast = useToast();
   const [range, setRange] = useState<RangeValue>("month");
+  const can = useCan();
   const [custom, setCustom] = useState({ from: "", to: "" });
   const params = new URLSearchParams(rangeOf(range, custom) as Record<string, string>).toString();
   const { data, loading, reload } = useAdmin<List>(`/expenses?${params}`);
@@ -67,9 +69,11 @@ export function Expenses() {
   return (
     <>
       <PageHead title="هزینه‌ها" sub="اجاره، حقوق، قبوض، تبلیغات و هزینه‌های جاری دیگر. خرید جنس را این‌جا ننویسید؛ قیمت خرید هر محصول در خود محصول ثبت می‌شود.">
+        {can("expenses.edit") && (
         <button type="button" className={s.btn} onClick={() => { setErrors({}); setDraft(blank()); }}>
           <Icon name="plus" /> هزینه‌ی جدید
         </button>
+        )}
       </PageHead>
 
       <Card>
@@ -102,13 +106,13 @@ export function Expenses() {
               <thead><tr><th>تاریخ</th><th>دسته</th><th>شرح</th><th>مبلغ ({store.currency_label})</th><th>از صندوق</th><th /></tr></thead>
               <tbody>
                 {data.results.map((e) => (
-                  <tr key={e.id} className={s.rowLink} onClick={() => { setErrors({}); setDraft({ ...e }); }}>
+                  <tr key={e.id} className={can("expenses.edit") ? s.rowLink : undefined} onClick={can("expenses.edit") ? () => { setErrors({}); setDraft({ ...e }); } : undefined}>
                     <td>{faDate(`${e.day}T12:00:00`)}</td>
                     <td>{e.category_label}</td>
                     <td className="muted">{e.note || "—"}</td>
                     <td className="num">{faNum(e.amount)}</td>
                     <td>{e.from_till ? "بله" : ""}</td>
-                    <td onClick={(ev) => ev.stopPropagation()}><ConfirmButton label="حذف" small onConfirm={() => remove(e.id)} /></td>
+                    <td onClick={(ev) => ev.stopPropagation()}>{can("expenses.delete") && <ConfirmButton label="حذف" small onConfirm={() => remove(e.id)} />}</td>
                   </tr>
                 ))}
               </tbody>

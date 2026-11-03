@@ -68,3 +68,17 @@ class CustomerNote(models.Model):
 
     def __str__(self):
         return self.phone
+
+
+class StaffAccess(models.Model):
+    """A panel user who is not an admin, and what they may see and do (codes from `roles.CATALOG`)."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_access")
+    perms = models.JSONField("دسترسی‌ها", default=list, blank=True)
+
+    class Meta:
+        verbose_name = "دسترسی کاربر پنل"
+        verbose_name_plural = "دسترسی کاربران پنل"
+
+    def __str__(self):
+        return self.user.username
