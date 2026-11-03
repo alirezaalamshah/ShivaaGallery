@@ -4,7 +4,13 @@ const publicApi = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8
 const internalApi = (process.env.INTERNAL_API_URL ?? publicApi.href).replace(/\/$/, "");
 const backendOrigin = new URL(internalApi).origin;
 
+// Shared hosting caps how many processes one account may start, and the build
+// otherwise starts one per CPU of the whole server. `npm run build:server` sets
+// this to 1 (see deploy/README.md); a normal build is unchanged.
+const buildCpus = Number(process.env.NEXT_BUILD_CPUS) || 0;
+
 const nextConfig: NextConfig = {
+  ...(buildCpus && { experimental: { cpus: buildCpus, webpackBuildWorker: false } }),
   images: {
     remotePatterns: [
       {

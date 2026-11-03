@@ -27,24 +27,16 @@
 
 ## مرحله ۲: گرفتن کد از گیت‌هاب
 
-ریپو خصوصی است، پس سرور برای خواندن آن کلید لازم دارد.
+ریپو خصوصی است، پس سرور برای خواندن آن یک توکن گیت‌هاب لازم دارد.
 
-1. در **Terminal** این را بزنید:
+1. در گیت‌هاب: https://github.com/settings/personal-access-tokens/new
+   - Repository access: **Only select repositories** و ریپوی `ShivaaGallery`
+   - Permissions ← **Add permissions** ← **Contents** با دسترسی **Read-only**
+2. در **Terminal** (همه در یک خط، چون ترمینال مرورگری خط‌های جدا را گاهی به هم می‌چسباند؛ `TOKEN` را با توکن عوض کنید):
    ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/github_shiva -N ""
-   cat ~/.ssh/github_shiva.pub
+   cd ~ && git clone https://alirezaalamshah:TOKEN@github.com/alirezaalamshah/ShivaaGallery.git shivagallery && ls shivagallery; history -c; history -w
    ```
-2. متنی را که چاپ می‌شود در گیت‌هاب اضافه کنید: ریپو ← **Settings** ← **Deploy keys** ← **Add deploy key** (گزینه‌ی write را نزنید).
-3. این‌ها را بزنید:
-   ```bash
-   cat >> ~/.ssh/config <<'EOF'
-   Host github.com
-     IdentityFile ~/.ssh/github_shiva
-   EOF
-   chmod 600 ~/.ssh/config
-   cd ~
-   git clone git@github.com:alirezaalamshah/ShivaaGallery.git shivagallery
-   ```
+   توکن داخل `.git/config` همان پوشه می‌ماند، پس `git pull`‌های بعدی بدون توکن کار می‌کنند. برای عوض کردن توکن: `git remote set-url origin https://alirezaalamshah:NEW_TOKEN@github.com/alirezaalamshah/ShivaaGallery.git`
 
 کد در `~/shivagallery` قرار می‌گیرد، **نه** داخل `public_html`.
 
@@ -58,6 +50,9 @@
    - Application Entry point: `application`
 2. بعد از ساخت، بالای صفحه یک دستور `source .../bin/activate && cd ...` نمایش داده می‌شود. آن را کپی کنید و در Terminal بزنید. بعد:
    ```bash
+   # cPanel هنگام ساخت برنامه passenger_wsgi.py را با الگوی خودش عوض می‌کند و آن الگو در خودش گیر می‌کند (RecursionError)
+   git checkout -- passenger_wsgi.py
+
    pip install -r requirements.txt
 
    # داده‌ها و عکس‌های فعلی فروشگاه (فقط همین بار اول!)
@@ -65,14 +60,13 @@
    cp -r ../deploy/initial-data/media media
 
    # تنظیمات
-   cp ../deploy/backend.env .env
-   nano .env        # همه‌ی example.com ها را با دامنه‌ی واقعی عوض کنید
-                    # و SMS_API_KEY و ZARINPAL_MERCHANT_ID را از فایل API_key.txt روی کامپیوترتان بنویسید
+   sed 's/example\.com/shivaagallery.ir/g' ../deploy/backend.env > .env
+   # SMS_USERNAME، SMS_API_KEY و ZARINPAL_MERCHANT_ID را بعداً از فایل API_key.txt روی کامپیوترتان در .env بنویسید
 
    python manage.py migrate
    python manage.py collectstatic --noinput
    ```
-3. در صفحه‌ی Setup Python App دکمه‌ی **Restart** را بزنید.
+3. در صفحه‌ی Setup Python App دکمه‌ی **Restart** را بزنید (یا در Terminal: `touch tmp/restart.txt`). اگر خطای ۵۰۰ داد، متن خطا در `backend/stderr.log` است.
 4. آدرس `https://api.example.com/api/store/` را باز کنید. باید اطلاعات فروشگاه را به صورت JSON نشان دهد.
 
 ## مرحله ۴: سایت و پنل
@@ -91,9 +85,11 @@
    - Application startup file: `server.js`
 3. دستور `source .../bin/activate && cd ...` بالای صفحه را در Terminal بزنید. بعد:
    ```bash
+   git checkout -- server.js   # اگر cPanel آن را با الگوی خودش عوض کرده باشد
    npm install --include=dev
-   npm run build
+   npm run build:server
    ```
+   روی هاست اشتراکی `npm run build` (با Turbopack) کار نمی‌کند: هاست تعداد پردازش‌های هر حساب را محدود کرده و `node_modules` یک میان‌بر به بیرون پروژه است. `build:server` با Webpack و فقط یک پردازش می‌سازد.
 4. دکمه‌ی **Restart** را بزنید و `https://example.com` را باز کنید.
 
 ### اگر بیلد روی سرور شکست خورد
@@ -171,7 +167,7 @@ mkdir -p tmp && touch tmp/restart.txt
 
 # سایت (اول دستور activate فرانت)
 npm install --include=dev
-npm run build
+npm run build:server
 ```
 
 بعد از آن، Restart برنامه‌ی Node.js را بزنید.
