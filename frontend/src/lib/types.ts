@@ -25,6 +25,8 @@ export type Store = {
   online_payment: boolean;
   /** Live text campaigns for the line above every page. */
   announcements: { id: number; title: string; text: string; link: string }[];
+  /** Percent off in a customer's birthday week; 0 when the store gives none. */
+  birthday_discount: number;
 };
 
 export type Banner = { id: number; title: string; text: string; image: string | null; link: string; button_label: string };
@@ -130,6 +132,7 @@ export type Order = {
   subtotal: number;
   discount_code: string;
   discount_amount: number;
+  birthday_discount: boolean;
   total: number;
   tracking_code: string;
   payment_deadline: string | null;
@@ -180,6 +183,10 @@ export type Quote = {
   subtotal: number;
   shipping_fee: number;
   discount: number;
+  /** Which discount applies: a code or the birthday discount; they are never added together. */
+  discount_kind: "code" | "birthday" | null;
+  /** Why the birthday discount or the code won, when both were possible. */
+  discount_note: string;
   total: number;
   discount_error?: string | null;
 };

@@ -28,6 +28,7 @@ class Sale(models.Model):
 
     subtotal = models.PositiveBigIntegerField("جمع کالاها")
     discount = models.PositiveBigIntegerField("تخفیف", default=0)
+    birthday_discount = models.BooleanField("تخفیف تولد", default=False, help_text="تخفیف این فاکتور تخفیف تولد مشتری است")
     returned_total = models.PositiveBigIntegerField("ارزش کالاهای پس‌گرفته", default=0)
     total = models.BigIntegerField("مبلغ کل", help_text="منفی یعنی پولی که به مشتری پس داده شد")
     cash = models.BigIntegerField("نقد", default=0)

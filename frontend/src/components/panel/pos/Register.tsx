@@ -10,6 +10,8 @@ import { ApiError } from "@/lib/client";
 import { faDate, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { useCan } from "../access";
+import { DateInput } from "../DateInput";
+import { isoDay } from "../dates";
 import { adminCall, refreshSite } from "../hooks";
 import { MoneyInput, Modal } from "../ui";
 import s from "../panel.module.css";
@@ -39,8 +41,21 @@ type Ticket = {
   received: number | null;
   customerName: string;
   customerPhone: string;
+  /** The customer's birthday, written down once when the shop does not have it yet. */
+  customerBirthday: string;
+  /** Use the customer's birthday discount instead of a typed one. */
+  birthday: boolean;
   note: string;
   key: string;
+};
+
+type Known = {
+  name: string;
+  purchases: number;
+  last_purchase: string | null;
+  active: boolean;
+  birthday: string | null;
+  birthday_offer: { percent: number; max: number | null; day: string; used: boolean } | null;
 };
 
 const EMPTY: Omit<Ticket, "key"> = {
@@ -54,6 +69,8 @@ const EMPTY: Omit<Ticket, "key"> = {
   received: null,
   customerName: "",
   customerPhone: "",
+  customerBirthday: "",
+  birthday: false,
   note: "",
 };
 
@@ -86,7 +103,7 @@ export function Register() {
   const [done, setDone] = useState<{ sale: Sale; change: number | null } | null>(null);
   const [showCustomer, setShowCustomer] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [known, setKnown] = useState<{ name: string; purchases: number; last_purchase: string | null } | null>(null);
+  const [known, setKnown] = useState<Known | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const ticketRef = useRef<HTMLElement>(null);
 
@@ -129,19 +146,28 @@ export function Register() {
     return () => clearTimeout(t);
   }, [q, search]);
 
-  // Recognise a returning customer as soon as their mobile is typed.
+  // Recognise a returning customer as soon as their mobile is typed. The name the till filled in
+  // follows the number; a name the seller typed is left alone.
   const phone = toEnDigits(ticket.customerPhone);
+  const filledName = useRef("");
   useEffect(() => {
+    const fill = (name: string) => {
+      const before = filledName.current;
+      filledName.current = name;
+      // A new number starts without the last customer's birthday discount or birthday.
+      setTicket((t) => ({ ...(t.customerName && t.customerName !== before ? t : { ...t, customerName: name }), birthday: false, customerBirthday: "" }));
+    };
     if (!/^09\d{9}$/.test(phone)) {
       setKnown(null);
+      fill("");
       return;
     }
     let live = true;
-    adminCall<{ found: boolean; name: string; purchases: number; last_purchase: string | null }>(`/pos/customer?phone=${phone}`)
+    adminCall<Known & { found: boolean }>(`/pos/customer?phone=${phone}`)
       .then((c) => {
         if (!live) return;
         setKnown(c.found ? c : null);
-        if (c.found && c.name) setTicket((t) => (t.customerName ? t : { ...t, customerName: c.name }));
+        fill(c.found ? c.name : "");
       })
       .catch(() => live && setKnown(null));
     return () => {
@@ -194,15 +220,19 @@ export function Register() {
   const pieces = ticket.lines.reduce((n, l) => n + l.qty, 0);
   const backPieces = ticket.back.reduce((n, l) => n + l.qty, 0);
   const returned = ticket.back.reduce((n, l) => n + l.unit * l.qty, 0);
-  const discount = Math.min(
-    subtotal,
-    ticket.discountMode === "percent" ? Math.round((subtotal * Math.min(100, ticket.discountInput ?? 0)) / 100) : ticket.discountInput ?? 0,
-  );
+  const offer = known?.birthday_offer && !known.birthday_offer.used ? known.birthday_offer : null;
+  const birthday = ticket.birthday && !!offer;
+  const discount = birthday
+    ? Math.min(Math.floor((subtotal * offer!.percent) / 100), offer!.max ?? Infinity)
+    : Math.min(
+        subtotal,
+        ticket.discountMode === "percent" ? Math.round((subtotal * Math.min(100, ticket.discountInput ?? 0)) / 100) : ticket.discountInput ?? 0,
+      );
   const total = subtotal - discount - returned;
   const refund = total < 0;
   // Money handed back goes out one way only; "several ways" is for taking money in.
   const pay: Pay = refund && ticket.pay === "split" ? "cash" : ticket.pay;
-  const overLimit = maxDiscount !== null && discount * 100 > subtotal * maxDiscount;
+  const overLimit = !birthday && maxDiscount !== null && discount * 100 > subtotal * maxDiscount;
   const payments =
     pay === "split"
       ? { cash: ticket.split.cash ?? 0, card: ticket.split.card ?? 0, transfer: ticket.split.transfer ?? 0 }
@@ -213,6 +243,7 @@ export function Register() {
 
   const problems = [
     empty && "کالایی در فاکتور نیست.",
+    known && !known.active && "این مشتری غیرفعال شده است و به او فروخته نمی‌شود.",
     overLimit && `تخفیف شما حداکثر ${faNum(maxDiscount!)}٪ است.`,
     pay === "split" && paid !== total && `جمع پرداخت‌ها ${faNum(paid)} است؛ باید ${faNum(total)} باشد.`,
     change !== null && change < 0 && "مبلغ دریافتی کمتر از مبلغ فاکتور است.",
@@ -231,10 +262,12 @@ export function Register() {
         body: {
           lines: ticket.lines.map((l) => ({ variant: l.variant, qty: l.qty })),
           returns: ticket.back.map((l) => ({ item: l.item, qty: l.qty })),
-          discount,
+          discount: birthday ? 0 : discount,
+          birthday_discount: birthday,
           ...payments,
           customer_name: ticket.customerName,
           customer_phone: toEnDigits(ticket.customerPhone),
+          customer_birthday: ticket.customerBirthday || null,
           note: ticket.note,
           client_key: ticket.key,
         },
@@ -414,7 +447,7 @@ export function Register() {
         <div className={p.sums}>
           <div><span>جمع کالاها</span><b className="num">{faNum(subtotal)}</b></div>
           {/* A limit of zero means this seller may not give a discount. */}
-          {maxDiscount !== 0 && (
+          {maxDiscount !== 0 && !birthday && (
           <div className={p.discountRow}>
             <span>تخفیف</span>
             <span className={p.discountInput}>
@@ -426,8 +459,8 @@ export function Register() {
             </span>
           </div>
           )}
-          {discount > 0 && <div className={p.minor}><span>مبلغ تخفیف</span><span className="num">− {faNum(discount)}</span></div>}
-          {!!maxDiscount && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
+          {discount > 0 && <div className={p.minor}><span>{birthday ? `تخفیف تولد (${faNum(offer!.percent)}٪)` : "مبلغ تخفیف"}</span><span className="num">− {faNum(discount)}</span></div>}
+          {!!maxDiscount && !birthday && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
           {returned > 0 && <div className={p.minor}><span>کالاهای پس‌گرفته</span><span className="num">− {faNum(returned)}</span></div>}
           <div className={`${p.total} ${refund ? p.refund : ""}`}>
             <span>{refund ? "پرداخت به مشتری" : "مبلغ قابل پرداخت"}</span>
@@ -473,6 +506,28 @@ export function Register() {
             <input className="input ltr num" inputMode="tel" aria-label="موبایل مشتری" placeholder="موبایل ۰۹…" value={toFaDigits(ticket.customerPhone)} onChange={(e) => setTicket({ ...ticket, customerPhone: toEnDigits(e.target.value) })} />
             <input className="input" aria-label="نام مشتری" placeholder="نام (اختیاری)" value={ticket.customerName} onChange={(e) => setTicket({ ...ticket, customerName: e.target.value })} maxLength={80} />
           </div>
+          {known && !known.active && (
+            <p className={p.blocked} role="alert">این مشتری غیرفعال شده است و به او فروخته نمی‌شود.</p>
+          )}
+          {known?.birthday_offer && known.active && (
+            <div className={p.birthday}>
+              <span>
+                🎂 <b>هفته‌ی تولد مشتری</b>
+                <small>تولد: {faDate(`${known.birthday_offer.day}T12:00:00`)}{known.birthday_offer.used ? " · تخفیف تولد امسال استفاده شده" : ""}</small>
+              </span>
+              {!known.birthday_offer.used && (
+                <button type="button" className={`${s.btn} ${s.btnSm} ${ticket.birthday ? "" : s.btnGhost}`} aria-pressed={ticket.birthday} onClick={() => setTicket({ ...ticket, birthday: !ticket.birthday })}>
+                  {ticket.birthday ? "تخفیف تولد اعمال شد" : `اعمال تخفیف تولد (${faNum(known.birthday_offer.percent)}٪)`}
+                </button>
+              )}
+            </div>
+          )}
+          {/^09\d{9}$/.test(phone) && !known?.birthday && (
+            <label className={p.birthdayField}>
+              <span>تاریخ تولد <small>اختیاری، فقط یک بار ثبت می‌شود</small></span>
+              <DateInput value={ticket.customerBirthday} max={isoDay(new Date())} clearable placeholder="روز تولد مشتری" onChange={(v) => setTicket({ ...ticket, customerBirthday: v })} />
+            </label>
+          )}
           {known && (
             <small className={p.known}>
               <Icon name="check" /> مشتری آشنا{known.name ? `: ${known.name}` : ""} · {faNum(known.purchases)} خرید قبلی{known.last_purchase ? `، آخرین در ${faDate(known.last_purchase)}` : ""}

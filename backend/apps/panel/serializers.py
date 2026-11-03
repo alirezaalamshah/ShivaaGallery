@@ -240,6 +240,11 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
         known = set(Product.objects.filter(pk__in=ids).values_list("pk", flat=True))
         return [i for i in ids if i in known]
 
+    def validate_birthday_discount_percent(self, value):
+        if not 1 <= value <= 100:
+            raise serializers.ValidationError("درصد باید بین ۱ و ۱۰۰ باشد.")
+        return value
+
     def validate_order_notify_phone(self, value):
         valid, invalid = split_mobiles(value)
         if invalid:

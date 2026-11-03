@@ -8,6 +8,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
     returns = serializers.SerializerMethodField()
     online_payment = serializers.SerializerMethodField()
     announcements = serializers.SerializerMethodField()
+    birthday_discount = serializers.SerializerMethodField()
 
     class Meta:
         model = StoreSettings
@@ -16,8 +17,12 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             "theme",
             "phone", "landline", "instagram", "city", "address",
             "currency_label", "returns", "terms_text", "privacy_text", "working_hours",
-            "enamad_id", "enamad_code", "online_payment", "announcements",
+            "enamad_id", "enamad_code", "online_payment", "announcements", "birthday_discount",
         ]
+
+    def get_birthday_discount(self, obj):
+        """The percent off in the customer's birthday week, or 0 when the store gives none."""
+        return obj.birthday_discount_percent if obj.birthday_discount_enabled else 0
 
     def get_announcements(self, obj):
         """Live text campaigns for the line above every page."""

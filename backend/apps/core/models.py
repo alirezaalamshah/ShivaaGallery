@@ -67,6 +67,13 @@ class StoreSettings(models.Model):
         help_text="بیشترین تخفیفی که فروشنده در صندوق می‌تواند بدهد. مدیر محدودیتی ندارد.",
     )
 
+    birthday_discount_enabled = models.BooleanField(
+        "تخفیف تولد", default=False,
+        help_text="مشتری‌ای که تاریخ تولدش ثبت شده، از ۳ روز قبل تا ۳ روز بعد از تولدش یک بار در سال تخفیف می‌گیرد.",
+    )
+    birthday_discount_percent = models.PositiveSmallIntegerField("درصد تخفیف تولد", default=10)
+    birthday_discount_max = models.PositiveBigIntegerField("سقف مبلغ تخفیف تولد", null=True, blank=True, help_text="خالی یعنی بدون سقف")
+
     hero_products = models.JSONField(
         "کارت‌های اسلایدر صفحه‌ی اصلی", default=list, blank=True,
         help_text="شناسه‌ی محصولات به ترتیب نمایش. خالی یعنی محصولات ویژه و تازه‌ترین‌ها خودکار نشان داده شوند.",

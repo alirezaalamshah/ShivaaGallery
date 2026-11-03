@@ -68,7 +68,7 @@ export function OrderPrint({ id }: { id: string }) {
       <div style={{ display: "grid", gridTemplateColumns: "auto auto", justifyContent: "end", gap: "2px 24px", marginBottom: 20 }}>
         <span>جمع کالاها</span><b>{faNum(order.subtotal)}</b>
         <span>ارسال ({order.shipping_name})</span><b>{faNum(order.shipping_fee)}</b>
-        {order.discount_amount > 0 && (<><span>تخفیف {order.discount_code}</span><b>{faNum(order.discount_amount)}−</b></>)}
+        {order.discount_amount > 0 && (<><span>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</span><b>{faNum(order.discount_amount)}−</b></>)}
         <span>مبلغ کل ({store.currency_label})</span><b style={{ fontSize: 15 }}>{faNum(order.total)}</b>
         <span>پرداخت</span><b>{order.paid_at ? "پرداخت شده" : "پرداخت نشده"}</b>
       </div>

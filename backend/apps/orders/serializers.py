@@ -76,7 +76,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "number", "status", "status_label", "created_at", "receiver_name", "receiver_phone", "phone", "province", "city",
-            "address", "postal_code", "note", "shipping_name", "shipping_fee", "subtotal", "discount_code", "discount_amount", "total",
+            "address", "postal_code", "note", "shipping_name", "shipping_fee", "subtotal", "discount_code", "discount_amount", "birthday_discount", "total",
             "tracking_code", "payment_deadline", "paid_at", "can_pay", "items", "events", "returns", "return_window",
         ]
 

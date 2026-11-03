@@ -238,6 +238,7 @@ type Settings = {
   returns_enabled: boolean; returns_type: "refund" | "exchange"; returns_days: number; returns_policy: string;
   terms_text: string; privacy_text: string; working_hours: string; enamad_id: string; enamad_code: string;
   order_notify_phone: string; unpaid_hold_hours: number; seller_max_discount: number;
+  birthday_discount_enabled: boolean; birthday_discount_percent: number; birthday_discount_max: number | null;
 };
 
 /** Swatches for the theme cards; the full palettes live in globals.css. */
@@ -343,6 +344,24 @@ export function StoreSettings() {
                 <input id="st-seller-discount" className="input ltr num" inputMode="numeric" value={toFaDigits(data.seller_max_discount)} onChange={(e) => set("seller_max_discount", Math.min(100, Number(toEnDigits(e.target.value).replace(/\D/g, "")) || 0))} />
               </Field>
             </div>
+          </Card>
+          <Card title="باشگاه مشتری: تخفیف تولد">
+            <SwitchRow
+              title="تخفیف تولد"
+              hint="مشتری‌ای که تاریخ تولدش ثبت شده، از ۳ روز قبل تا ۳ روز بعد از تولدش یک بار در سال تخفیف می‌گیرد؛ در سایت خودکار و در صندوق با یک دکمه. با کد تخفیف جمع نمی‌شود: هر کدام بیشتر بود اعمال می‌شود."
+              checked={data.birthday_discount_enabled}
+              onChange={(v) => set("birthday_discount_enabled", v)}
+            />
+            {data.birthday_discount_enabled && (
+              <div className={s.formGrid} style={{ marginTop: 12 }}>
+                <Field label="درصد تخفیف" error={errors.birthday_discount_percent}>
+                  <input id="st-bday-percent" className="input ltr num" inputMode="numeric" value={toFaDigits(data.birthday_discount_percent)} onChange={(e) => set("birthday_discount_percent", Math.min(100, Number(toEnDigits(e.target.value).replace(/\D/g, "")) || 0))} />
+                </Field>
+                <Field label={`سقف مبلغ تخفیف (${data.currency_label})`} hint="خالی یعنی بدون سقف" error={errors.birthday_discount_max}>
+                  <MoneyInput id="st-bday-max" value={data.birthday_discount_max} onChange={(v) => set("birthday_discount_max", v)} placeholder="بدون سقف" />
+                </Field>
+              </div>
+            )}
           </Card>
           <Card title="قوانین، حریم خصوصی و اینماد">
             <p className="hint" style={{ marginBottom: 12 }}>

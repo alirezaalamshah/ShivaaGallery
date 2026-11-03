@@ -33,6 +33,7 @@ You cannot reach the server. You only see what the owner pastes back.
 - Django 5.2 needs Python ≥ 3.10. Next.js needs Node ≥ 18.18; use 20 or newer.
 - Stock is shared by the shop and the site. Real counts per color and size; in-store sales are recorded at the till, `/panel/pos`. Stock of 9999 is left over from an older panel and means "count unknown".
 - Three roles: admin (`is_staff`, everything, and the only one who manages users), panel staff (a `StaffAccess` row with a checklist of permission codes) and customer. The codes, the ready-made sets (seller, stock keeper) and the permission checks are in `backend/apps/accounts/roles.py`; every panel view declares the code it needs (`access` or `needs()`), and `frontend/src/components/panel/access.ts` mirrors the page rules for the menu. A new panel feature needs its own code in `CATALOG`.
+- The customer club lives in `backend/apps/accounts/club.py`: the `Customer` row per mobile (name, note, birthday, active), the birthday-week discount and `BirthdayUse`, one per customer per Persian year.
 - Profit uses `unit_cost`, the product's purchase price copied onto each sold line at the time of sale. Lines sold before a purchase price was entered have none and are reported separately.
 - `python manage.py expire_orders` cancels unpaid orders past their deadline; it belongs in a cPanel cron job every five minutes.
 - `python manage.py backup` zips the database (add `--media` for photos) into `~/shivagallery/backups`; daily and weekly cron jobs.

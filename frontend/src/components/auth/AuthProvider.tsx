@@ -17,6 +17,8 @@ export type Me = {
   username?: string;
   /** Panel permissions (see backend/apps/accounts/roles.py); every one for the admin. */
   perms?: string[];
+  /** A customer's birthday (YYYY-MM-DD), given once for the birthday discount. */
+  birthday?: string | null;
 };
 
 type Auth = { me: Me | null; refresh: () => Promise<Me>; setMe: (me: Me) => void; logout: () => Promise<void> };

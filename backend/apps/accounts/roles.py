@@ -38,7 +38,9 @@ CATALOG = [
     ]),
     ("customers", "مشتری‌ها", [
         ("customers.view", "دیدن فهرست و پرونده"),
-        ("customers.edit", "یادداشت و ویرایش"),
+        ("customers.add", "ثبت مشتری جدید"),
+        ("customers.edit", "یادداشت، نام و تاریخ تولد"),
+        ("customers.block", "فعال و غیرفعال کردن مشتری"),
         ("customers.export", "خروجی اکسل"),
     ]),
     ("reviews", "نظرات خریداران", [

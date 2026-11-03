@@ -14,6 +14,8 @@ from apps.core.models import StoreSettings
 from apps.inventory.models import StockMovement
 from apps.inventory.services import InsufficientStock, move_stock
 
+from apps.accounts.club import BLOCKED, AlreadyUsed, birthday_offer, claim_birthday, is_blocked, release_birthday
+
 from .models import DiscountCode, Order, OrderEvent, OrderItem, ShippingMethod
 
 MAX_QTY_PER_LINE = 10
@@ -58,16 +60,37 @@ def find_discount(code):
     return DiscountCode.objects.filter(code=code).first() if code else None
 
 
+def customer_phone(user):
+    return user.username if user and user.is_authenticated and not user.is_staff else ""
+
+
+def best_discount(subtotal, code_amount, phone):
+    """
+    The birthday discount and a discount code are not added together: the larger one applies.
+    Returns (amount, kind, birthday offer or None, note for the customer).
+    """
+    offer = birthday_offer(phone, subtotal)
+    birthday = offer["amount"] if offer and not offer["used"] else 0
+    if birthday and birthday >= code_amount:
+        note = "تخفیف تولدت از این کد بیشتر است، پس تخفیف تولد اعمال شد." if code_amount else ""
+        return birthday, "birthday", offer, note
+    if birthday:
+        return code_amount, "code", None, "این کد از تخفیف تولدت بیشتر است، پس کد اعمال شد. تخفیف تولدت برای خرید دیگری در همین هفته می‌ماند."
+    return code_amount, ("code" if code_amount else None), None, ""
+
+
 def quote(lines, city, shipping_method_id, discount_code="", user=None):
     priced = price_lines(lines)
     subtotal = sum(l["unit_price"] * l["qty"] for l in priced if l["ok"])
     method = ShippingMethod.objects.filter(pk=shipping_method_id).first() if shipping_method_id else None
     fee = method.fee if method and method.available_for(city) else 0
     discount = find_discount(discount_code)
-    amount = 0
-    if discount and not discount.problem(subtotal, user):
-        amount = discount.amount_for(subtotal)
-    return {"lines": priced, "subtotal": subtotal, "shipping_fee": fee, "discount": amount, "total": subtotal + fee - amount}
+    code_amount = discount.amount_for(subtotal) if discount and not discount.problem(subtotal, user) else 0
+    amount, kind, _, note = best_discount(subtotal, code_amount, customer_phone(user))
+    return {
+        "lines": priced, "subtotal": subtotal, "shipping_fee": fee, "discount": amount, "discount_kind": kind,
+        "discount_note": note, "total": subtotal + fee - amount,
+    }
 
 
 def online_payment():
@@ -109,6 +132,8 @@ def place_order(user, data):
         if existing:
             return existing
 
+    if is_blocked(user.username):
+        raise CheckoutError(BLOCKED)
     merged = merge_lines(data["lines"])
     if not merged:
         raise CheckoutError("سبد خرید خالی است.")
@@ -137,13 +162,16 @@ def place_order(user, data):
         raise CheckoutError("موجودی بعضی از کالاها تغییر کرده است. سبد را بررسی کن.", field="lines", lines=problems)
 
     subtotal = sum(by_id[vid].price * qty for vid, qty in merged.items())
-    discount_amount, discount_code = 0, ""
+    discount, code_amount = None, 0
     if data.get("discount_code"):
         discount = DiscountCode.objects.select_for_update().filter(code=data["discount_code"].strip().upper()).first()
         reason = discount.problem(subtotal, user) if discount else "این کد معتبر نیست یا تاریخش گذشته است."
         if reason:
             raise CheckoutError(reason, field="discount_code")
-        discount_amount, discount_code = discount.amount_for(subtotal), discount.code
+        code_amount = discount.amount_for(subtotal)
+    discount_amount, kind, birthday, _ = best_discount(subtotal, code_amount, user.username)
+    discount_code = discount.code if kind == "code" else ""
+    if discount_code:
         DiscountCode.objects.filter(pk=discount.pk).update(used_count=F("used_count") + 1)
 
     for _ in range(5):
@@ -155,7 +183,7 @@ def place_order(user, data):
                     province=data.get("province", ""), city=data["city"], address=data["address"],
                     postal_code=data.get("postal_code", ""), note=data.get("note", ""),
                     shipping_method=method, shipping_name=method.name, shipping_fee=method.fee,
-                    subtotal=subtotal, discount_code=discount_code, discount_amount=discount_amount,
+                    subtotal=subtotal, discount_code=discount_code, discount_amount=discount_amount, birthday_discount=kind == "birthday",
                     total=subtotal + method.fee - discount_amount, payment_deadline=payment_deadline(),
                 )
             break
@@ -163,6 +191,11 @@ def place_order(user, data):
             continue
     else:
         raise CheckoutError("ثبت سفارش ممکن نشد. دوباره تلاش کن.")
+    if birthday:
+        try:
+            claim_birthday(user.username, birthday, order.number)
+        except AlreadyUsed:
+            raise CheckoutError("تخفیف تولد امسالت قبلاً استفاده شده است. دوباره تلاش کن.")
 
     for vid, qty in merged.items():
         v = by_id[vid]
@@ -204,6 +237,8 @@ def change_status(order, new_status, by=None, note="", tracking_code=None, notif
                 move_stock(item.variant, item.qty, StockMovement.Reason.CANCEL, reference=order.number, user=by)
         if order.discount_code:
             DiscountCode.objects.filter(code=order.discount_code).update(used_count=Greatest(F("used_count") - 1, 0))
+        if order.birthday_discount:
+            release_birthday(order.number)
     if new_status == Order.Status.PAID and not order.paid_at:
         order.paid_at = timezone.now()
     order.status = new_status

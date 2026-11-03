@@ -30,6 +30,7 @@ export type Sale = {
   note: string;
   subtotal: number;
   discount: number;
+  birthday_discount?: boolean;
   /** Value of pieces taken back from earlier tickets. */
   returned_total: number;
   /** Negative: money handed back to the customer. */

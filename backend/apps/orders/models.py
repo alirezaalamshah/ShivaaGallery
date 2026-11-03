@@ -130,6 +130,7 @@ class Order(models.Model):
     subtotal = models.PositiveBigIntegerField("جمع کالاها")
     discount_code = models.CharField("کد تخفیف", max_length=30, blank=True)
     discount_amount = models.PositiveBigIntegerField("مبلغ تخفیف", default=0)
+    birthday_discount = models.BooleanField("تخفیف تولد", default=False, help_text="تخفیف این سفارش تخفیف تولد است، نه کد")
     total = models.PositiveBigIntegerField("مبلغ کل")
 
     status = models.CharField("وضعیت", max_length=20, choices=Status.choices, default=Status.AWAITING_PAYMENT, db_index=True)

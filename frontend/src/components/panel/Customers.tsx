@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
-import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { fieldErrors } from "@/lib/client";
+import { faDate, faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
 
-import { adminCall, useAdmin } from "./hooks";
 import { useCan } from "./access";
-import { Card, Empty, PageHead, Pager } from "./ui";
+import { DateInput } from "./DateInput";
+import { isoDay } from "./dates";
+import { adminCall, useAdmin } from "./hooks";
+import { Card, Empty, Field, Modal, PageHead, Pager, Switch } from "./ui";
 import s from "./panel.module.css";
 
 type Row = {
@@ -28,6 +32,9 @@ type Row = {
   purchases: number;
   first_purchase: string | null;
   last_purchase: string | null;
+  is_active: boolean;
+  birthday: string | null;
+  birthday_soon: boolean;
 };
 
 const KINDS = [
@@ -35,7 +42,12 @@ const KINDS = [
   { value: "online", label: "خرید اینترنتی" },
   { value: "store", label: "خرید حضوری" },
   { value: "none", label: "بدون خرید" },
+  { value: "birthday", label: "تولد این هفته" },
+  { value: "blocked", label: "غیرفعال" },
 ];
+
+/** Where this customer came from, in a few words. */
+const origin = (c: { has_account: boolean; store_tickets: number }) => (c.has_account ? "حساب سایت دارد" : c.store_tickets ? "فقط خرید حضوری" : "ثبت‌شده در فروشگاه");
 
 const ORDERINGS = [
   { value: "recent", label: "آخرین خرید" },
@@ -51,7 +63,9 @@ export function Customers() {
   const [kind, setKind] = useState("");
   const [ordering, setOrdering] = useState("recent");
   const [page, setPage] = useState(1);
+  const [adding, setAdding] = useState(false);
   const can = useCan();
+  const router = useRouter();
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(q.trim());
@@ -64,7 +78,12 @@ export function Customers() {
 
   return (
     <>
-      <PageHead title="مشتری‌ها" sub="خریدهای اینترنتی و حضوری هر مشتری با شماره موبایلش یک‌جا جمع می‌شود. خرید حضوری وقتی این‌جا می‌آید که فروشنده موبایل مشتری را در صندوق بنویسد.">
+      <PageHead title="مشتری‌ها" sub="باشگاه مشتری: خریدهای اینترنتی و حضوری هر مشتری با شماره موبایلش یک‌جا جمع می‌شود. مشتری قدیمی یا بدون خرید را با «ثبت مشتری» اضافه کنید.">
+        {can("customers.add") && (
+          <button type="button" className={s.btn} onClick={() => setAdding(true)}>
+            <Icon name="plus" /> ثبت مشتری
+          </button>
+        )}
         {can("customers.export") && (
           <a href={`/api/admin/customers/export?${params}`} className={`${s.btn} ${s.btnGhost}`} download>
             خروجی اکسل
@@ -99,8 +118,11 @@ export function Customers() {
                   <tr key={c.phone} className={s.rowLink}>
                     <td>
                       <Link href={`/panel/customers/${c.phone}`} className={s.cellStack}>
-                        <b>{c.name || "بی‌نام"}</b>
-                        <small className="muted">{c.has_account ? "حساب سایت دارد" : "فقط خرید حضوری"}{c.has_note ? " · یادداشت دارد" : ""}</small>
+                        <b>
+                          {c.name || "بی‌نام"}
+                          {!c.is_active && <span className="pill" data-status="cancelled" style={{ marginInlineStart: 6 }}>غیرفعال</span>}
+                        </b>
+                        <small className="muted">{origin(c)}{c.has_note ? " · یادداشت دارد" : ""}{c.birthday_soon ? " · 🎂 تولد این هفته" : ""}</small>
                       </Link>
                     </td>
                     <td className="num" dir="ltr">{toFaDigits(c.phone)}</td>
@@ -119,7 +141,55 @@ export function Customers() {
         )}
         {data && <Pager page={page} pages={data.pages} onChange={setPage} />}
       </Card>
+      {adding && <NewCustomer onClose={() => setAdding(false)} onSaved={(phone) => router.push(`/panel/customers/${phone}`)} />}
     </>
+  );
+}
+
+/** Register an old customer, or one who has not bought yet, for the customer club. */
+function NewCustomer({ onClose, onSaved }: { onClose: () => void; onSaved: (phone: string) => void }) {
+  const [form, setForm] = useState({ phone: "", name: "", birthday: "", note: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    setErrors({});
+    try {
+      const res = await adminCall<{ phone: string }>("/customers", { method: "POST", body: { ...form, phone: toEnDigits(form.phone), birthday: form.birthday || null } });
+      onSaved(res.phone);
+    } catch (e) {
+      const f = fieldErrors(e);
+      setErrors(Object.keys(f).length ? f : { form: e instanceof Error ? e.message : "ذخیره نشد." });
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      title="ثبت مشتری"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className={s.btn} disabled={busy || !form.phone} onClick={save}>{busy ? "در حال ثبت…" : "ثبت"}</button>
+          <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={onClose}>انصراف</button>
+        </>
+      }
+    >
+      <div className={s.formGrid}>
+        <Field label="موبایل" error={errors.phone}>
+          <input className="input ltr num" inputMode="tel" placeholder="۰۹…" autoFocus value={toFaDigits(form.phone)} onChange={(e) => setForm({ ...form, phone: toEnDigits(e.target.value) })} />
+        </Field>
+        <Field label="نام" error={errors.name}>
+          <input className="input" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+        <Field label="تاریخ تولد (اختیاری)" error={errors.birthday} hint="برای تخفیف هفته‌ی تولد" full>
+          <DateInput value={form.birthday} max={isoDay(new Date())} clearable placeholder="روز تولد" onChange={(v) => setForm({ ...form, birthday: v })} />
+        </Field>
+        <Field label="یادداشت (اختیاری)" error={errors.note} full>
+          <textarea className="input" rows={3} value={form.note} maxLength={2000} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="مثلاً: مشتری قدیمی مغازه، سایز ۴۰" />
+        </Field>
+      </div>
+      {errors.form && <p className="err" role="alert">{errors.form}</p>}
+    </Modal>
   );
 }
 
@@ -128,6 +198,11 @@ type Detail = {
   name: string;
   note_name: string;
   note: string;
+  is_active: boolean;
+  birthday: string | null;
+  birthday_soon: boolean;
+  registered: string | null;
+  birthday_discounts: { reference: string; amount: number; cycle: number; created_at: string }[];
   account: { joined: string; last_login: string | null; first_name: string; last_name: string } | null;
   stats: {
     online_orders: number; online_spent: number; store_tickets: number; store_spent: number; total_spent: number; purchases: number; average: number;
@@ -151,7 +226,9 @@ export function CustomerDetail({ phone }: { phone: string }) {
   const store = useStore();
   const toast = useToast();
   const { data, setData, error } = useAdmin<Detail>(`/customers/${phone}`);
-  const canEdit = useCan()("customers.edit");
+  const can = useCan();
+  const canEdit = can("customers.edit");
+  const [birthday, setBirthday] = useState("");
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -159,17 +236,18 @@ export function CustomerDetail({ phone }: { phone: string }) {
     if (!data) return;
     setName(data.note_name);
     setNote(data.note);
+    setBirthday(data.birthday ?? "");
   }, [data]);
 
   if (error) return <Empty icon="user" title={error} />;
   if (!data) return null;
   const st = data.stats;
 
-  const save = async () => {
+  const save = async (body: Record<string, unknown> = { name, note }, done = "ذخیره شد") => {
     setBusy(true);
     try {
-      setData(await adminCall<Detail>(`/customers/${phone}`, { method: "PATCH", body: { name, note } }));
-      toast({ text: "ذخیره شد" });
+      setData(await adminCall<Detail>(`/customers/${phone}`, { method: "PATCH", body }));
+      toast({ text: done });
     } catch (e) {
       toast({ text: e instanceof Error ? e.message : "ذخیره نشد." });
     } finally {
@@ -179,7 +257,13 @@ export function CustomerDetail({ phone }: { phone: string }) {
 
   return (
     <>
-      <PageHead title={data.name || "مشتری بی‌نام"} sub={data.account ? `عضو سایت از ${faDate(data.account.joined)}` : "فقط خرید حضوری؛ در سایت حساب ندارد"}>
+      <PageHead
+        title={data.name || "مشتری بی‌نام"}
+        sub={[
+          data.account ? `عضو سایت از ${faDate(data.account.joined)}` : st.store_tickets ? "فقط خرید حضوری؛ در سایت حساب ندارد" : "ثبت‌شده در فروشگاه",
+          !data.is_active && "غیرفعال: نه در سایت و نه در مغازه به او فروخته نمی‌شود",
+        ].filter(Boolean).join(" · ")}
+      >
         <a href={`tel:${data.phone}`} className={`${s.btn} ${s.btnGhost}`}>
           <Icon name="phone" /> <span className="num" dir="ltr">{toFaDigits(data.phone)}</span>
         </a>
@@ -262,6 +346,49 @@ export function CustomerDetail({ phone }: { phone: string }) {
         </div>
 
         <div className={s.stack}>
+          <Card title="باشگاه مشتری">
+            <div className={s.stack}>
+              <div className={s.switchRow}>
+                <span>
+                  <b>{data.is_active ? "فعال" : "غیرفعال"}</b>
+                  <small>{data.is_active ? "می‌تواند در سایت و مغازه خرید کند" : "نه در سایت و نه در مغازه به او فروخته نمی‌شود"}</small>
+                </span>
+                <Switch
+                  checked={data.is_active}
+                  disabled={!can("customers.block") || busy}
+                  label="فعال بودن مشتری"
+                  onChange={(v) => save({ is_active: v }, v ? "مشتری فعال شد" : "مشتری غیرفعال شد")}
+                />
+              </div>
+              <div className="field">
+                <span className="label">تاریخ تولد {data.birthday_soon && <span className="pill" data-status="delivered">🎂 تولد این هفته</span>}</span>
+                {canEdit ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <DateInput value={birthday} max={isoDay(new Date())} clearable placeholder="ثبت نشده" onChange={setBirthday} label="تاریخ تولد" />
+                    {birthday !== (data.birthday ?? "") && (
+                      <button type="button" className={`${s.btn} ${s.btnSm}`} disabled={busy} onClick={() => save({ birthday: birthday || null }, "تاریخ تولد ذخیره شد")}>ذخیره</button>
+                    )}
+                  </div>
+                ) : (
+                  <span>{data.birthday ? faDate(`${data.birthday}T12:00:00`) : "ثبت نشده"}</span>
+                )}
+                <span className="hint">مشتری فقط یک بار خودش ثبت می‌کند؛ تغییرش فقط از این‌جاست.</span>
+              </div>
+              {data.birthday_discounts.length > 0 && (
+                <ul className={s.timeline} style={{ margin: 0 }}>
+                  {data.birthday_discounts.map((b) => (
+                    <li key={b.reference}>
+                      <span>
+                        <b>تخفیف تولد {toFaDigits(b.cycle)}: <span className="num">{faNum(b.amount)}</span> {store.currency_label}</b>
+                        <small>{b.reference} · {faDate(b.created_at)}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
           {canEdit && (
           <Card title="یادداشت فروشگاه">
             <div className={s.stack}>
@@ -274,7 +401,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
                 <textarea className="input" rows={4} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} placeholder="مثلاً: سایز ۴۰ می‌پوشد، رنگ تیره دوست دارد" />
                 <span className="hint">فقط مدیر می‌بیند.</span>
               </label>
-              <button type="button" className={s.btn} disabled={busy} onClick={save}>ذخیره</button>
+              <button type="button" className={s.btn} disabled={busy} onClick={() => save()}>ذخیره</button>
             </div>
           </Card>
           )}

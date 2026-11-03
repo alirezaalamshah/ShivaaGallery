@@ -45,6 +45,9 @@ class SaleInSerializer(serializers.Serializer):
     customer_phone = OptionalPhoneField(required=False, allow_blank=True)
     note = serializers.CharField(max_length=300, required=False, allow_blank=True)
     client_key = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    # The customer's birthday discount instead of a typed discount; and their birthday, if not on file yet.
+    birthday_discount = serializers.BooleanField(default=False)
+    customer_birthday = serializers.DateField(required=False, allow_null=True)
 
 
 def sale_row(sale, with_items=True):
@@ -52,7 +55,8 @@ def sale_row(sale, with_items=True):
         "id": sale.id, "number": sale.number, "created_at": sale.created_at, "status": sale.status,
         "status_label": sale.get_status_display(), "seller": sale.seller.get_full_name() or sale.seller.username,
         "customer_name": sale.customer_name, "customer_phone": sale.customer_phone, "note": sale.note,
-        "subtotal": sale.subtotal, "discount": sale.discount, "returned_total": sale.returned_total, "total": sale.total,
+        "subtotal": sale.subtotal, "discount": sale.discount, "birthday_discount": sale.birthday_discount,
+        "returned_total": sale.returned_total, "total": sale.total,
         "cash": sale.cash, "card": sale.card, "transfer": sale.transfer,
         "void_reason": sale.void_reason, "voided_at": sale.voided_at,
     }
@@ -217,8 +221,12 @@ def normalize_text(value):
 @api_view(["GET"])
 @permission_classes([needs(SELLS)])
 def customer(request):
-    """Who this mobile number is, so the till can fill in the name and greet a returning customer."""
-    from apps.accounts.models import CustomerNote
+    """
+    Who this mobile number is, so the till can fill in the name and greet a returning customer,
+    warn about a customer the shop no longer sells to, and offer the birthday discount.
+    """
+    from apps.accounts.club import birthday_offer
+    from apps.accounts.models import Customer
     from apps.orders.models import Order
 
     phone = normalize_text(request.query_params.get("phone", ""))
@@ -226,16 +234,23 @@ def customer(request):
         return Response({"found": False})
     sales = Sale.objects.filter(customer_phone=phone, status=Sale.Status.COMPLETED)
     orders = Order.objects.filter(phone=phone, status__in=Order.SOLD)
-    note = CustomerNote.objects.filter(phone=phone).first()
+    profile = Customer.objects.filter(phone=phone).first()
     user = get_user_model().objects.filter(username=phone).first()
     name = (
-        (note.name if note else "") or (user.get_full_name() if user else "")
+        (profile.name if profile else "") or (user.get_full_name() if user else "")
         or sales.exclude(customer_name="").values_list("customer_name", flat=True).first()
         or orders.values_list("receiver_name", flat=True).first() or ""
     )
     count = sales.count() + orders.count()
     last = max(filter(None, [sales.aggregate(m=Max("created_at"))["m"], orders.aggregate(m=Max("created_at"))["m"]]), default=None)
-    return Response({"found": bool(count or name), "name": name, "purchases": count, "last_purchase": last})
+    offer = birthday_offer(phone, 0)
+    # A site account or a customer the shop registered counts, even without a purchase yet.
+    return Response({
+        "found": bool(count or name or user or profile), "name": name, "purchases": count, "last_purchase": last,
+        "has_account": user is not None, "active": not (profile and not profile.is_active),
+        "birthday": profile.birthday if profile else None,
+        "birthday_offer": {k: offer[k] for k in ("percent", "max", "day", "used")} if offer else None,
+    })
 
 
 class CloseInSerializer(serializers.Serializer):

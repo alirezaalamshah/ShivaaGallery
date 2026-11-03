@@ -51,23 +51,43 @@ class Address(models.Model):
         return f"{self.receiver_name} · {self.city}"
 
 
-class CustomerNote(models.Model):
+class Customer(models.Model):
     """
-    What the shop knows about a customer beyond their orders, keyed by mobile number so it also
-    covers shop customers who never made an account. Only the admin sees it.
+    A member of the customer club, keyed by mobile number so it also covers shop customers who never
+    made a site account: what the shop knows about them beyond their orders. Made when the shop
+    registers someone, writes a note, or the customer gives their birthday.
     """
 
     phone = models.CharField("موبایل", max_length=11, unique=True, validators=[iran_mobile])
     name = models.CharField("نام", max_length=80, blank=True, help_text="برای مشتری حضوری که نامش جای دیگری ثبت نشده")
     note = models.TextField("یادداشت مدیر", max_length=2000, blank=True)
+    birthday = models.DateField("تاریخ تولد", null=True, blank=True, help_text="مشتری فقط یک بار وارد می‌کند؛ بعد فقط فروشگاه تغییرش می‌دهد")
+    is_active = models.BooleanField("فعال", default=True, help_text="مشتری غیرفعال نه در سایت و نه در مغازه خرید نمی‌تواند بکند")
+    created_at = models.DateTimeField("ثبت", default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "یادداشت مشتری"
-        verbose_name_plural = "یادداشت‌های مشتری"
+        verbose_name = "مشتری"
+        verbose_name_plural = "مشتری‌ها"
 
     def __str__(self):
         return self.phone
+
+
+class BirthdayUse(models.Model):
+    """A birthday discount taken: once per birthday, on an order or a till ticket (`reference` is its number)."""
+
+    phone = models.CharField("موبایل", max_length=11)
+    cycle = models.PositiveSmallIntegerField("سال تولد (شمسی)", help_text="سالی که این تولد در آن است")
+    reference = models.CharField("شماره سفارش یا فاکتور", max_length=20, db_index=True)
+    amount = models.PositiveBigIntegerField("مبلغ تخفیف")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "تخفیف تولد"
+        verbose_name_plural = "تخفیف‌های تولد"
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["phone", "cycle"], name="one_birthday_discount_a_year")]
 
 
 class StaffAccess(models.Model):

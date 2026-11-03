@@ -119,7 +119,7 @@ export function OrderView({ order, celebrate = false, actions }: { order: Order;
           <div><span>جمع کالاها</span><b className="num">{faNum(order.subtotal)}</b></div>
           <div><span>ارسال · {order.shipping_name}</span><b className="num">{faNum(order.shipping_fee)}</b></div>
           {order.discount_amount > 0 && (
-            <div className={styles.off}><span>تخفیف {order.discount_code}</span><b className="num">{faNum(order.discount_amount)}−</b></div>
+            <div className={styles.off}><span>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</span><b className="num">{faNum(order.discount_amount)}−</b></div>
           )}
           <div className={styles.grand}><span>مبلغ کل</span><b className="num">{faNum(order.total)} {currency_label}</b></div>
         </div>

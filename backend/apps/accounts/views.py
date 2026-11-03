@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import permissions, status, viewsets
@@ -5,8 +7,9 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from .models import Address
-from .roles import is_panel_user
+from .club import valid_birthday
+from .models import Address, Customer
+from .roles import is_panel_user, role_of
 from .otp import OtpError, RESEND_AFTER, expose_code_in_response, request_code, verify_code
 from .serializers import AddressSerializer, OtpRequestSerializer, OtpVerifySerializer, StaffLoginSerializer, me_payload
 
@@ -94,6 +97,22 @@ class AddressViewSet(viewsets.ModelViewSet):
 @permission_classes([permissions.IsAuthenticated])
 def update_profile(request):
     user = request.user
+    if request.data.get("birthday"):
+        # The customer gives their birthday once, for the birthday discount; after that only the shop changes it.
+        if role_of(user) != "customer":
+            return Response({"birthday": ["فقط مشتری تاریخ تولد ثبت می‌کند."]}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            birthday = date.fromisoformat(str(request.data["birthday"]))
+        except ValueError:
+            return Response({"birthday": ["تاریخ درست نیست."]}, status=status.HTTP_400_BAD_REQUEST)
+        problem = valid_birthday(birthday)
+        if problem:
+            return Response({"birthday": [problem]}, status=status.HTTP_400_BAD_REQUEST)
+        customer, _ = Customer.objects.get_or_create(phone=user.username)
+        if customer.birthday and customer.birthday != birthday:
+            return Response({"birthday": ["تاریخ تولد فقط یک بار ثبت می‌شود. برای تغییرش با فروشگاه تماس بگیر."]}, status=status.HTTP_400_BAD_REQUEST)
+        customer.birthday = birthday
+        customer.save(update_fields=["birthday", "updated_at"])
     for field in ("first_name", "last_name"):
         if field in request.data:
             setattr(user, field, str(request.data[field]).strip()[:150])

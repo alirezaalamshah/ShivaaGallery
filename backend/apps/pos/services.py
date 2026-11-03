@@ -6,6 +6,8 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.catalog.models import Variant
+from apps.accounts.club import AlreadyUsed, birthday_offer, claim_birthday, is_blocked, release_birthday, valid_birthday
+from apps.accounts.models import Customer
 from apps.accounts.roles import can
 from apps.core.models import StoreSettings
 from apps.finance.models import Expense
@@ -71,6 +73,9 @@ def create_sale(seller, data):
         raise SaleError("اجازه‌ی ثبت فروش ندارید.")
     if back and not can(seller, "pos.return"):
         raise SaleError("اجازه‌ی پس گرفتن کالا ندارید.")
+    phone = data.get("customer_phone", "")
+    if is_blocked(phone):
+        raise SaleError("این مشتری غیرفعال شده است و به او فروخته نمی‌شود.")
 
     variants = Variant.objects.select_related("product", "color", "size").in_bulk(list(merged))
     missing = [vid for vid in merged if vid not in variants or not variants[vid].is_active]
@@ -79,10 +84,17 @@ def create_sale(seller, data):
 
     subtotal = sum(variants[vid].price * qty for vid, qty in merged.items())
     discount = data.get("discount", 0)
+    birthday = None
+    if data.get("birthday_discount"):
+        # The birthday discount replaces a typed one, and the seller's limit does not apply to it.
+        birthday = birthday_offer(phone, subtotal)
+        if not birthday or birthday["used"] or not birthday["amount"]:
+            raise SaleError("تخفیف تولد برای این مشتری الان در دسترس نیست.")
+        discount = birthday["amount"]
     if discount > subtotal:
         raise SaleError("تخفیف از جمع فاکتور بیشتر است.")
     store = StoreSettings.load()
-    if discount and not can(seller, "pos.discount_any"):
+    if discount and not birthday and not can(seller, "pos.discount_any"):
         if not can(seller, "pos.discount"):
             raise SaleError("اجازه‌ی تخفیف دادن ندارید.")
         limit = store.seller_max_discount
@@ -117,7 +129,8 @@ def create_sale(seller, data):
                 raise SaleError("طبق قوانین فروشگاه فقط تعویض انجام می‌شود و پول برگردانده نمی‌شود. فقط مدیر یا کسی که اجازه‌ی استثنا دارد می‌تواند استثنا قائل شود.")
 
             sale = Sale.objects.create(
-                seller=seller, client_key=key, subtotal=subtotal, discount=discount, returned_total=returned_total, total=total,
+                seller=seller, client_key=key, subtotal=subtotal, discount=discount, birthday_discount=bool(birthday),
+                returned_total=returned_total, total=total,
                 customer_name=data.get("customer_name", "").strip(), customer_phone=data.get("customer_phone", ""),
                 note=data.get("note", "").strip(), **pays,
             )
@@ -139,6 +152,13 @@ def create_sale(seller, data):
                 )
             if short:
                 raise SaleError("موجودی بعضی کالاها کافی نیست.", lines=short)
+            if birthday:
+                try:
+                    claim_birthday(phone, birthday, sale.number)
+                except AlreadyUsed:
+                    raise SaleError("تخفیف تولد امسال این مشتری همین الان استفاده شد.")
+            if phone and data.get("customer_birthday"):
+                remember_birthday(phone, data["customer_birthday"], data.get("customer_name", ""))
     except IntegrityError:
         # The same checkout arrived twice at once; the other request recorded it.
         done = Sale.objects.filter(client_key=key, seller=seller).first() if key else None
@@ -146,6 +166,16 @@ def create_sale(seller, data):
             return done
         raise
     return sale
+
+
+def remember_birthday(phone, birthday, name=""):
+    """The seller may write down a birthday the shop does not have yet; one on file is never changed here."""
+    if valid_birthday(birthday):
+        raise SaleError(valid_birthday(birthday))
+    customer, _ = Customer.objects.get_or_create(phone=phone, defaults={"name": name.strip()[:80]})
+    if customer.birthday is None:
+        customer.birthday = birthday
+        customer.save(update_fields=["birthday", "updated_at"])
 
 
 @transaction.atomic
@@ -169,6 +199,8 @@ def void_sale(sale, by, reason=""):
                 move_stock(r.item.variant, -r.qty, StockMovement.Reason.ADJUST, reference=sale.number, note="ابطال مرجوعی حضوری", user=by)
             except InsufficientStock:
                 raise SaleError(f"کالای پس‌گرفته‌ی {r.item.product_name} دوباره فروخته شده و ابطال این فاکتور ممکن نیست.")
+    if sale.birthday_discount:
+        release_birthday(sale.number)
     sale.status = Sale.Status.VOIDED
     sale.voided_by, sale.voided_at, sale.void_reason = by, timezone.now(), reason.strip()[:200]
     sale.save(update_fields=["status", "voided_by", "voided_at", "void_reason"])

@@ -339,11 +339,19 @@ export function Checkout() {
 
       <section className={`${styles.sec} ${code ? styles.done : ""}`}>
         <h2><span className={styles.n}>{code ? <Icon name="check" /> : "٪"}</span>کد تخفیف <small>اختیاری</small></h2>
-        {code ? (
+        {quote?.discount_kind === "birthday" && (
           <p className={styles.verified}>
-            <Icon name="check" /> کد <b dir="ltr">{code}</b> اعمال شد: <span className="num">{faNum(quote?.discount ?? 0)}</span> {store.currency_label} تخفیف
-            <button type="button" className={styles.link} onClick={() => { setCode(""); setCodeInput(""); }}>حذف</button>
+            🎂 تولدت مبارک! <span className="num">{faNum(quote.discount)}</span> {store.currency_label} تخفیف تولد روی خریدت اعمال شد.
           </p>
+        )}
+        {quote?.discount_note && <p className="hint">{quote.discount_note}</p>}
+        {code ? (
+          quote?.discount_kind === "code" && (
+            <p className={styles.verified}>
+              <Icon name="check" /> کد <b dir="ltr">{code}</b> اعمال شد: <span className="num">{faNum(quote?.discount ?? 0)}</span> {store.currency_label} تخفیف
+              <button type="button" className={styles.link} onClick={() => { setCode(""); setCodeInput(""); }}>حذف</button>
+            </p>
+          )
         ) : (
           <>
             <div className={styles.inline}>
@@ -389,7 +397,7 @@ export function Checkout() {
               </ul>
               <div className={styles.row}><span>جمع کالاها</span><b className="num">{faNum(quote?.subtotal ?? cart.subtotal)}</b></div>
               <div className={styles.row}><span>هزینه‌ی ارسال</span><b className="num">{faNum(quote?.shipping_fee ?? 0)}</b></div>
-              {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>تخفیف</span><b className="num">{faNum(quote.discount)}−</b></div>}
+              {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>{quote.discount_kind === "birthday" ? "تخفیف تولد" : "تخفیف"}</span><b className="num">{faNum(quote.discount)}−</b></div>}
             </div>
           </div>
           <button type="button" className={styles.place} onClick={place} disabled={placing || unavailable.length > 0}>

@@ -163,7 +163,7 @@ function SaleModal({ sale, canVoid, onClose, onVoided }: { sale: Sale; canVoid: 
       )}
       <dl className={s.kv}>
         {sale.subtotal > 0 && <><dt>جمع کالاها</dt><dd className="num">{faNum(sale.subtotal)}</dd></>}
-        {sale.discount > 0 && <><dt>تخفیف</dt><dd className="num">− {faNum(sale.discount)}</dd></>}
+        {sale.discount > 0 && <><dt>{sale.birthday_discount ? "تخفیف تولد" : "تخفیف"}</dt><dd className="num">− {faNum(sale.discount)}</dd></>}
         {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">− {faNum(sale.returned_total)}</dd></>}
         <dt>{sale.total < 0 ? "پرداخت به مشتری" : "مبلغ کل"}</dt><dd className="num"><b>{faNum(Math.abs(sale.total))} {store.currency_label}</b></dd>
         <dt>پرداخت</dt><dd>{payText(sale)}</dd>

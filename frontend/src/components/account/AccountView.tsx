@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { type Me, useAuth } from "@/components/auth/AuthProvider";
 import { PhoneLogin } from "@/components/auth/PhoneLogin";
 import { Icon } from "@/components/Icon";
+import { DateInput } from "@/components/panel/DateInput";
+import { isoDay } from "@/components/panel/dates";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
@@ -92,6 +94,8 @@ export function AccountView() {
       </header>
 
       {editName && <NameForm me={me} onDone={(m) => { if (m) { setMe(m); toast({ text: "نام ذخیره شد" }); } setEditName(false); }} />}
+
+      {(me.birthday || store.birthday_discount > 0) && <BirthdayCard me={me} percent={store.birthday_discount} onSaved={(m) => { setMe(m); toast({ text: "تاریخ تولدت ثبت شد" }); }} />}
 
       <section>
         <h2 className={styles.h2}>سفارش‌ها</h2>
@@ -203,6 +207,49 @@ export function AccountView() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/** The customer gives their birthday once, for the birthday-week discount; after that it only shows. */
+function BirthdayCard({ me, percent, onSaved }: { me: Me; percent: number; onSaved: (me: Me) => void }) {
+  const [day, setDay] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      onSaved(await call<Me>("/auth/profile", { method: "PATCH", body: { birthday: day } }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره نشد.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (me.birthday) {
+    return (
+      <section className={styles.birthday}>
+        <span className={styles.cake} aria-hidden="true">🎂</span>
+        <div>
+          <b>تولدت: {faDate(`${me.birthday}T12:00:00`)}</b>
+          <small>{percent > 0 ? `از ۳ روز قبل تا ۳ روز بعد از تولدت، ${faNum(percent)}٪ تخفیف تولد خودکار روی خریدت می‌آید.` : "برای تغییر تاریخ تولد با فروشگاه تماس بگیر."}</small>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className={styles.birthday}>
+      <span className={styles.cake} aria-hidden="true">🎂</span>
+      <div>
+        <b>تاریخ تولدت را ثبت کن و در هفته‌ی تولدت {faNum(percent)}٪ تخفیف بگیر</b>
+        <small>فقط یک بار ثبت می‌شود و بعد قابل تغییر نیست؛ پس با دقت انتخاب کن.</small>
+        <div className={styles.birthdayRow}>
+          <DateInput value={day} onChange={setDay} max={isoDay(new Date())} placeholder="روز تولد" label="تاریخ تولد" />
+          <button type="button" className="btn btn-ink" disabled={!day || busy} onClick={save}>{busy ? "در حال ثبت…" : "ثبت"}</button>
+        </div>
+        {error && <p className="err" role="alert">{error}</p>}
+      </div>
+    </section>
   );
 }
 

@@ -8,17 +8,18 @@ import csv
 from collections import Counter
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Max, Min, Sum
+from django.db.models import Count, Max, Min, Q, Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.models import Address, CustomerNote
-from apps.accounts.roles import needs
+from apps.accounts.club import birthday_near, valid_birthday
+from apps.accounts.models import Address, BirthdayUse, Customer
+from apps.accounts.roles import can, needs
 from apps.catalog.models import Favorite, Review, StockAlert
-from apps.core.jalali import jalali_datetime
+from apps.core.jalali import jalali_date, jalali_datetime
 from apps.core.validators import iran_mobile
 from apps.orders.models import Order, OrderItem, ReturnRequest
 from apps.pos.models import Sale, SaleItem
@@ -63,15 +64,22 @@ def _customers_by_phone():
     for s in Sale.objects.exclude(customer_phone="").exclude(customer_name="").order_by("created_at").values("customer_phone", "customer_name"):
         if s["customer_phone"] in rows:
             rows[s["customer_phone"]]["_sale_name"] = s["customer_name"]
-    notes = {n.phone: n for n in CustomerNote.objects.all()}
-    for n in notes.values():
-        row(n.phone)
+    profiles = {c.phone: c for c in Customer.objects.all()}
+    for c in profiles.values():
+        row(c.phone)
+    today = timezone.localdate()
     for r in rows.values():
-        note = notes.get(r["phone"])
-        r["name"] = (note.name if note else "") or r["name"] or r.pop("_order_name", "") or r.pop("_sale_name", "")
+        profile = profiles.get(r["phone"])
+        r["name"] = (profile.name if profile else "") or r["name"] or r.pop("_order_name", "") or r.pop("_sale_name", "")
         r.pop("_order_name", None)
         r.pop("_sale_name", None)
-        r["has_note"] = bool(note and note.note)
+        r["has_note"] = bool(profile and profile.note)
+        r["is_active"] = not profile or profile.is_active
+        r["birthday"] = profile.birthday if profile else None
+        r["birthday_soon"] = bool(r["birthday"] and birthday_near(r["birthday"], today))
+        r["registered"] = profile.created_at if profile else None
+        if r["joined"] is None and profile:
+            r["joined"] = profile.created_at
         r["total_spent"] = r["online_spent"] + r["store_spent"]
         r["purchases"] = r["online_orders"] + r["store_tickets"]
     return list(rows.values())
@@ -101,13 +109,53 @@ def _listed(params):
         rows = [r for r in rows if r["store_tickets"]]
     elif kind == "none":
         rows = [r for r in rows if not r["purchases"]]
+    elif kind == "birthday":
+        rows = [r for r in rows if r["birthday_soon"]]
+    elif kind == "blocked":
+        rows = [r for r in rows if not r["is_active"]]
     key = ORDERINGS.get(params.get("ordering", "recent"), ORDERINGS["recent"])
     return sorted(rows, key=key, reverse=True)
 
 
-@api_view(["GET"])
-@permission_classes([needs("customers.view")])
+class CustomerInSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=20, required=False)
+    name = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    note = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    birthday = serializers.DateField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(required=False)
+
+    def validate_phone(self, value):
+        from apps.accounts.serializers import normalize_digits
+
+        value = normalize_digits(value).strip()
+        iran_mobile(value)
+        return value
+
+    def validate_birthday(self, value):
+        if value and valid_birthday(value):
+            raise serializers.ValidationError(valid_birthday(value))
+        return value
+
+
+@api_view(["GET", "POST"])
+@permission_classes([needs("customers.view", write="customers.add")])
 def customers(request):
+    if request.method == "POST":
+        # Registering an old customer, or one who has not bought yet, for the customer club.
+        d = CustomerInSerializer(data=request.data)
+        d.is_valid(raise_exception=True)
+        v = d.validated_data
+        if not v.get("phone"):
+            return Response({"phone": ["شماره موبایل را وارد کنید."]}, status=status.HTTP_400_BAD_REQUEST)
+        if Customer.objects.filter(phone=v["phone"]).exists():
+            return Response({"phone": ["این مشتری قبلاً ثبت شده است."]}, status=status.HTTP_400_BAD_REQUEST)
+        staff = get_user_model().objects.filter(username=v["phone"]).filter(Q(is_staff=True) | Q(staff_access__isnull=False)).exists()
+        if staff:
+            return Response({"phone": ["این شماره حساب کاربر پنل است."]}, status=status.HTTP_400_BAD_REQUEST)
+        Customer.objects.create(
+            phone=v["phone"], name=v.get("name", "").strip(), note=v.get("note", "").strip(), birthday=v.get("birthday"),
+        )
+        return Response({"phone": v["phone"]}, status=status.HTTP_201_CREATED)
     rows = _listed(request.query_params)
     page = request.query_params.get("page", "")
     page = int(page) if page.isdigit() and int(page) > 0 else 1
@@ -123,19 +171,15 @@ def customers_export(request):
     res["Content-Disposition"] = f'attachment; filename="customers-{timezone.localdate():%Y%m%d}.csv"'
     res.write("﻿")
     w = csv.writer(res)
-    w.writerow(["موبایل", "نام", "شهر", "حساب سایت", "سفارش اینترنتی", "خرید اینترنتی", "خرید حضوری (فاکتور)", "خرید حضوری", "جمع خرید", "اولین خرید", "آخرین خرید"])
+    w.writerow(["موبایل", "نام", "شهر", "حساب سایت", "سفارش اینترنتی", "خرید اینترنتی", "خرید حضوری (فاکتور)", "خرید حضوری", "جمع خرید", "اولین خرید", "آخرین خرید", "تاریخ تولد", "وضعیت"])
     for r in _listed(request.query_params):
         w.writerow([
             r["phone"], r["name"], r["city"], "بله" if r["has_account"] else "خیر", r["online_orders"], r["online_spent"],
             r["store_tickets"], r["store_spent"], r["total_spent"],
             jalali_datetime(r["first_purchase"]) if r["first_purchase"] else "", jalali_datetime(r["last_purchase"]) if r["last_purchase"] else "",
+            jalali_date(r["birthday"]) if r["birthday"] else "", "فعال" if r["is_active"] else "غیرفعال",
         ])
     return res
-
-
-class NoteSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=80, required=False, allow_blank=True)
-    note = serializers.CharField(max_length=2000, required=False, allow_blank=True)
 
 
 def _top(counter, n=3):
@@ -143,24 +187,29 @@ def _top(counter, n=3):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([needs("customers.view", write="customers.edit")])
+@permission_classes([needs("customers.view", write=("customers.edit", "customers.block"))])
 def customer_detail(request, phone):
     try:
         iran_mobile(phone)
     except Exception:
         return Response({"detail": "شماره موبایل درست نیست."}, status=status.HTTP_404_NOT_FOUND)
     if request.method == "PATCH":
-        d = NoteSerializer(data=request.data)
+        d = CustomerInSerializer(data=request.data, partial=True)
         d.is_valid(raise_exception=True)
-        note, _ = CustomerNote.objects.get_or_create(phone=phone)
-        for k, v in d.validated_data.items():
-            setattr(note, k, v.strip())
-        note.save()
+        v = {k: x for k, x in d.validated_data.items() if k != "phone"}
+        if "is_active" in v and not can(request.user, "customers.block"):
+            return Response({"detail": "اجازه‌ی فعال و غیرفعال کردن مشتری ندارید."}, status=status.HTTP_403_FORBIDDEN)
+        if set(v) - {"is_active"} and not can(request.user, "customers.edit"):
+            return Response({"detail": "اجازه‌ی ویرایش مشتری ندارید."}, status=status.HTTP_403_FORBIDDEN)
+        profile, _ = Customer.objects.get_or_create(phone=phone)
+        for k, x in v.items():
+            setattr(profile, k, x.strip() if isinstance(x, str) else x)
+        profile.save()
 
     user = get_user_model().objects.filter(username=phone, is_staff=False, staff_access__isnull=True).first()
     orders = list(Order.objects.filter(phone=phone).annotate(item_count=Sum("items__qty")).order_by("-created_at"))
     sales = list(Sale.objects.filter(customer_phone=phone).select_related("seller").prefetch_related("items", "returned").order_by("-created_at"))
-    note = CustomerNote.objects.filter(phone=phone).first()
+    note = Customer.objects.filter(phone=phone).first()
     if not (user or orders or sales or note):
         return Response({"detail": "مشتری‌ای با این شماره پیدا نشد."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -192,6 +241,14 @@ def customer_detail(request, phone):
         "name": name,
         "note_name": note.name if note else "",
         "note": note.note if note else "",
+        "is_active": not note or note.is_active,
+        "birthday": note.birthday if note else None,
+        "birthday_soon": bool(note and note.birthday and birthday_near(note.birthday, timezone.localdate())),
+        "registered": note.created_at if note else None,
+        "birthday_discounts": [
+            {"reference": b.reference, "amount": b.amount, "cycle": b.cycle, "created_at": b.created_at}
+            for b in BirthdayUse.objects.filter(phone=phone)
+        ],
         "account": {
             "joined": user.date_joined, "last_login": user.last_login, "first_name": user.first_name, "last_name": user.last_name,
         } if user else None,

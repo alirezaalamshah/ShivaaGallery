@@ -73,4 +73,11 @@ def me_payload(user):
         "is_staff": user.is_staff,
         "username": user.username,
         "perms": sorted(perms_of(user)) if role in ("admin", "staff") else [],
+        "birthday": _birthday(user) if role == "customer" else None,
     }
+
+
+def _birthday(user):
+    from .models import Customer
+
+    return Customer.objects.filter(phone=user.username).values_list("birthday", flat=True).first()
