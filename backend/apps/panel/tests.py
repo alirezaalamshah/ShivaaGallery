@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from datetime import timedelta
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
@@ -298,3 +299,72 @@ class HomeAndBannerTests(TestCase):
         self.assertEqual([a["title"] for a in self.client.get("/api/store/").json()["announcements"]], ["ارسال رایگان"])
         bad = self.client.post("/api/admin/banners/", {"title": "x", "link": "javascript:alert(1)"}, content_type="application/json")
         self.assertEqual(bad.status_code, 400)
+
+
+class StockPageTests(TestCase):
+    def setUp(self):
+        from apps.inventory.models import StockMovement
+        from apps.inventory.services import move_stock
+
+        self.admin = User.objects.create_user("admin", password="x", is_staff=True)
+        sizes = SizeSystem.objects.create(name="حروفی")
+        self.s = Size.objects.create(system=sizes, label="S", sort=0)
+        self.m = Size.objects.create(system=sizes, label="M", sort=1)
+        black = Color.objects.create(name="مشکی", hex="#111111")
+        cat = Category.objects.create(name="مانتو", size_system=sizes)
+        self.product = Product.objects.create(category=cat, name="مانتو کتان", price=1_000_000, cost_price=600_000)
+        self.vs = Variant.objects.create(product=self.product, color=black, size=self.s)
+        self.vm = Variant.objects.create(product=self.product, color=black, size=self.m)
+        move_stock(self.vs, 4, StockMovement.Reason.RECEIVE)
+        move_stock(self.vm, 1, StockMovement.Reason.RECEIVE)
+        self.client.force_login(self.admin)
+
+    def stock_keeper(self, *perms):
+        from apps.accounts.models import StaffAccess
+
+        user = User.objects.create_user("anbar", password="x")
+        StaffAccess.objects.create(user=user, perms=list(perms))
+        self.client.force_login(user)
+
+    def test_overview_totals_what_the_stock_is_worth(self):
+        res = self.client.get("/api/admin/stock/").json()
+        t = res["totals"]
+        self.assertEqual((t["pieces"], t["low"], t["out"]), (5, 1, 0))
+        self.assertEqual(t["sale_value"], 5_000_000)
+        self.assertEqual(t["cost_value"], 3_000_000)
+        self.assertEqual([s["size"] for s in res["products"][0]["colors"][0]["sizes"]], ["S", "M"])
+
+    def test_purchase_prices_stay_hidden_without_permission(self):
+        self.stock_keeper("stock.view")
+        res = self.client.get("/api/admin/stock/").json()
+        self.assertIsNone(res["totals"]["cost_value"])
+        self.assertIsNone(res["products"][0]["cost_value"])
+
+    def test_deduction_needs_a_reason_and_shows_in_the_report(self):
+        url = f"/api/admin/variants/{self.vs.pk}/move/"
+        res = self.client.post(url, {"kind": "remove", "qty": 1}, content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        res = self.client.post(url, {"kind": "supplier", "qty": 2, "note": "دوخت ایراد داشت"}, content_type="application/json")
+        self.assertEqual(res.json()["stock"], 2)
+        report = self.client.get("/api/admin/stock/deductions/").json()
+        self.assertEqual(report["pieces"], 2)
+        self.assertEqual(report["reasons"][0]["label"], "مرجوع به تأمین‌کننده")
+        self.assertEqual(report["cost_value"], 1_200_000)
+        self.assertEqual(report["rows"][0]["note"], "دوخت ایراد داشت")
+
+    def test_stock_count_corrects_sizes_and_skips_ones_that_changed(self):
+        res = self.client.post("/api/admin/stock/count/", {"lines": [
+            {"variant": self.vs.pk, "counted": 3, "shown": 4},
+            {"variant": self.vm.pk, "counted": 5, "shown": 9},
+        ]}, content_type="application/json").json()
+        self.assertEqual((res["changed"], res["minus"], len(res["skipped"])), (1, 1, 1))
+        self.vs.refresh_from_db()
+        self.vm.refresh_from_db()
+        self.assertEqual((self.vs.stock, self.vm.stock), (3, 1))
+        self.assertEqual(self.vs.movements.first().reason, "stocktake")
+
+    def test_stale_lists_products_idle_for_the_chosen_days(self):
+        Product.objects.filter(pk=self.product.pk).update(created_at=self.product.created_at - timedelta(days=100))
+        self.assertEqual(self.client.get("/api/admin/stock/stale/?days=90").json()["products"], 1)
+        res = self.client.get("/api/admin/stock/stale/?days=120").json()
+        self.assertEqual((res["products"], res["cost_value"]), (0, 0))

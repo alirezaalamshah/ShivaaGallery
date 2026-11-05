@@ -214,11 +214,20 @@ class StockMoveSerializer(serializers.Serializer):
         "receive": (StockMovement.Reason.RECEIVE, 1),
         "return": (StockMovement.Reason.RETURN, 1),
         "remove": (StockMovement.Reason.ADJUST, -1),
+        "supplier": (StockMovement.Reason.SUPPLIER, -1),
+        "damaged": (StockMovement.Reason.DAMAGED, -1),
+        "lost": (StockMovement.Reason.LOST, -1),
     }
 
     kind = serializers.ChoiceField(choices=list(KINDS))
-    qty = serializers.IntegerField(min_value=1, max_value=100)
+    qty = serializers.IntegerField(min_value=1, max_value=1000)
     note = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        # A deduction with no named reason must say why, so the reports can show it.
+        if attrs["kind"] == "remove" and not attrs.get("note", "").strip():
+            raise serializers.ValidationError({"note": "دلیل کسر موجودی را بنویسید."})
+        return attrs
 
 
 class StockSetSerializer(serializers.Serializer):

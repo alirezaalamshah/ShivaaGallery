@@ -15,6 +15,14 @@ class StockMovement(models.Model):
         CANCEL = "cancel", "لغو سفارش"
         RETURN = "return", "مرجوعی"
         ADJUST = "adjust", "اصلاح دستی"
+        STOCKTAKE = "stocktake", "انبارگردانی"
+        # Pieces taken out of stock for good, each with its own reason for the reports.
+        SUPPLIER = "supplier", "مرجوع به تأمین‌کننده"
+        DAMAGED = "damaged", "خراب یا آسیب‌دیده"
+        LOST = "lost", "گم‌شده یا کسری"
+
+    # Reasons that take pieces out without a sale; shown as deductions on the stock page.
+    DEDUCTIONS = (Reason.SUPPLIER, Reason.DAMAGED, Reason.LOST, Reason.ADJUST)
 
     variant = models.ForeignKey("catalog.Variant", on_delete=models.PROTECT, related_name="movements", verbose_name="تنوع")
     delta = models.IntegerField("تغییر", help_text="مثبت برای ورود، منفی برای خروج")

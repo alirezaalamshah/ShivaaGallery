@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import customers, views
+from . import customers, stock, views
 
 router = DefaultRouter()
 router.register("products", views.ProductViewSet, basename="admin-product")
@@ -22,6 +22,10 @@ urlpatterns = [
     path("store/", views.store_settings),
     path("dashboard/", views.dashboard),
     path("badges/", views.badges),
+    path("stock/", stock.overview),
+    path("stock/count/", stock.count),
+    path("stock/deductions/", stock.deductions),
+    path("stock/stale/", stock.stale),
     path("customers/", customers.customers),
     path("customers/export/", customers.customers_export),
     path("customers/<str:phone>/", customers.customer_detail),

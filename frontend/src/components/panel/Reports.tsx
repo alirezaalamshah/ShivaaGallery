@@ -128,7 +128,7 @@ export function Reports() {
             ) : <p className="muted">در این بازه فروشی نبوده.</p>}
           </Card>
 
-          <Card title="کالاهای راکد">
+          <Card title="کالاهای راکد" actions={<Link href="/panel/stock?tab=stale" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>با فیلتر روز و دسته</Link>}>
             <p className="hint" style={{ marginTop: 0 }}>محصولاتی که موجودی دارند ولی در این بازه هیچ فروشی نداشتند؛ هر چه بیشتر مانده، بالاتر. برای حراج یا بنر گزینه‌ی خوبی‌اند.</p>
             {data.slow_movers.length ? (
               <div className={s.tableWrap}>

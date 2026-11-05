@@ -26,6 +26,10 @@ const REASONS = [
   { value: "cancel", label: "لغو سفارش" },
   { value: "return", label: "مرجوعی" },
   { value: "adjust", label: "اصلاح دستی" },
+  { value: "stocktake", label: "انبارگردانی" },
+  { value: "supplier", label: "مرجوع به تأمین‌کننده" },
+  { value: "damaged", label: "خراب" },
+  { value: "lost", label: "گم‌شده" },
 ];
 
 export function Inventory() {
@@ -41,7 +45,7 @@ export function Inventory() {
   const { data, loading } = useAdmin<Paged<Movement>>(`/stock-movements?${qs}`);
   return (
     <>
-      <PageHead title="دفتر موجودی" sub="هر تغییر موجودی با دلیلش این‌جا ثبت می‌شود: فروش اینترنتی، فروش حضوری، لغو سفارش و ورود کالا." />
+      <PageHead title="دفتر موجودی" sub="هر تغییر موجودی با دلیلش این‌جا ثبت می‌شود: فروش، لغو سفارش، ورود کالا، انبارگردانی و کسر موجودی." />
       <Card>
         <div className={s.toolbar}>
           <div className={s.tabs} role="group" aria-label="علت">

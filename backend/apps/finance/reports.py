@@ -170,9 +170,8 @@ def by_seller(start, end):
     ]
 
 
-def slow_movers(start, end, sold_ids, limit=40):
-    """Products on sale with pieces in stock that sold nothing in the period, longest idle first."""
-    now = timezone.now()
+def _last_sold():
+    """When each product last sold, online or at the till."""
     last_online = dict(
         OrderItem.objects.filter(order__status__in=Order.SOLD, variant__isnull=False)
         .values("variant__product").annotate(m=Max("order__created_at")).values_list("variant__product", "m")
@@ -181,22 +180,55 @@ def slow_movers(start, end, sold_ids, limit=40):
         SaleItem.objects.filter(sale__status=Sale.Status.COMPLETED, variant__isnull=False)
         .values("variant__product").annotate(m=Max("sale__created_at")).values_list("variant__product", "m")
     )
+    return {pid: max(filter(None, [last_online.get(pid), last_store.get(pid)])) for pid in last_online.keys() | last_store.keys()}
+
+
+def _idle_rows(products, last_sold):
+    """Products with pieces in stock, with what they are worth and how long since they last sold."""
+    now = timezone.now()
     rows = []
-    for p in Product.objects.filter(is_active=True).exclude(pk__in=sold_ids).prefetch_related("variants").select_related("category"):
-        counts = [v.stock for v in p.variants.all() if v.is_active]
-        known = [n for n in counts if n < UNKNOWN_STOCK]
-        stock = sum(known)
-        if not stock and len(known) == len(counts):
+    for p in products.prefetch_related("variants").select_related("category"):
+        variants = [v for v in p.variants.all() if v.is_active]
+        known = [v for v in variants if v.stock < UNKNOWN_STOCK]
+        stock = sum(v.stock for v in known)
+        if not stock and len(known) == len(variants):
             continue
-        last = max(filter(None, [last_online.get(p.id), last_store.get(p.id)]), default=None)
+        last = last_sold.get(p.id)
         rows.append({
             "product_id": p.id, "name": p.name, "category": p.category.name, "price": p.price, "cost_price": p.cost_price,
-            "stock": stock, "stock_unknown": len(known) < len(counts),
+            "stock": stock, "stock_unknown": len(known) < len(variants),
             "stock_value": stock * p.cost_price if p.cost_price is not None else None,
+            "sale_value": sum(v.stock * v.price for v in known),
             "last_sold": last, "idle_days": (now - (last or p.created_at)).days, "never_sold": last is None,
         })
     rows.sort(key=lambda r: -r["idle_days"])
-    return rows[:limit]
+    return rows
+
+
+def slow_movers(start, end, sold_ids, limit=40):
+    """Products on sale with pieces in stock that sold nothing in the period, longest idle first."""
+    return _idle_rows(Product.objects.filter(is_active=True).exclude(pk__in=sold_ids), _last_sold())[:limit]
+
+
+def stale_stock(days, category=None):
+    """
+    Products with pieces in stock that have not sold for at least `days` days, counted from their
+    last sale (or from when they were added, if they never sold). Products hidden from the site are
+    included: their pieces still sit on the shelf.
+    """
+    products = Product.objects.all()
+    if category:
+        products = products.filter(category_id=category)
+    rows = [r for r in _idle_rows(products, _last_sold()) if r["idle_days"] >= days]
+    return {
+        "days": days,
+        "rows": rows,
+        "products": len(rows),
+        "pieces": sum(r["stock"] for r in rows),
+        "cost_value": sum(r["stock_value"] or 0 for r in rows),
+        "without_cost": sum(1 for r in rows if r["stock_value"] is None),
+        "sale_value": sum(r["sale_value"] for r in rows),
+    }
 
 
 def full_report(start, end, first_day, last_day):
