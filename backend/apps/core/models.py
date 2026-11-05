@@ -36,7 +36,11 @@ class StoreSettings(models.Model):
 
     phone = models.CharField("موبایل", max_length=20, blank=True)
     landline = models.CharField("تلفن ثابت", max_length=20, blank=True)
-    instagram = models.CharField("اینستاگرام", max_length=60, blank=True, help_text="فقط نام کاربری، بدون @")
+    instagram = models.CharField("اینستاگرام", max_length=60, blank=True, help_text="از روی «شبکه‌های اجتماعی» پر می‌شود: اولین صفحه‌ی اینستاگرام")
+    socials = models.JSONField(
+        "شبکه‌های اجتماعی", default=list, blank=True,
+        help_text='فهرست صفحه‌ها، هر کدام {"network": "telegram", "handle": "shivagallery"}. شبکه‌ها در apps/core/socials.py.',
+    )
     city = models.CharField("شهر فروشگاه", max_length=60, blank=True)
     address = models.TextField("آدرس فروشگاه حضوری", blank=True)
 
@@ -94,6 +98,8 @@ class StoreSettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+        # The first Instagram page is the one the site invites people to follow (footer, home, receipt).
+        self.instagram = next((s["handle"] for s in self.socials or [] if s.get("network") == "instagram" and not s["handle"].startswith("http")), "")[:60]
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

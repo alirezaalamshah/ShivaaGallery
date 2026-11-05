@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from .models import Banner, StoreSettings
+from .socials import with_links
 
 
 class StoreSettingsSerializer(serializers.ModelSerializer):
@@ -9,16 +10,20 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
     online_payment = serializers.SerializerMethodField()
     announcements = serializers.SerializerMethodField()
     birthday_discount = serializers.SerializerMethodField()
+    socials = serializers.SerializerMethodField()
 
     class Meta:
         model = StoreSettings
         fields = [
             "name", "name_latin", "tagline", "logo", "hero_title", "hero_text", "about_title", "about_text",
             "theme",
-            "phone", "landline", "instagram", "city", "address",
+            "phone", "landline", "instagram", "socials", "city", "address",
             "currency_label", "returns", "terms_text", "privacy_text", "working_hours",
             "enamad_id", "enamad_code", "online_payment", "announcements", "birthday_discount",
         ]
+
+    def get_socials(self, obj):
+        return with_links(obj.socials)
 
     def get_birthday_discount(self, obj):
         """The percent off in the customer's birthday week, or 0 when the store gives none."""

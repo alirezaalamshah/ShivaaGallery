@@ -12,7 +12,7 @@ import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
 import { ApiError, call, fieldErrors } from "@/lib/client";
-import { faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import { faNum, latinCode, toEnDigits, toFaDigits } from "@/lib/format";
 import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
 import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
 
@@ -181,6 +181,8 @@ export function Checkout() {
   }
 
   const total = quote?.total ?? cart.subtotal;
+  // What counts toward free shipping: the goods after any discount.
+  const goods = quote ? quote.subtotal - quote.discount : cart.subtotal;
 
   return (
     <div className={styles.page}>
@@ -322,6 +324,8 @@ export function Checkout() {
         <div className={styles.opts} role="radiogroup" aria-label="روش ارسال">
           {methods.map((m) => {
             const off = !!m.only_city && m.only_city !== city;
+            const free = m.free_from !== null && goods >= m.free_from;
+            const left = m.free_from !== null && !free ? m.free_from - goods : 0;
             return (
               <label key={m.id} className={`${styles.opt} ${off ? styles.off : ""}`}>
                 <input type="radio" name="shipping" disabled={off} checked={shipping === m.id} onChange={() => setShipping(m.id)} />
@@ -329,8 +333,17 @@ export function Checkout() {
                 <span>
                   <b>{m.name}</b>
                   <small>{off ? `فقط برای ${m.only_city}` : m.description}</small>
+                  {!off && left > 0 && (
+                    <small className={styles.freeHint}>با <span className="num">{faNum(left)}</span> {store.currency_label} خرید بیشتر، این روش رایگان می‌شود</small>
+                  )}
                 </span>
-                <span className={`${styles.fee} num`}>{faNum(m.fee)} {store.currency_label}</span>
+                {free && !off ? (
+                  <span className={`${styles.fee} ${styles.free}`}>
+                    <s className="num">{faNum(m.fee)}</s> رایگان
+                  </span>
+                ) : (
+                  <span className={`${styles.fee} num`}>{faNum(m.fee)} {store.currency_label}</span>
+                )}
               </label>
             );
           })}
@@ -355,9 +368,24 @@ export function Checkout() {
         ) : (
           <>
             <div className={styles.inline}>
-              <input id="co-code" className="input ltr" value={codeInput} onChange={(e) => { setCodeInput(e.target.value); setErrors((er) => ({ ...er, discount_code: "" })); }} onKeyDown={(e) => e.key === "Enter" && applyCode()} placeholder="کد تخفیف" aria-invalid={!!errors.discount_code} />
+              <input
+                id="co-code"
+                className={`input ltr ${styles.code}`}
+                value={codeInput}
+                onChange={(e) => { setCodeInput(latinCode(e.target.value)); setErrors((er) => ({ ...er, discount_code: "" })); }}
+                onKeyDown={(e) => e.key === "Enter" && applyCode()}
+                placeholder="CODE"
+                aria-label="کد تخفیف"
+                aria-describedby="co-code-hint"
+                aria-invalid={!!errors.discount_code}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={30}
+              />
               <button type="button" className="btn btn-ink" onClick={applyCode}>اعمال</button>
             </div>
+            <p id="co-code-hint" className="hint">کد با حروف بزرگ انگلیسی نوشته می‌شود؛ هر طور تایپ کنید، خودش درست می‌شود.</p>
             {errors.discount_code && <p className="err">{errors.discount_code}</p>}
           </>
         )}

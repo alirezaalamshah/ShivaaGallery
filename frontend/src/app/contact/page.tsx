@@ -4,6 +4,8 @@ import { Icon } from "@/components/Icon";
 import { TextPage } from "@/components/TextPage";
 import { api } from "@/lib/api";
 import { toFaDigits } from "@/lib/format";
+import { SocialLogo } from "@/components/SocialLogo";
+import { socialColor, socialHandle } from "@/lib/socials";
 
 export const metadata: Metadata = { title: "تماس با ما" };
 
@@ -26,12 +28,14 @@ export default async function ContactPage() {
             <span>تلفن فروشگاه: <a href={`tel:${store.landline}`} className="num" dir="ltr">{toFaDigits(store.landline)}</a></span>
           </div>
         )}
-        {store.instagram && (
-          <div style={row}>
-            <Icon name="insta" />
-            <span>اینستاگرام: <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" dir="ltr">@{store.instagram}</a></span>
+        {store.socials.map((x) => (
+          <div key={`${x.network}-${x.handle}`} style={row}>
+            <span style={{ display: "grid", placeItems: "center", width: 30, height: 30, flex: "none", borderRadius: 9, color: "#fff", background: socialColor(x.network) }}>
+              <SocialLogo network={x.network} size={18} />
+            </span>
+            <span>{x.label}: <a href={x.url} target="_blank" rel="noopener noreferrer" dir="ltr">{socialHandle(x.network, x.handle)}</a></span>
           </div>
-        )}
+        ))}
         {(store.address || store.city) && (
           <div style={row}>
             <Icon name="pin" />

@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.accounts.roles import can
 from apps.catalog.models import Category, Color, Product, ProductImage, Review, Size, SizeSystem, Variant
 from apps.core.models import Banner, StoreSettings
+from apps.core.socials import NETWORKS, clean
 from apps.core.validators import split_mobiles
 from apps.inventory.models import StockMovement
 from apps.orders.models import DiscountCode, Order, ReturnRequest, ShippingMethod
@@ -236,9 +237,16 @@ class StockSetSerializer(serializers.Serializer):
 
 
 class StoreSettingsSerializer(serializers.ModelSerializer):
+    # The networks the admin can choose from for the store's social pages.
+    social_networks = serializers.SerializerMethodField()
+
     class Meta:
         model = StoreSettings
         exclude = ["id", "updated_at"]
+        read_only_fields = ["instagram"]
+
+    def get_social_networks(self, obj):
+        return [{"value": k, "label": label} for k, (label, _) in NETWORKS.items()]
 
     @staticmethod
     def _product_ids(value, most):
@@ -249,6 +257,12 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"حداکثر {most} محصول را می‌شود این‌جا گذاشت.")
         known = set(Product.objects.filter(pk__in=ids).values_list("pk", flat=True))
         return [i for i in ids if i in known]
+
+    def validate_socials(self, value):
+        try:
+            return clean(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
     def validate_hero_products(self, value):
         return self._product_ids(value, 8)
@@ -271,7 +285,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
 class ShippingMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShippingMethod
-        fields = ["id", "name", "description", "fee", "only_city", "needs_postal_code", "is_active", "sort"]
+        fields = ["id", "name", "description", "fee", "free_from", "only_city", "needs_postal_code", "is_active", "sort"]
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):

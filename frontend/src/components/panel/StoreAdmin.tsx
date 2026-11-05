@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
-import { faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import { faDateTime, faNum, latinCode, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { DateTimeInput } from "./DateInput";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
@@ -90,7 +90,7 @@ export function Inventory() {
 
 /* ---------- shipping methods ---------- */
 
-type Method = { id?: number; name: string; description: string; fee: number | null; only_city: string; needs_postal_code: boolean; is_active: boolean; sort: number };
+type Method = { id?: number; name: string; description: string; fee: number | null; free_from: number | null; only_city: string; needs_postal_code: boolean; is_active: boolean; sort: number };
 
 export function Shipping() {
   const toast = useToast();
@@ -117,18 +117,19 @@ export function Shipping() {
   };
   return (
     <>
-      <PageHead title="روش‌های ارسال" sub="هزینه‌ی هر روش ثابت است و در تسویه‌حساب به مشتری نشان داده می‌شود.">
-        <button type="button" className={s.btn} onClick={() => setDraft({ name: "", description: "", fee: null, only_city: "", needs_postal_code: true, is_active: true, sort: data?.length ?? 0 })}><Icon name="plus" /> روش جدید</button>
+      <PageHead title="روش‌های ارسال" sub="هزینه‌ی هر روش در تسویه‌حساب به مشتری نشان داده می‌شود. برای هر روش می‌توانید مبلغی بگذارید که از آن به بالا ارسال رایگان باشد.">
+        <button type="button" className={s.btn} onClick={() => setDraft({ name: "", description: "", fee: null, free_from: null, only_city: "", needs_postal_code: true, is_active: true, sort: data?.length ?? 0 })}><Icon name="plus" /> روش جدید</button>
       </PageHead>
       <Card>
         <div className={s.tableWrap}>
           <table className={s.table}>
-            <thead><tr><th>روش</th><th>هزینه (تومان)</th><th>محدود به شهر</th><th>فعال</th><th /></tr></thead>
+            <thead><tr><th>روش</th><th>هزینه (تومان)</th><th>رایگان از خرید (تومان)</th><th>محدود به شهر</th><th>فعال</th><th /></tr></thead>
             <tbody>
               {data?.map((m) => (
                 <tr key={m.id}>
                   <td><b>{m.name}</b><small className="muted" style={{ display: "block" }}>{m.description}</small></td>
                   <td className="num">{faNum(m.fee ?? 0)}</td>
+                  <td className="num">{m.free_from === null ? <span className="muted">هیچ‌وقت</span> : faNum(m.free_from)}</td>
                   <td>{m.only_city || <span className="muted">همه‌ی شهرها</span>}</td>
                   <td><Switch checked={m.is_active} onChange={async (v) => { await adminCall(`/shipping-methods/${m.id}`, { method: "PATCH", body: { is_active: v } }); reload(); }} label={`فعال بودن ${m.name}`} /></td>
                   <td><button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setDraft(m)}>ویرایش</button></td>
@@ -147,6 +148,13 @@ export function Shipping() {
           <div className={s.formGrid}>
             <Field label="نام روش"><input id="sh-name" className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} autoFocus placeholder="مثلاً پست پیشتاز" /></Field>
             <Field label="هزینه (تومان)"><MoneyInput id="sh-fee" value={draft.fee} onChange={(v) => setDraft({ ...draft, fee: v })} /></Field>
+            <Field
+              label="ارسال رایگان از خرید (تومان، اختیاری)"
+              hint="اگر جمع کالاهای سفارش (بعد از کد تخفیف) به این مبلغ برسد، این روش برای مشتری رایگان می‌شود. در صفحه‌ی پرداخت به مشتری می‌گوییم چقدر دیگر بخرد تا رایگان شود. خالی یعنی هیچ‌وقت رایگان نیست."
+              full
+            >
+              <MoneyInput id="sh-free" value={draft.free_from} onChange={(v) => setDraft({ ...draft, free_from: v })} placeholder="مثلاً ۳٬۰۰۰٬۰۰۰" />
+            </Field>
             <Field label="توضیح کوتاه" full><input id="sh-desc" className="input" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="مثلاً سراسر ایران · ۲ تا ۴ روز کاری" /></Field>
             <Field label="فقط برای شهر (اختیاری)" hint="مثلاً پیک فقط برای شهر خودتان" full><input id="sh-city" className="input" value={draft.only_city} onChange={(e) => setDraft({ ...draft, only_city: e.target.value })} /></Field>
           </div>
@@ -212,7 +220,7 @@ export function Discounts() {
           <button type="button" className={s.btn} onClick={save}>ذخیره</button>
         </>}>
           <div className={s.formGrid}>
-            <Field label="کد (حروف انگلیسی و عدد)" error={errors.code}><input id="dc-code" className="input ltr" value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} autoFocus placeholder="مثلاً YALDA20" /></Field>
+            <Field label="کد (حروف بزرگ انگلیسی و عدد)" error={errors.code} hint="حروف کوچک و حروفی که با کیبورد فارسی تایپ شوند خودکار به حروف بزرگ انگلیسی تبدیل می‌شوند؛ مشتری هم همین‌طور تایپ می‌کند."><input id="dc-code" className="input ltr" value={draft.code} onChange={(e) => setDraft({ ...draft, code: latinCode(e.target.value) })} autoFocus autoComplete="off" spellCheck={false} placeholder="مثلاً YALDA20" /></Field>
             <Field label="نوع">
               <select id="dc-kind" className="input" value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Discount["kind"] })}>
                 <option value="percent">درصدی</option>
@@ -238,12 +246,15 @@ type Settings = {
   name: string; name_latin: string; tagline: string; logo: string | null;
   hero_title: string; hero_text: string; about_title: string; about_text: string;
   theme: "day" | "night";
-  phone: string; landline: string; instagram: string; city: string; address: string; currency_label: string;
+  phone: string; landline: string; instagram: string; city: string;
+  socials: Social[]; social_networks: { value: string; label: string }[]; address: string; currency_label: string;
   returns_enabled: boolean; returns_type: "refund" | "exchange"; returns_days: number; returns_policy: string;
   terms_text: string; privacy_text: string; working_hours: string; enamad_id: string; enamad_code: string;
   order_notify_phone: string; unpaid_hold_hours: number; seller_max_discount: number;
   birthday_discount_enabled: boolean; birthday_discount_percent: number; birthday_discount_max: number | null;
 };
+
+type Social = { network: string; handle: string };
 
 /** Swatches for the theme cards; the full palettes live in globals.css. */
 const THEMES = [
@@ -271,7 +282,9 @@ export function StoreSettings() {
         fd.append(k, typeof v === "boolean" ? String(v) : String(v ?? ""));
       }
       if (logo) fd.append("logo", logo);
-      setData(await adminCall<Settings>("/store", { method: "PATCH", form: fd }));
+      await adminCall<Settings>("/store", { method: "PATCH", form: fd });
+      // The social pages are a list, so they go as JSON.
+      setData(await adminCall<Settings>("/store", { method: "PATCH", body: { socials: data.socials.filter((x) => x.handle.trim()) } }));
       setLogo(null);
       setErrors({});
       await refreshSite();
@@ -327,12 +340,51 @@ export function StoreSettings() {
             <div className={s.formGrid}>
               {text("phone", "موبایل", { ltr: true })}
               {text("landline", "تلفن ثابت", { ltr: true })}
-              {text("instagram", "اینستاگرام (بدون @)", { ltr: true })}
               {text("city", "شهر")}
               {text("currency_label", "واحد پول")}
               {text("address", "آدرس فروشگاه حضوری", { full: true, area: true })}
               {text("working_hours", "ساعت کاری", { full: true, hint: "در پایین همه‌ی صفحه‌ها، بخش معرفی فروشگاه و صفحه‌ی «تماس با ما» نمایش داده می‌شود" })}
             </div>
+          </Card>
+          <Card
+            title="شبکه‌های اجتماعی"
+            actions={
+              <button type="button" className={`${s.btn} ${s.btnSm}`} onClick={() => set("socials", [...data.socials, { network: data.socials.length ? "telegram" : "instagram", handle: "" }])}>
+                <Icon name="plus" /> افزودن
+              </button>
+            }
+          >
+            <p className="hint" style={{ marginTop: 0 }}>
+              هر تعداد صفحه که دارید، حتی دو اینستاگرام. شبکه را انتخاب کنید و فقط آیدی را بنویسید؛ لینک خودش ساخته می‌شود. برای واتس‌اپ شماره‌ی موبایل را بنویسید. اگر لینک صفحه‌ای فرق دارد، کل آدرس https:// را بنویسید. اولین اینستاگرام، صفحه‌ی اصلی دعوت به دنبال کردن است.
+            </p>
+            {data.socials.length ? (
+              <ol className={s.socials}>
+                {data.socials.map((x, i) => {
+                  const put = (next: Partial<Social>) => set("socials", data.socials.map((y, j) => (j === i ? { ...y, ...next } : y)));
+                  return (
+                    <li key={i}>
+                      <select className="input" aria-label={`شبکه‌ی ردیف ${faNum(i + 1)}`} value={x.network} onChange={(e) => put({ network: e.target.value })}>
+                        {data.social_networks.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
+                      </select>
+                      <input
+                        className="input ltr"
+                        aria-label={`آیدی ردیف ${faNum(i + 1)}`}
+                        value={x.handle}
+                        onChange={(e) => put({ handle: e.target.value })}
+                        placeholder={x.network === "whatsapp" ? "09123456789" : "shivagallery"}
+                      />
+                      <span className={s.actions}>
+                        <button type="button" className="icon-btn" aria-label="بالاتر" disabled={i === 0} onClick={() => { const next = [...data.socials]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; set("socials", next); }}><Icon name="chev" className={s.up} /></button>
+                        <button type="button" className="icon-btn" aria-label="حذف" onClick={() => set("socials", data.socials.filter((_, j) => j !== i))}><Icon name="trash" /></button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className="muted">هنوز شبکه‌ای ثبت نشده.</p>
+            )}
+            {errors.socials && <p className="err">{errors.socials}</p>}
           </Card>
           <Card title="سفارش‌ها">
             <div className={s.formGrid}>

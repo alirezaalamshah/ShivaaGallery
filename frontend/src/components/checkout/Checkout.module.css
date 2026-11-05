@@ -412,3 +412,27 @@
     margin-inline: 0;
   }
 }
+
+.free {
+  color: var(--accent-ink);
+}
+
+.free s {
+  font-weight: 400;
+  color: var(--muted);
+  margin-inline-end: 4px;
+}
+
+.freeHint {
+  display: block;
+  margin-top: 2px;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* A code reads in capitals with room between the letters. */
+.code {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--f-latin, inherit);
+}

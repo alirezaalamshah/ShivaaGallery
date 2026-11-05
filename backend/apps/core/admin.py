@@ -11,7 +11,7 @@ class StoreSettingsAdmin(admin.ModelAdmin):
         ("هویت", {"fields": ["name", "name_latin", "tagline", "logo"]}),
         ("صفحه‌ی اصلی", {"fields": ["hero_title", "hero_text", "about_title", "about_text"]}),
         ("ظاهر", {"fields": ["theme"]}),
-        ("تماس", {"fields": ["phone", "landline", "instagram", "city", "address"]}),
+        ("تماس", {"fields": ["phone", "landline", "socials", "city", "address"]}),
         ("فروش", {"fields": ["currency_label"]}),
         ("مرجوعی", {"fields": ["returns_enabled", "returns_type", "returns_days", "returns_policy"]}),
     ]

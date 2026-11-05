@@ -320,3 +320,18 @@
 .seal img {
   display: block;
 }
+
+/* The store's social pages: every one on the Instagram card, one under another. */
+.socials {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

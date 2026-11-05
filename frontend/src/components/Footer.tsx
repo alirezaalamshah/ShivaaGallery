@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { toFaDigits } from "@/lib/format";
+import { socialAction, socialColor, socialHandle } from "@/lib/socials";
 import type { CategoryNode, Store } from "@/lib/types";
 
 import { BackToTop } from "./BackToTop";
 import { Icon } from "./Icon";
 import { Logo } from "./Logo";
+import { SocialLogo } from "./SocialLogo";
 import styles from "./Footer.module.css";
 
 const DEVELOPER = { name: "هوشیوا", url: "https://houshiva.ir" };
@@ -27,15 +29,22 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
           <div className={styles.brand}>
             <Logo store={store} size={60} />
             {store.tagline && <p>{store.tagline}</p>}
-            {store.instagram && (
-              <a className={styles.insta} href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer">
-                <span className={styles.instaIc}><Icon name="insta" /></span>
-                <span>
-                  <b>ما را در اینستاگرام دنبال کن</b>
-                  <small dir="ltr">@{store.instagram}</small>
-                </span>
-                <Icon name="arrow" />
-              </a>
+            {/* Every social page of the store, each on the same card, in the admin's order. */}
+            {store.socials.length > 0 && (
+              <ul className={styles.socials} aria-label="شبکه‌های اجتماعی">
+                {store.socials.map((x) => (
+                  <li key={`${x.network}-${x.handle}`}>
+                    <a className={styles.insta} href={x.url} target="_blank" rel="noopener noreferrer">
+                      <span className={styles.instaIc} style={{ background: socialColor(x.network) }}><SocialLogo network={x.network} /></span>
+                      <span>
+                        <b>{socialAction(x.network, x.label)}</b>
+                        <small dir="ltr">{socialHandle(x.network, x.handle)}</small>
+                      </span>
+                      <Icon name="arrow" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 

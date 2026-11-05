@@ -10,7 +10,7 @@ from .models import Order, OrderEvent, OrderItem, ReturnRequest, ShippingMethod
 class ShippingMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShippingMethod
-        fields = ["id", "name", "description", "fee", "only_city", "needs_postal_code"]
+        fields = ["id", "name", "description", "fee", "free_from", "only_city", "needs_postal_code"]
 
 
 class LineSerializer(serializers.Serializer):

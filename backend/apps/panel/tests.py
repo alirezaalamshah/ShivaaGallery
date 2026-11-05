@@ -383,3 +383,32 @@ class StockPageTests(TestCase):
         self.assertEqual(self.client.get("/api/admin/stock/stale/?days=90").json()["products"], 1)
         res = self.client.get("/api/admin/stock/stale/?days=120").json()
         self.assertEqual((res["products"], res["cost_value"]), (0, 0))
+
+
+class SocialPagesTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin", is_staff=True))
+
+    def test_any_number_of_pages_with_links_built_for_the_site(self):
+        res = self.client.patch("/api/admin/store/", {"socials": [
+            {"network": "instagram", "handle": "@shiva.main"},
+            {"network": "instagram", "handle": "shiva.sale"},
+            {"network": "bale", "handle": "shivagallery"},
+            {"network": "rubika", "handle": "shivagallery"},
+            {"network": "whatsapp", "handle": "09121234567"},
+            {"network": "telegram", "handle": "  "},
+        ]}, content_type="application/json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(len(res.json()["socials"]), 5)
+        store = self.client.get("/api/store/").json()
+        self.assertEqual(store["instagram"], "shiva.main")
+        urls = [s["url"] for s in store["socials"]]
+        self.assertEqual(urls, ["https://instagram.com/shiva.main", "https://instagram.com/shiva.sale", "https://ble.ir/shivagallery",
+                                "https://rubika.ir/shivagallery", "https://wa.me/989121234567"])
+        self.assertEqual(store["socials"][2]["label"], "بله")
+
+    def test_unknown_networks_and_unsafe_links_are_refused(self):
+        bad = self.client.patch("/api/admin/store/", {"socials": [{"network": "myspace", "handle": "x"}]}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)
+        bad = self.client.patch("/api/admin/store/", {"socials": [{"network": "telegram", "handle": "http://evil.example"}]}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)

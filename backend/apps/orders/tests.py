@@ -43,6 +43,23 @@ class PlaceOrderTests(OrderFixture):
         self.assertEqual(order.items.get().product_name, "مانتو")
         self.assertEqual(order.events.get().status, "awaiting_payment")
 
+    def test_shipping_is_free_once_the_goods_reach_the_methods_threshold(self):
+        ShippingMethod.objects.filter(pk=self.post.pk).update(free_from=1_500_000)
+        from .services import quote
+
+        # 2 × 800,000 = 1,600,000 reaches it; one piece does not.
+        self.assertEqual(quote([{"variant": self.v.pk, "qty": 1}], "اهواز", self.post.pk)["shipping_fee"], 100_000)
+        with mock.patch("apps.orders.services.send_sms"):
+            order = place_order(self.user, self.data())
+        self.assertEqual((order.shipping_fee, order.total), (0, 1_600_000))
+
+    def test_a_discount_that_drops_the_goods_below_the_threshold_brings_the_fee_back(self):
+        ShippingMethod.objects.filter(pk=self.post.pk).update(free_from=1_500_000)
+        DiscountCode.objects.create(code="OFF", kind="fixed", value=200_000)
+        with mock.patch("apps.orders.services.send_sms"):
+            order = place_order(self.user, self.data(discount_code="off"))
+        self.assertEqual((order.discount_amount, order.shipping_fee, order.total), (200_000, 100_000, 1_500_000))
+
     def test_every_staff_number_hears_of_a_new_order(self):
         from apps.core.models import StoreSettings
 

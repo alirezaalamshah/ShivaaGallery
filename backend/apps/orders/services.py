@@ -83,10 +83,10 @@ def quote(lines, city, shipping_method_id, discount_code="", user=None):
     priced = price_lines(lines)
     subtotal = sum(l["unit_price"] * l["qty"] for l in priced if l["ok"])
     method = ShippingMethod.objects.filter(pk=shipping_method_id).first() if shipping_method_id else None
-    fee = method.fee if method and method.available_for(city) else 0
     discount = find_discount(discount_code)
     code_amount = discount.amount_for(subtotal) if discount and not discount.problem(subtotal, user) else 0
     amount, kind, _, note = best_discount(subtotal, code_amount, customer_phone(user))
+    fee = method.fee_for(subtotal - amount) if method and method.available_for(city) else 0
     return {
         "lines": priced, "subtotal": subtotal, "shipping_fee": fee, "discount": amount, "discount_kind": kind,
         "discount_note": note, "total": subtotal + fee - amount,
@@ -171,6 +171,7 @@ def place_order(user, data):
         code_amount = discount.amount_for(subtotal)
     discount_amount, kind, birthday, _ = best_discount(subtotal, code_amount, user.username)
     discount_code = discount.code if kind == "code" else ""
+    fee = method.fee_for(subtotal - discount_amount)
     if discount_code:
         DiscountCode.objects.filter(pk=discount.pk).update(used_count=F("used_count") + 1)
 
@@ -182,9 +183,9 @@ def place_order(user, data):
                     receiver_name=data["receiver_name"], receiver_phone=data.get("receiver_phone", ""),
                     province=data.get("province", ""), city=data["city"], address=data["address"],
                     postal_code=data.get("postal_code", ""), note=data.get("note", ""),
-                    shipping_method=method, shipping_name=method.name, shipping_fee=method.fee,
+                    shipping_method=method, shipping_name=method.name, shipping_fee=fee,
                     subtotal=subtotal, discount_code=discount_code, discount_amount=discount_amount, birthday_discount=kind == "birthday",
-                    total=subtotal + method.fee - discount_amount, payment_deadline=payment_deadline(),
+                    total=subtotal + fee - discount_amount, payment_deadline=payment_deadline(),
                 )
             break
         except IntegrityError:  # order number collision; try another

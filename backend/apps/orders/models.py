@@ -10,6 +10,10 @@ class ShippingMethod(models.Model):
     name = models.CharField("نام روش ارسال", max_length=60)
     description = models.CharField("توضیح کوتاه", max_length=120, blank=True)
     fee = models.PositiveBigIntegerField("هزینه")
+    free_from = models.PositiveBigIntegerField(
+        "ارسال رایگان از مبلغ", null=True, blank=True,
+        help_text="اگر مبلغ کالاهای سفارش (بعد از تخفیف) به این عدد برسد، این روش رایگان است. خالی یعنی هیچ‌وقت رایگان نیست.",
+    )
     only_city = models.CharField("فقط برای شهر", max_length=60, blank=True, help_text="خالی یعنی همه‌ی شهرها")
     needs_postal_code = models.BooleanField("کد پستی لازم است", default=False, help_text="برای پست و تیپاکس روشن باشد")
     is_active = models.BooleanField("فعال", default=True)
@@ -25,6 +29,10 @@ class ShippingMethod(models.Model):
 
     def available_for(self, city):
         return self.is_active and (not self.only_city or self.only_city.strip() == (city or "").strip())
+
+    def fee_for(self, goods):
+        """The fee for an order whose goods come to `goods` after discounts: nothing once it reaches `free_from`."""
+        return 0 if self.free_from is not None and goods >= self.free_from else self.fee
 
 
 class DiscountCode(models.Model):

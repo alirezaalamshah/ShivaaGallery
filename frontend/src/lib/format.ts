@@ -7,7 +7,26 @@ export const toFaDigits = (s: string | number) => String(s).replace(/\d/g, (d) =
 export const toEnDigits = (s: string) =>
   s.replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
 
-/** "درخشش، *به سبک تو*" → [["درخشش،", false], ["به سبک تو", true]] — starred parts are highlighted. */
+// The key each Persian letter sits on, on a standard Persian keyboard.
+const FA_KEYS: Record<string, string> = {
+  ض: "Q", ص: "W", ث: "E", ق: "R", ف: "T", غ: "Y", ع: "U", ه: "I", خ: "O", ح: "P",
+  ش: "A", س: "S", ی: "D", ي: "D", ب: "F", ل: "G", ا: "H", ت: "J", ن: "K", م: "L",
+  ظ: "Z", ط: "X", ز: "C", ر: "V", ذ: "B", د: "N", پ: "M",
+};
+
+/**
+ * A discount code as it is stored: capital English letters, digits, - and _. Lower case becomes
+ * capital, and a letter typed with the Persian keyboard becomes the English letter on the same key,
+ * so the code works whichever way the customer types it.
+ */
+export const latinCode = (s: string) =>
+  toEnDigits(s)
+    .replace(/./g, (ch) => FA_KEYS[ch] ?? ch)
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "")
+    .slice(0, 30);
+
+/** "درخشش، *به سبک تو*" →[["درخشش،", false], ["به سبک تو", true]] — starred parts are highlighted. */
 export function splitHighlight(text: string): [string, boolean][] {
   return text
     .split(/(\*[^*]+\*)/)

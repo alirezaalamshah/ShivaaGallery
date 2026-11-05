@@ -1766,3 +1766,30 @@
     animation: none;
   }
 }
+
+/* Social pages in the store settings: network, ID, and move or remove. */
+.socials {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.socials li {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 560px) {
+  .socials li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .socials li input {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

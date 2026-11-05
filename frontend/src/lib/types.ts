@@ -12,6 +12,8 @@ export type Store = {
   phone: string;
   landline: string;
   instagram: string;
+  /** Every social page of the store, with its network's Persian name and a ready link. */
+  socials: { network: string; label: string; handle: string; url: string }[];
   city: string;
   address: string;
   currency_label: string;
@@ -99,7 +101,7 @@ export type Facets = {
   size_systems: { id: number; name: string; sizes: { id: number; label: string }[] }[];
 };
 
-export type ShippingMethod = { id: number; name: string; description: string; fee: number; only_city: string; needs_postal_code: boolean };
+export type ShippingMethod = { id: number; name: string; description: string; fee: number; /** Free once the goods, after discounts, reach this; null: never free. */ free_from: number | null; only_city: string; needs_postal_code: boolean };
 export type Address = { id: number; receiver_name: string; receiver_phone: string; province: string; city: string; address: string; postal_code: string };
 
 export type OrderStatus = "awaiting_payment" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
