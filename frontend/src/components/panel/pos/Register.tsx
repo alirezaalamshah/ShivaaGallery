@@ -16,7 +16,9 @@ import { adminCall, refreshSite } from "../hooks";
 import { MoneyInput, Modal } from "../ui";
 import s from "../panel.module.css";
 import p from "./pos.module.css";
-import { type BackLine, type Lookup, type PosProduct, type PosVariant, type Returnable, type Sale, type TicketLine, UNKNOWN_STOCK } from "./types";
+import {
+  type BackLine, KIND_LABEL, type Lookup, type PosProduct, type PosVariant, type Returnable, type Sale, saleKind, type TicketLine, UNKNOWN_STOCK,
+} from "./types";
 
 type Pay = "cash" | "card" | "transfer" | "split";
 
@@ -82,10 +84,26 @@ export const payText = (sale: Pick<Sale, "cash" | "card" | "transfer">) => {
   return [part(sale.cash, "نقد"), part(sale.card, "کارت‌خوان"), part(sale.transfer, "کارت به کارت")].filter(Boolean).join(" · ") || "بدون پرداخت";
 };
 
-const stockText = (n: number) => (n >= UNKNOWN_STOCK ? "؟" : n === 0 ? "تمام" : faNum(n));
+const stockText = (n: number) => (n >= UNKNOWN_STOCK ? "؟" : n === 0 ? "تمام" : `${faNum(n)} عدد`);
 
-/** Ring up one in-store sale. The open ticket survives a page refresh, per person, in this browser. */
-export function Register() {
+/** What a product card shows at a glance: its price (or price range), any sale, and how many are left. */
+function summary(product: PosProduct) {
+  const live = product.variants.filter((v) => v.stock > 0);
+  const prices = (live.length ? live : product.variants).map((v) => v.price);
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  const onSale = product.variants.some((v) => v.stock > 0 && v.price < v.regular_price);
+  const regular = product.variants.find((v) => v.price === low && v.price < v.regular_price)?.regular_price ?? null;
+  const counted = product.variants.filter((v) => v.stock < UNKNOWN_STOCK);
+  const stock = counted.reduce((n, v) => n + v.stock, 0);
+  return { low, high, onSale, regular, stock, unknown: counted.length < product.variants.length, samePrice: low === high };
+}
+
+/**
+ * Ring up one in-store sale, return or exchange. The open ticket survives a page refresh, per person,
+ * in this browser. `returning` opens on the return step: find the earlier ticket first.
+ */
+export function Register({ returning = false }: { returning?: boolean }) {
   const { me } = useAuth();
   const store = useStore();
   const toast = useToast();
@@ -117,6 +135,9 @@ export function Register() {
     }
     setLoaded(true);
   }, [storageKey]);
+  useEffect(() => {
+    if (loaded && returning) setPicking(true);
+  }, [loaded, returning]);
   useEffect(() => {
     if (!loaded) return;
     try {
@@ -240,6 +261,7 @@ export function Register() {
   const paid = payments.cash + payments.card + payments.transfer;
   const change = pay === "cash" && !refund && ticket.received ? ticket.received - total : null;
   const empty = !ticket.lines.length && !ticket.back.length;
+  const kind = saleKind(ticket.lines.length, ticket.back.length);
 
   const problems = [
     empty && "کالایی در فاکتور نیست.",
@@ -318,8 +340,10 @@ export function Register() {
 
   const nextSale = () => {
     setDone(null);
-    searchRef.current?.focus();
+    if (returning) setPicking(true);
+    else searchRef.current?.focus();
   };
+  const doneKind = done ? saleKind(done.sale.items?.length ?? 0, done.sale.returns?.length ?? (done.sale.returned_total ? 1 : 0)) : "sale";
 
   return (
     <div className={p.till}>
@@ -340,6 +364,7 @@ export function Register() {
         <div className={p.results} aria-busy={searching}>
           {results.map((product) => {
             const colors = [...new Map(product.variants.map((v) => [v.color, v.color_hex])).entries()];
+            const sum = summary(product);
             return (
               <article key={product.id} className={p.product}>
                 <header>
@@ -349,8 +374,19 @@ export function Register() {
                   ) : (
                     <span className={p.noImg} />
                   )}
-                  <b>{product.name}</b>
-                  {!product.active && <small className="muted">(در سایت نمایش داده نمی‌شود)</small>}
+                  <span className={p.productHead}>
+                    <b>{product.name}</b>
+                    <span className={`${p.price} ${sum.onSale ? p.priceSale : ""}`}>
+                      <b className="num">{sum.samePrice ? faNum(sum.low) : `${faNum(sum.low)} تا ${faNum(sum.high)}`}</b>
+                      <small>{store.currency_label}</small>
+                      {sum.samePrice && sum.regular && <s className="num">{faNum(sum.regular)}</s>}
+                    </span>
+                    <small className={p.productMeta}>
+                      {sum.unknown && !sum.stock ? "موجودی نامشخص" : `موجودی ${faNum(sum.stock)} عدد`} · {faNum(colors.length)} رنگ
+                      {!product.active && " · در سایت نمایش داده نمی‌شود"}
+                    </small>
+                  </span>
+                  {sum.onSale && <span className={p.saleTag}>تخفیف</span>}
                 </header>
                 {colors.map(([color, hex]) => (
                   <div key={color} className={p.colorRow}>
@@ -358,16 +394,20 @@ export function Register() {
                     <span className={p.sizes}>
                       {product.variants.filter((v) => v.color === color).map((v) => {
                         const inTicket = ticket.lines.find((l) => l.variant === v.id)?.qty ?? 0;
+                        const sale = v.price < v.regular_price;
                         return (
                           <button
                             key={v.id}
                             type="button"
-                            className={`${p.size} ${inTicket ? p.sizeIn : ""}`}
+                            className={`${p.size} ${inTicket ? p.sizeIn : ""} ${v.stock > 0 && v.stock <= 2 ? p.sizeLow : ""}`}
                             disabled={v.stock === 0}
                             onClick={() => add(product, v)}
-                            aria-label={`${product.name} ${color} سایز ${v.size}، ${faNum(v.price)} ${store.currency_label}، موجودی ${stockText(v.stock)}`}
+                            title={`${faNum(v.price)} ${store.currency_label}${sale ? ` (قیمت اصلی ${faNum(v.regular_price)})` : ""}`}
+                            aria-label={`${product.name} ${color} سایز ${v.size}، ${faNum(v.price)} ${store.currency_label}${sale ? "، تخفیف‌دار" : ""}، موجودی ${stockText(v.stock)}`}
                           >
                             <b className="num">{v.size}</b>
+                            {/* One price for the whole product sits in the header; a size that differs shows its own. */}
+                            {(!sum.samePrice || sale) && <span className={`${p.sizePrice} ${sale ? p.priceSale : ""} num`}>{faNum(v.price)}</span>}
                             <small className="num">{stockText(v.stock)}</small>
                             {inTicket > 0 && <em className="num">{faNum(inTicket)}</em>}
                           </button>
@@ -385,13 +425,30 @@ export function Register() {
 
       <aside ref={ticketRef} className={p.ticket} aria-label="فاکتور">
         <h2>
-          فاکتور <small className="num">{pieces ? `${faNum(pieces)} عدد` : ""}</small>
+          {kind === "sale" ? "فاکتور فروش" : `فاکتور ${KIND_LABEL[kind]}`} <small className="num">{pieces ? `${faNum(pieces)} عدد` : ""}</small>
           {canReturn && (
             <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.backBtn}`} onClick={() => setPicking(true)}>
-              <Icon name="ret" /> مرجوعی یا تعویض
+              <Icon name="ret" /> {ticket.back.length ? "کالای پس‌آورده‌ی دیگر" : "مرجوعی یا تعویض"}
             </button>
           )}
         </h2>
+        {kind !== "sale" && (
+          <ol className={p.exchangeSteps}>
+            <li className={p.stepDone}>کالای پس‌آورده انتخاب شد ({faNum(backPieces)} عدد)</li>
+            <li className={kind === "exchange" ? p.stepDone : undefined}>
+              {kind === "exchange"
+                ? `کالای جایگزین اضافه شد (${faNum(pieces)} عدد)`
+                : "تعویض است؟ کالای جایگزین را از فهرست کالاها اضافه کنید. فقط پس می‌دهد؟ همین‌طور ثبت کنید."}
+            </li>
+            <li>
+              {refund
+                ? `${faNum(-total)} ${store.currency_label} به مشتری پس بدهید و ثبت کنید.`
+                : total > 0
+                  ? `مابه‌التفاوت ${faNum(total)} ${store.currency_label} را بگیرید و ثبت کنید.`
+                  : "پولی رد و بدل نمی‌شود؛ ثبت کنید."}
+            </li>
+          </ol>
+        )}
         {ticket.lines.length ? (
           <ul className={p.lines}>
             {ticket.lines.map((l) => {
@@ -418,13 +475,14 @@ export function Register() {
             <p className={p.emptyTicket}>
               <Icon name="bag" />
               کالا را از فهرست انتخاب کنید یا کد آن را اسکن کنید.
+              {canReturn && <small>برای پس گرفتن یا عوض کردن کالای فروخته‌شده، «مرجوعی یا تعویض» را بزنید.</small>}
             </p>
           )
         )}
 
         {ticket.back.length > 0 && (
           <>
-            <h3 className={p.backHead}>پس گرفته می‌شود <small className="num">{faNum(backPieces)} عدد</small></h3>
+            <h3 className={p.backHead}>مشتری پس می‌دهد <small className="num">{faNum(backPieces)} عدد</small></h3>
             <ul className={`${p.lines} ${p.backLines}`}>
               {ticket.back.map((l) => (
                 <li key={l.item}>
@@ -445,7 +503,7 @@ export function Register() {
         )}
 
         <div className={p.sums}>
-          <div><span>جمع کالاها</span><b className="num">{faNum(subtotal)}</b></div>
+          <div><span>{kind === "sale" ? "جمع کالاها" : "جمع کالاهای جایگزین"}</span><b className="num">{faNum(subtotal)}</b></div>
           {/* A limit of zero means this seller may not give a discount. */}
           {maxDiscount !== 0 && !birthday && (
           <div className={p.discountRow}>
@@ -463,7 +521,7 @@ export function Register() {
           {!!maxDiscount && !birthday && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
           {returned > 0 && <div className={p.minor}><span>کالاهای پس‌گرفته</span><span className="num">− {faNum(returned)}</span></div>}
           <div className={`${p.total} ${refund ? p.refund : ""}`}>
-            <span>{refund ? "پرداخت به مشتری" : "مبلغ قابل پرداخت"}</span>
+            <span>{refund ? "پرداخت به مشتری" : kind === "sale" ? "مبلغ قابل پرداخت" : "مابه‌التفاوت قابل دریافت"}</span>
             <b className="num">{faNum(Math.abs(total))} <small>{store.currency_label}</small></b>
           </div>
         </div>
@@ -477,7 +535,7 @@ export function Register() {
             ))}
           </div>
         )}
-        {total === 0 && !empty && <p className={p.minor}>تعویض هم‌قیمت است؛ پولی رد و بدل نمی‌شود.</p>}
+        {total === 0 && !empty && <p className={p.minor}>{kind === "exchange" ? "تعویض هم‌قیمت است؛ " : ""}پولی رد و بدل نمی‌شود.</p>}
 
         {pay === "cash" && !refund && total > 0 && (
           <label className={p.payField}>
@@ -548,11 +606,13 @@ export function Register() {
             <Icon name="check" />{" "}
             {busy
               ? "در حال ثبت…"
-              : refund
-                ? `ثبت و پس دادن ${faNum(-total)} ${store.currency_label}`
-                : ticket.back.length
-                  ? `ثبت تعویض — ${faNum(total)} ${store.currency_label}`
-                  : `ثبت فروش — ${faNum(total)} ${store.currency_label}`}
+              : kind === "sale"
+                ? `ثبت فروش — ${faNum(total)} ${store.currency_label}`
+                : refund
+                  ? `ثبت ${KIND_LABEL[kind]} و پس دادن ${faNum(-total)} ${store.currency_label}`
+                  : total
+                    ? `ثبت ${KIND_LABEL[kind]} — دریافت ${faNum(total)} ${store.currency_label}`
+                    : `ثبت ${KIND_LABEL[kind]}`}
           </button>
           {!empty && (
             <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={() => { setTicket(fresh()); setShort({}); setError(""); setKnown(null); }}>
@@ -572,11 +632,11 @@ export function Register() {
 
       {done && (
         <Modal
-          title={done.sale.returned_total ? "مرجوعی ثبت شد" : "فروش ثبت شد"}
+          title={`${KIND_LABEL[doneKind]} ثبت شد`}
           onClose={nextSale}
           footer={
             <>
-              <button type="button" className={s.btn} onClick={nextSale} autoFocus>فروش بعدی</button>
+              <button type="button" className={s.btn} onClick={nextSale} autoFocus>{returning ? "مرجوعی یا تعویض بعدی" : "فروش بعدی"}</button>
               <a href={`/panel/pos/sales/${done.sale.id}/print`} target="_blank" rel="noopener" className={`${s.btn} ${s.btnGhost}`}>چاپ فاکتور</a>
             </>
           }
@@ -621,7 +681,11 @@ function ReturnPicker({ onClose, onPick, taken }: { onClose: () => void; onPick:
 
   return (
     <Modal title="مرجوعی یا تعویض" onClose={onClose} wide>
-      <p className="hint">شماره‌ی فاکتور قبلی یا موبایل مشتری را بنویسید، تعداد کالاهایی را که پس آورده انتخاب کنید و به فاکتور اضافه کنید. اگر عوضش کالای دیگری می‌برد، آن را هم در همین فاکتور اضافه کنید.</p>
+      <ol className={p.pickerSteps}>
+        <li><b>فاکتور خرید را پیدا کنید:</b> شماره‌ی فاکتور یا موبایل مشتری را بنویسید.</li>
+        <li><b>تعداد کالای پس‌آورده را بزنید</b> و «افزودن به فاکتور» را انتخاب کنید.</li>
+        <li><b>تعویض است؟</b> کالای جایگزین را از فهرست کالاها به همان فاکتور اضافه کنید؛ مابه‌التفاوت خودکار حساب می‌شود.</li>
+      </ol>
       <input className="input ltr num" placeholder="مثلاً S123456 یا ۰۹۱۲…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
       {rows && !rows.length && <p className="muted">فاکتوری پیدا نشد.</p>}
       <div className={p.returnList}>

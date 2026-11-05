@@ -78,5 +78,10 @@ export type TillCloseRow = {
   card_total: number; counted_card: number | null; transfer_total: number; left_in_drawer: number; note: string; closed_by: string; closed_at: string;
 };
 
+/** A ticket that only takes pieces back is a return; one that also hands pieces out is an exchange. */
+export const saleKind = (lines: number, back: number) => (back ? (lines ? "exchange" : "return") : "sale");
+
+export const KIND_LABEL = { sale: "فروش", return: "مرجوعی", exchange: "تعویض" } as const;
+
 /** Stock of 9999 is left over from an older panel and means "count unknown". */
 export const UNKNOWN_STOCK = 9999;

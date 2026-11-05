@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { faDateTime, faNum, toFaDigits } from "@/lib/format";
 import type { ReturnRequest } from "@/lib/types";
@@ -42,7 +43,9 @@ export function Returns() {
   const [page, setPage] = useState(1);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
-  const manage = useCan()("returns.manage");
+  const can = useCan();
+  const manage = can("returns.manage");
+  const canTill = can("pos.return");
   const { data, setData, loading } = useAdmin<Paged<AdminReturn>>(`/returns?page=${page}${status ? `&status=${status}` : ""}`);
 
   const update = async (r: AdminReturn, next?: string) => {
@@ -64,7 +67,13 @@ export function Returns() {
 
   return (
     <>
-      <PageHead title="مرجوعی‌ها" sub="درخواست‌های مرجوعی و تعویض مشتری‌ها. با «انجام شد»، کالای برگشتی خودکار به موجودی اضافه می‌شود." />
+      <PageHead title="مرجوعی‌های اینترنتی" sub="درخواست‌های مرجوعی و تعویض مشتری‌هایی که از سایت خریده‌اند. با «انجام شد»، کالای برگشتی خودکار به موجودی اضافه می‌شود." />
+      {canTill && (
+        <p className={s.notice}>
+          <Icon name="ret" /> مشتری کالای خریده‌شده از فروشگاه را آورده؟ مرجوعی و تعویض حضوری در{" "}
+          <Link href="/panel/pos?tab=return">صندوق، بخش «مرجوعی و تعویض»</Link> ثبت می‌شود.
+        </p>
+      )}
       <Card>
         <div className={s.toolbar}>
           <div className={s.tabs} role="group" aria-label="وضعیت">

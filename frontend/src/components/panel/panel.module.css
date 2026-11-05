@@ -1619,3 +1619,27 @@
   text-align: center;
   color: var(--faint);
 }
+
+/* A one-line pointer to a related page, above a page's content. */
+.notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  background: var(--band);
+}
+
+.notice svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.notice a {
+  font-weight: 700;
+  text-decoration: underline;
+}

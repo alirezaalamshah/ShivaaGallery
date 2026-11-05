@@ -19,8 +19,10 @@ export function Pos() {
   const can = useCan();
   const sells = can("pos.sell", "pos.return");
   const closes = can("pos.close");
+  const returns = can("pos.return");
   // Someone who may not ring up tickets starts on the day's sales.
-  const tab = param === "close" && closes ? "close" : param === "sales" || !sells ? "sales" : "till";
+  const tab =
+    param === "close" && closes ? "close" : param === "sales" || !sells ? "sales" : param === "return" && returns ? "return" : "till";
 
   return (
     <>
@@ -29,6 +31,11 @@ export function Pos() {
           {sells && (
             <button type="button" className={s.tab} aria-pressed={tab === "till"} onClick={() => router.replace("/panel/pos")}>
               فاکتور جدید
+            </button>
+          )}
+          {returns && (
+            <button type="button" className={s.tab} aria-pressed={tab === "return"} onClick={() => router.replace("/panel/pos?tab=return")}>
+              مرجوعی و تعویض
             </button>
           )}
           <button type="button" className={s.tab} aria-pressed={tab === "sales"} onClick={() => router.replace("/panel/pos?tab=sales")}>
@@ -41,7 +48,7 @@ export function Pos() {
           )}
         </div>
       </PageHead>
-      {tab === "till" ? <Register /> : tab === "sales" ? <SalesDay /> : <TillClose />}
+      {tab === "till" || tab === "return" ? <Register key={tab} returning={tab === "return"} /> : tab === "sales" ? <SalesDay /> : <TillClose />}
     </>
   );
 }

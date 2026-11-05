@@ -20,7 +20,7 @@ const NAV: { group: string; items: { href: string; label: string; icon: IconName
     { href: "/panel", label: "داشبورد", icon: "home" },
     { href: "/panel/pos", label: "صندوق فروش حضوری", icon: "card" },
     { href: "/panel/orders", label: "سفارش‌های اینترنتی", icon: "bag", badge: "orders_open" },
-    { href: "/panel/returns", label: "مرجوعی‌ها", icon: "ret", badge: "returns_open" },
+    { href: "/panel/returns", label: "مرجوعی‌های اینترنتی", icon: "ret", badge: "returns_open" },
     { href: "/panel/stock", label: "موجودی انبار", icon: "grid" },
     { href: "/panel/customers", label: "مشتری‌ها", icon: "user" },
     { href: "/panel/reviews", label: "نظرات خریداران", icon: "heart", badge: "reviews_pending" },

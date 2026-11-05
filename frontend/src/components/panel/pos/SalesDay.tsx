@@ -14,7 +14,7 @@ import { Card, Empty, Modal } from "../ui";
 import s from "../panel.module.css";
 import p from "./pos.module.css";
 import { payText } from "./Register";
-import type { DayTotals, Sale } from "./types";
+import { type DayTotals, KIND_LABEL, type Sale, saleKind } from "./types";
 
 const shift = (day: string, by: number) => {
   const d = new Date(`${day}T12:00:00`);
@@ -72,12 +72,16 @@ export function SalesDay() {
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead>
-                <tr><th>فاکتور</th><th>ساعت</th>{all && <th>فروشنده</th>}<th>عدد</th><th>مبلغ</th><th>پرداخت</th><th>مشتری</th><th>وضعیت</th></tr>
+                <tr><th>فاکتور</th><th>نوع</th><th>ساعت</th>{all && <th>فروشنده</th>}<th>عدد</th><th>مبلغ</th><th>پرداخت</th><th>مشتری</th><th>وضعیت</th></tr>
               </thead>
               <tbody>
                 {data.results.map((x) => (
                   <tr key={x.id} className={`${s.rowLink} ${x.status === "voided" ? p.voided : ""}`} onClick={async () => setOpen(await adminCall<Sale>(`/pos/sales/${x.id}`))}>
                     <td className="num" dir="ltr">#{toFaDigits(x.number)}</td>
+                    <td>{(() => {
+                      const kind = saleKind(x.item_count ?? 0, x.returned_count ?? 0);
+                      return kind === "sale" ? KIND_LABEL.sale : <span className="pill" data-status={kind === "return" ? "awaiting_payment" : "processing"}>{KIND_LABEL[kind]}</span>;
+                    })()}</td>
                     <td className="num">{new Date(x.created_at).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}</td>
                     {all && <td>{x.seller}</td>}
                     <td className="num">{faNum(x.item_count ?? 0)}{x.returned_count ? ` · ${faNum(x.returned_count)} پس‌گرفته` : ""}</td>
@@ -123,7 +127,7 @@ function SaleModal({ sale, canVoid, onClose, onVoided }: { sale: Sale; canVoid: 
 
   return (
     <Modal
-      title={`فاکتور ${toFaDigits(sale.number)}`}
+      title={`فاکتور ${KIND_LABEL[saleKind(sale.items?.length ?? 0, sale.returns?.length ?? 0)]} ${toFaDigits(sale.number)}`}
       onClose={onClose}
       footer={
         <>
