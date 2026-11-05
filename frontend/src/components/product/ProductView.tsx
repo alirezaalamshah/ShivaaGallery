@@ -20,6 +20,26 @@ import { StockNotify } from "./StockNotify";
 
 const SLIDE_MS = 4000;
 
+/**
+ * Which colors and sizes in stock are on sale, and by how much. `partial` is true when only some
+ * are: then each color and size shows its own discount. When every one is, the price says it all.
+ */
+function saleSummary(product: ProductDetail) {
+  const live = product.variants.filter((v) => v.in_stock);
+  const pct = (v: ProductDetail["variants"][number]) => (v.price < v.regular_price ? Math.round((1 - v.price / v.regular_price) * 100) : 0);
+  const onSale = live.filter((v) => pct(v) > 0);
+  const byColor = product.colors
+    .map((color) => {
+      const all = live.filter((v) => v.color === color.id);
+      const sale = all.filter((v) => pct(v) > 0);
+      const pcts = sale.map(pct);
+      return { color, all: sale.length === all.length, sizes: sale.map((v) => v.size), min: Math.min(...pcts), max: Math.max(...pcts) };
+    })
+    .filter((d) => d.sizes.length);
+  const same = new Set(onSale.map(pct)).size === 1;
+  return { byColor, partial: onSale.length > 0 && (onSale.length < live.length || !same), max: Math.max(0, ...onSale.map(pct)) };
+}
+
 export function ProductView({ product, initialColor }: { product: ProductDetail; initialColor?: number }) {
   const store = useStore();
   const cart = useCart();
@@ -104,6 +124,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
   const price = variant?.price ?? product.current_price;
   const regular = variant?.regular_price ?? product.price;
   const offPct = price < regular ? Math.round((1 - price / regular) * 100) : 0;
+  const deals = useMemo(() => saleSummary(product), [product]);
 
   return (
     <div className={styles.layout}>
@@ -159,7 +180,26 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
         <div className={styles.priceRow}>
           <Price price={regular} salePrice={offPct ? price : null} size="lg" />
           {offPct > 0 && <span className={`${styles.off} num`}>{faNum(offPct)}٪ تخفیف</span>}
+          {!variant && !offPct && deals.max > 0 && <span className={`${styles.off} num`}>تا {faNum(deals.max)}٪ تخفیف</span>}
         </div>
+        {/* Only some colors or sizes are on sale: say which, so nobody has to tap through them all. */}
+        {deals.partial && (
+          <div className={styles.deals}>
+            <Icon name="tag" />
+            <span>
+              <b>تخفیف‌دارها:</b>{" "}
+              {deals.byColor.map((d, i) => (
+                <span key={d.color.id}>
+                  {i > 0 && " · "}
+                  <button type="button" onClick={() => pickColor(d.color.id)} className={styles.dealColor}>
+                    <i style={{ background: d.color.hex }} />{d.color.name}
+                  </button>{" "}
+                  <span className="num">{d.all ? "همه‌ی سایزها" : `سایز ${d.sizes.join("، ")}`} ({d.min === d.max ? `${faNum(d.max)}٪` : `${faNum(d.min)} تا ${faNum(d.max)}٪`})</span>
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
 
         {colors.length > 0 && (
           <div className={styles.opt}>
@@ -169,18 +209,22 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
             <div className={styles.colors} role="radiogroup" aria-label="رنگ">
               {colors.map((c) => {
                 const soldOut = !product.variants.some((v) => v.color === c.id && v.in_stock);
+                const onSale = deals.partial && deals.byColor.some((d) => d.color.id === c.id);
+                const name = `${c.name}${soldOut ? "، ناموجود" : onSale ? "، تخفیف‌دار" : ""}`;
                 return (
                   <button
                     key={c.id}
                     type="button"
                     role="radio"
                     aria-checked={c.id === colorId}
-                    aria-label={soldOut ? `${c.name}، ناموجود` : c.name}
-                    title={soldOut ? `${c.name} (ناموجود)` : c.name}
+                    aria-label={name}
+                    title={name}
                     className={soldOut ? styles.soldOut : undefined}
                     style={{ "--c": c.hex } as React.CSSProperties}
                     onClick={() => pickColor(c.id)}
-                  />
+                  >
+                    {onSale && <span className={styles.colorOff} aria-hidden>٪</span>}
+                  </button>
                 );
               })}
             </div>
@@ -201,6 +245,7 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
               const v = variants.find((x) => x.size_id === s.id);
               const out = !v || !v.in_stock;
               const missing = !v;
+              const off = v && !out && deals.partial && v.price < v.regular_price ? Math.round((1 - v.price / v.regular_price) * 100) : 0;
               return (
                 <button
                   key={s.id}
@@ -208,14 +253,15 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
                   role="radio"
                   aria-checked={s.id === sizeId}
                   aria-disabled={missing}
-                  aria-label={out ? `${s.label}، ناموجود` : s.label}
-                  className={`${styles.sz} num ${out ? styles.out : ""}`}
+                  aria-label={out ? `${s.label}، ناموجود` : off ? `${s.label}، ${faNum(off)}٪ تخفیف` : s.label}
+                  className={`${styles.sz} num ${out ? styles.out : ""} ${off ? styles.szSale : ""}`}
                   onClick={() => {
                     if (missing) return;
                     setSizeId(s.id);
                     setWarn(false);
                   }}
                 >
+                  {off > 0 && <span className={styles.szOff}>{faNum(off)}٪</span>}
                   {s.label}
                   {v?.left != null && <span className={styles.low}>{v.left === 1 ? "آخرین عدد" : `فقط ${faNum(v.left)} عدد`}</span>}
                 </button>
