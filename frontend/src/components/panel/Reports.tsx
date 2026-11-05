@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { Icon } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
 import { faDate, faNum } from "@/lib/format";
 
 import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
 import { useAdmin } from "./hooks";
-import { Card, Empty, PageHead } from "./ui";
+import { Card, Empty, Modal, PageHead } from "./ui";
 import s from "./panel.module.css";
+import rp from "./Reports.module.css";
 
 type Pnl = {
   online: { orders: number; goods: number; discount: number; sales: number; shipping: number; refunds: number };
@@ -21,6 +23,8 @@ type Pnl = {
   gross_margin: number | null;
   expenses: { category: string; label: string; total: number; count: number }[];
   expense_total: number;
+  /** Damaged and lost pieces, at purchase price. */
+  write_offs: { pieces: number; total: number; missing_cost: number };
   net_profit: number;
   missing_cost: { pieces: number; sales: number };
 };
@@ -60,6 +64,7 @@ export function Reports() {
   const dates = range === "" ? { from: "2000-01-01" } : rangeOf(range, custom);
   const params = new URLSearchParams(dates as Record<string, string>).toString();
   const { data, loading } = useAdmin<Report>(`/reports?${params}`);
+  const [open, setOpen] = useState<Line | null>(null);
   const cur = store.currency_label;
 
   return (
@@ -94,8 +99,14 @@ export function Reports() {
           <div className={s.stats}>
             <div className={s.stat}><span>فروش خالص</span><b className="num">{faNum(data.pnl.net_sales)}</b><small>{cur} · {faNum(data.pnl.online.orders)} سفارش، {faNum(data.pnl.store.tickets)} فاکتور</small></div>
             <div className={s.stat}><span>سود ناخالص</span><b className="num">{faNum(data.pnl.gross_profit)}</b><small>{data.pnl.gross_margin !== null ? `${faNum(data.pnl.gross_margin)}٪ از فروش` : cur}</small></div>
-            <div className={s.stat}><span>هزینه‌ها</span><b className="num">{faNum(data.pnl.expense_total)}</b><small><Link href="/panel/expenses">ثبت و دیدن هزینه‌ها</Link></small></div>
-            <div className={`${s.stat} ${data.pnl.net_profit < 0 ? s.statWarn : ""}`}><span>{data.pnl.net_profit < 0 ? "زیان خالص" : "سود خالص"}</span><b className="num">{faNum(Math.abs(data.pnl.net_profit))}</b><small>{cur}</small></div>
+            <button type="button" className={`${s.stat} ${rp.statBtn}`} onClick={() => setOpen("expenses")}>
+              <span>هزینه‌ها</span>
+              <b className="num">{faNum(data.pnl.expense_total)}</b>
+              <small>{data.pnl.write_offs.total ? `جدا از ${faNum(data.pnl.write_offs.total)} کالای خراب و گم‌شده` : "برای دیدن ریز هزینه‌ها بزنید"}</small>
+            </button>
+            <button type="button" className={`${s.stat} ${rp.statBtn} ${data.pnl.net_profit < 0 ? s.statWarn : ""}`} onClick={() => setOpen("net_profit")}>
+              <span>{data.pnl.net_profit < 0 ? "زیان خالص" : "سود خالص"}</span><b className="num">{faNum(Math.abs(data.pnl.net_profit))}</b><small>{cur} · چطور حساب شده؟</small>
+            </button>
           </div>
 
           <div className={s.cols}>
@@ -103,7 +114,7 @@ export function Reports() {
               <DailyChart days={data.daily} currency={cur} />
             </Card>
             <Card title="صورت سود و زیان">
-              <Statement pnl={data.pnl} />
+              <Statement pnl={data.pnl} onOpen={setOpen} />
             </Card>
           </div>
 
@@ -114,7 +125,7 @@ export function Reports() {
                   <thead><tr><th>محصول</th><th>دسته</th><th>عدد فروش</th><th>فروش ({cur})</th><th>سود ({cur})</th></tr></thead>
                   <tbody>
                     {data.best_sellers.map((r) => (
-                      <tr key={`${r.product_id}-${r.name}`}>
+                      <tr key={`${r.product_id}-${rp.name}`}>
                         <td>{r.product_id ? <Link href={`/panel/products/${r.product_id}`}>{r.name}</Link> : r.name}</td>
                         <td className="muted">{r.category}</td>
                         <td className="num">{faNum(r.qty)}</td>
@@ -176,31 +187,190 @@ export function Reports() {
               ) : <p className="muted">در این بازه فروش حضوری نبوده.</p>}
             </Card>
           </div>
+          {open && <DetailModal key={open} line={open} pnl={data.pnl} params={params} currency={cur} onClose={() => setOpen(null)} onOpen={setOpen} />}
         </>
       )}
     </>
   );
 }
 
-function Statement({ pnl }: { pnl: Pnl }) {
-  const row = (label: string, value: number, opts: { minus?: boolean; strong?: boolean; hint?: string } = {}) => (
+type Line = "online" | "shipping" | "store" | "returns" | "net_sales" | "cogs" | "gross" | "expenses" | "write_offs" | "net_profit";
+
+const WRITE_OFF_NOTE = "کالایی که در «موجودی انبار» با دلیل «خراب» یا «گم‌شده» کسر شده، به قیمت خریدش زیان حساب می‌شود؛ پولش رفته و فروشی هم ندارد. کالای «مرجوع به تأمین‌کننده» حساب نمی‌شود، چون پولش برمی‌گردد.";
+
+/** Every line opens the numbers behind it. Expenses are one line; their breakdown is in its window. */
+function Statement({ pnl, onOpen }: { pnl: Pnl; onOpen: (line: Line) => void }) {
+  const row = (line: Line, label: string, value: number, opts: { minus?: boolean; strong?: boolean; hint?: string } = {}) => (
+    <li key={line} className={opts.strong ? rp.strong : undefined}>
+      <button type="button" onClick={() => onOpen(line)} aria-label={`${label}: ${faNum(value)}، دیدن جزئیات`}>
+        <span className={rp.label}>
+          {label}
+          {opts.hint && <small>{opts.hint}</small>}
+        </span>
+        <span className={`num ${value < 0 ? "err" : ""}`}>{opts.minus && value ? "− " : ""}{faNum(value)}</span>
+        <Icon name="chev" />
+      </button>
+    </li>
+  );
+  const returns = pnl.online.refunds + pnl.store.returns;
+  return (
     <>
-      <dt>{opts.strong ? <b>{label}</b> : label}{opts.hint && <small className="muted"> {opts.hint}</small>}</dt>
-      <dd className={`num ${value < 0 ? "err" : ""}`}>{opts.strong ? <b>{opts.minus ? "− " : ""}{faNum(value)}</b> : <>{opts.minus ? "− " : ""}{faNum(value)}</>}</dd>
+      <ul className={rp.statement}>
+        {row("online", "فروش اینترنتی", pnl.online.sales, { hint: pnl.online.discount ? `بعد از ${faNum(pnl.online.discount)} تخفیف` : `${faNum(pnl.online.orders)} سفارش` })}
+        {pnl.online.shipping > 0 && row("shipping", "هزینه‌ی ارسال دریافتی", pnl.online.shipping)}
+        {row("store", "فروش حضوری", pnl.store.sales, { hint: pnl.store.discount ? `بعد از ${faNum(pnl.store.discount)} تخفیف` : `${faNum(pnl.store.tickets)} فاکتور` })}
+        {returns > 0 && row("returns", "مرجوعی‌ها", returns, { minus: true })}
+        {row("net_sales", "فروش خالص", pnl.net_sales, { strong: true })}
+        {row("cogs", "قیمت خرید کالاهای فروخته‌شده", pnl.cogs, { minus: true })}
+        {row("gross", "سود ناخالص", pnl.gross_profit, { strong: true, hint: pnl.gross_margin !== null ? `${faNum(pnl.gross_margin)}٪ از فروش` : "" })}
+        {row("expenses", "هزینه‌ها", pnl.expense_total, { minus: true, hint: pnl.expenses.length ? `${faNum(pnl.expenses.reduce((n, e) => n + e.count, 0))} مورد در ${faNum(pnl.expenses.length)} دسته` : "" })}
+        {(pnl.write_offs.total > 0 || pnl.write_offs.pieces > 0) &&
+          row("write_offs", "کالای خراب و گم‌شده", pnl.write_offs.total, { minus: true, hint: `${faNum(pnl.write_offs.pieces)} عدد، به قیمت خرید` })}
+        {row("net_profit", pnl.net_profit < 0 ? "زیان خالص" : "سود خالص", pnl.net_profit, { strong: true })}
+      </ul>
+      <p className="hint">برای دیدن ریز هر عدد، روی آن ردیف بزنید.</p>
     </>
   );
+}
+
+type Detail = {
+  line: Line;
+  columns: { key: string; label: string; kind: "text" | "num" | "money" | "date" }[];
+  rows: (Record<string, string | number | null> & { href?: string | null })[];
+  count: number;
+  more: number;
+  total: number;
+};
+
+const TITLES: Record<Line, string> = {
+  online: "فروش اینترنتی", shipping: "هزینه‌ی ارسال دریافتی", store: "فروش حضوری", returns: "مرجوعی‌ها", net_sales: "فروش خالص",
+  cogs: "قیمت خرید کالاهای فروخته‌شده", gross: "سود ناخالص هر محصول", expenses: "هزینه‌ها", write_offs: "کالای خراب و گم‌شده", net_profit: "سود خالص",
+};
+
+const NOTES: Partial<Record<Line, string>> = {
+  online: "سفارش‌های پرداخت‌شده‌ی این بازه، بعد از کم شدن تخفیف. هزینه‌ی ارسال جدا حساب شده.",
+  store: "فاکتورهای ثبت‌شده در صندوق، بعد از کم شدن تخفیف. فاکتورهای باطل‌شده حساب نشده‌اند.",
+  returns: "پولی که در این بازه به مشتری پس داده شده: مرجوعی‌های اینترنتی «انجام‌شده» با بازگشت وجه، و کالاهای پس‌گرفته در صندوق.",
+  cogs: "قیمت خریدی که هنگام هر فروش در محصول ثبت بوده، ضرب در تعداد فروش. کالاهای پس‌گرفته کم شده‌اند.",
+  gross: "فروش هر محصول منهای قیمت خرید آن. محصولی که قیمت خرید نداشته، سودش بیشتر از واقع دیده می‌شود.",
+  expenses: "هزینه‌هایی که در صفحه‌ی «هزینه‌ها» برای روزهای این بازه ثبت شده.",
+  write_offs: WRITE_OFF_NOTE,
+};
+
+/** A line's breakdown. Formula lines are explained from the statement itself; the rest come from the server. */
+function DetailModal({ line, pnl, params, currency, onClose, onOpen }: { line: Line; pnl: Pnl; params: string; currency: string; onClose: () => void; onOpen: (l: Line) => void }) {
+  const formula = line === "net_sales" || line === "net_profit";
+  const { data, loading } = useAdmin<Detail>(formula ? null : `/reports/detail/${line}?${params}`);
+  const [q, setQ] = useState("");
+  const term = q.trim();
+  const rows = (data?.rows ?? []).filter((row) => !term || data!.columns.some((c) => c.kind === "text" && String(row[c.key] ?? "").includes(term)));
+  const shown = term ? rows.reduce((n, row) => n + (Number(row.amount) || 0), 0) : data?.total ?? 0;
+  const cell = (kind: string, v: string | number | null | undefined) =>
+    v === null || v === undefined || v === "" ? <span className="muted">—</span>
+      : kind === "money" || kind === "num" ? faNum(Number(v))
+        : kind === "date" ? faDate(String(v).length === 10 ? `${v}T12:00:00` : String(v))
+          : String(v);
+
   return (
-    <dl className={s.kv}>
-      {row("فروش اینترنتی", pnl.online.sales, { hint: pnl.online.discount ? `(بعد از ${faNum(pnl.online.discount)} تخفیف)` : "" })}
-      {pnl.online.shipping > 0 && row("هزینه‌ی ارسال دریافتی", pnl.online.shipping)}
-      {row("فروش حضوری", pnl.store.sales, { hint: pnl.store.discount ? `(بعد از ${faNum(pnl.store.discount)} تخفیف)` : "" })}
-      {pnl.online.refunds + pnl.store.returns > 0 && row("مرجوعی‌ها", pnl.online.refunds + pnl.store.returns, { minus: true })}
-      {row("فروش خالص", pnl.net_sales, { strong: true })}
-      {row("قیمت خرید کالاهای فروخته‌شده", pnl.cogs, { minus: true })}
-      {row("سود ناخالص", pnl.gross_profit, { strong: true })}
-      {pnl.expenses.map((e) => <span key={e.category} style={{ display: "contents" }}>{row(e.label, e.total, { minus: true })}</span>)}
-      {row(pnl.net_profit < 0 ? "زیان خالص" : "سود خالص", pnl.net_profit, { strong: true })}
-    </dl>
+    <Modal title={TITLES[line]} onClose={onClose} wide>
+      {NOTES[line] && <p className="hint" style={{ marginTop: 0 }}>{NOTES[line]}</p>}
+
+      {formula ? (
+        <Formula line={line} pnl={pnl} currency={currency} onOpen={onOpen} />
+      ) : (
+        <>
+          {line === "expenses" && pnl.expenses.length > 0 && (
+            <div className={rp.chips}>
+              {pnl.expenses.map((e) => (
+                <span key={e.category}>{e.label} <b className="num">{faNum(e.total)}</b> <small className="num">({faNum(e.count)} مورد)</small></span>
+              ))}
+            </div>
+          )}
+          {line === "write_offs" && pnl.write_offs.missing_cost > 0 && (
+            <p className="err">{faNum(pnl.write_offs.missing_cost)} عدد قیمت خرید نداشت و در این عدد حساب نشده.</p>
+          )}
+          {data && data.count > 8 && (
+            <label className={`${s.search} ${rp.detailSearch}`}>
+              <Icon name="search" />
+              <span className="sr-only">جستجو در ردیف‌ها</span>
+              <input className="input" placeholder="جستجو در ردیف‌ها" value={q} onChange={(e) => setQ(e.target.value)} />
+            </label>
+          )}
+          {data?.rows.length ? (
+            <div className={rp.detailScroll}>
+              <table className={s.table}>
+                <thead>
+                  <tr>{data.columns.map((c) => <th key={c.key}>{c.label}{c.kind === "money" ? ` (${currency})` : ""}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i}>
+                      {data.columns.map((c, j) => (
+                        <td key={c.key} className={c.kind === "money" || c.kind === "num" ? `num ${Number(row[c.key]) < 0 ? "err" : ""}` : c.kind === "date" ? "muted" : undefined}>
+                          {j === 0 && row.href ? <Link href={row.href}>{cell(c.kind, row[c.key])}</Link> : cell(c.kind, row[c.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            !loading && <Empty icon="chart" title="در این بازه ردیفی نیست" />
+          )}
+          {data && data.rows.length > 0 && (
+            <p className={rp.detailTotal}>
+              <span>{term ? `${faNum(rows.length)} ردیف از ${faNum(data.count)}` : `${faNum(data.count)} ردیف`}</span>
+              <b className="num">جمع: {faNum(shown)} {currency}</b>
+            </p>
+          )}
+          {!!data?.more && <p className="hint">{faNum(data.more)} ردیف دیگر نمایش داده نشده؛ بازه‌ی زمانی را کوتاه‌تر کنید.</p>}
+          {line === "expenses" && <Link href="/panel/expenses" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>ثبت و ویرایش هزینه‌ها</Link>}
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/** How a total line is made, each part opening its own window. */
+function Formula({ line, pnl, currency, onOpen }: { line: Line; pnl: Pnl; currency: string; onOpen: (l: Line) => void }) {
+  const part = (l: Line, label: string, value: number, sign: "+" | "−") => (
+    <li key={l}>
+      <button type="button" onClick={() => onOpen(l)}>
+        <span>{sign} {label}</span><span className="num">{faNum(value)}</span><Icon name="chev" />
+      </button>
+    </li>
+  );
+  const returns = pnl.online.refunds + pnl.store.returns;
+  return (
+    <>
+      <ul className={rp.statement}>
+        {line === "net_sales" ? (
+          <>
+            {part("online", "فروش اینترنتی", pnl.online.sales, "+")}
+            {pnl.online.shipping > 0 && part("shipping", "هزینه‌ی ارسال دریافتی", pnl.online.shipping, "+")}
+            {part("store", "فروش حضوری", pnl.store.sales, "+")}
+            {returns > 0 && part("returns", "مرجوعی‌ها", returns, "−")}
+          </>
+        ) : (
+          <>
+            {part("net_sales", "فروش خالص", pnl.net_sales, "+")}
+            {part("cogs", "قیمت خرید کالاهای فروخته‌شده", pnl.cogs, "−")}
+            {part("expenses", "هزینه‌ها", pnl.expense_total, "−")}
+            {pnl.write_offs.total > 0 && part("write_offs", "کالای خراب و گم‌شده", pnl.write_offs.total, "−")}
+          </>
+        )}
+        <li className={rp.strong}>
+          <span className={rp.formulaTotal}>
+            <span>= {TITLES[line]}</span>
+            <b className={`num ${(line === "net_sales" ? pnl.net_sales : pnl.net_profit) < 0 ? "err" : ""}`}>
+              {faNum(line === "net_sales" ? pnl.net_sales : pnl.net_profit)} {currency}
+            </b>
+          </span>
+        </li>
+      </ul>
+      {line === "net_profit" && pnl.write_offs.total > 0 && <p className="hint">{WRITE_OFF_NOTE}</p>}
+    </>
   );
 }
 

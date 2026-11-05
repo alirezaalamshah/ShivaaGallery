@@ -1,0 +1,125 @@
+/* Profit and loss: every line is a button that opens the numbers behind it. */
+.statement {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+
+.statement li > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.statement li > button:hover,
+.statement li > button:focus-visible {
+  background: var(--band);
+}
+
+.statement svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.label {
+  display: grid;
+  gap: 1px;
+  color: var(--muted);
+}
+
+.label small {
+  font-size: 11.5px;
+}
+
+/* Totals: darker, with a rule above them. */
+.strong {
+  border-top: 1px solid var(--line);
+  margin-top: 2px;
+  padding-top: 2px;
+}
+
+.strong .label,
+.strong > button > span:nth-child(2) {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.formulaTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 8px;
+  font-weight: 800;
+}
+
+.statBtn {
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.statBtn:hover {
+  border-color: var(--ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chips span {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--band);
+  font-size: 12.5px;
+}
+
+.detailSearch {
+  max-width: none;
+  margin-bottom: 10px;
+}
+
+/* Long lists scroll inside the window; the header stays in view. */
+.detailScroll {
+  max-height: min(55vh, 520px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.detailScroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+.detailTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.detailTotal b {
+  color: var(--text);
+}

@@ -12,7 +12,7 @@ from apps.panel.views import StaffMixin
 from apps.pos.services import day_range
 
 from .models import Expense
-from .reports import full_report
+from .reports import full_report, line_detail
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
@@ -72,3 +72,15 @@ def report(request):
     first, last = _days(request.query_params)
     start, end = day_range(first)[0], day_range(last)[1]
     return Response(full_report(start, end, first, last))
+
+
+@api_view(["GET"])
+@permission_classes([needs("reports.view")])
+def report_detail(request, line):
+    """The rows behind one line of the profit and loss statement, for the same ?from=&to= as the report."""
+    first, last = _days(request.query_params)
+    start, end = day_range(first)[0], day_range(last)[1]
+    data = line_detail(line, start, end, first, last)
+    if data is None:
+        return Response({"detail": "چنین ردیفی در گزارش نیست."}, status=404)
+    return Response(data)

@@ -16,6 +16,7 @@ from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
 from apps.catalog.models import Product
+from apps.inventory.models import StockMovement
 from apps.orders.models import Order, OrderItem, ReturnItem, ReturnRequest
 from apps.pos.models import ReturnedItem, Sale, SaleItem
 
@@ -23,6 +24,10 @@ from .models import Expense
 
 # Stock of 9999 is left over from an older panel and means "count unknown".
 UNKNOWN_STOCK = 9999
+# Pieces taken out of stock that are a loss to the shop.
+WRITE_OFFS = (StockMovement.Reason.DAMAGED, StockMovement.Reason.LOST)
+# A detail window lists at most this many rows; the rest are counted.
+DETAIL_ROWS = 1000
 
 
 def _paid_unit(unit_price, subtotal, discount):
@@ -89,6 +94,7 @@ def profit_and_loss(start, end, first_day, last_day):
     labels = dict(Expense.Category.choices)
     expenses = [{"category": e["category"], "label": labels.get(e["category"], e["category"]), "total": e["total"], "count": e["count"]} for e in by_cat]
     expense_total = sum(e["total"] for e in expenses)
+    lost = write_offs(start, end)
     return {
         "online": {"orders": o["count"], "goods": o["goods"], "discount": o["discount"], "sales": online_sales, "shipping": o["shipping"], "refunds": online_refund},
         "store": {"tickets": t["count"], "goods": t["goods"], "discount": t["discount"], "sales": store_sales, "returns": t["returned"]},
@@ -98,9 +104,37 @@ def profit_and_loss(start, end, first_day, last_day):
         "gross_margin": round(gross * 100 / net_sales, 1) if net_sales else None,
         "expenses": expenses,
         "expense_total": expense_total,
-        "net_profit": gross - expense_total,
+        "write_offs": {"pieces": lost["pieces"], "total": lost["total"], "missing_cost": lost["missing_cost"]},
+        "net_profit": gross - expense_total - lost["total"],
         "missing_cost": {"pieces": missing, "sales": missing_sales},
     }
+
+
+def write_offs(start, end):
+    """
+    Pieces thrown away as damaged or lost in the period, at the product's purchase price: money the
+    shop paid for goods it will never sell. Pieces sent back to the supplier are not counted, since
+    their money comes back.
+    """
+    rows, total, missing = [], 0, 0
+    labels = dict(StockMovement.Reason.choices)
+    qs = (
+        StockMovement.objects.filter(reason__in=WRITE_OFFS, delta__lt=0, created_at__gte=start, created_at__lt=end)
+        .select_related("variant__product", "variant__color", "variant__size", "created_by")
+    )
+    for m in qs:
+        cost = m.variant.product.cost_price
+        qty = -m.delta
+        if cost is None:
+            missing += qty
+        else:
+            total += cost * qty
+        rows.append({
+            "date": m.created_at, "product_id": m.variant.product_id, "product": m.variant.product.name,
+            "variant": f"{m.variant.color.name}، سایز {m.variant.size.label}", "qty": qty,
+            "reason": labels[m.reason], "note": m.note, "amount": cost * qty if cost is not None else None,
+        })
+    return {"pieces": sum(r["qty"] for r in rows), "total": total, "missing_cost": missing, "rows": rows}
 
 
 def daily(start, end):
@@ -228,6 +262,82 @@ def stale_stock(days, category=None):
         "cost_value": sum(r["stock_value"] or 0 for r in rows),
         "without_cost": sum(1 for r in rows if r["stock_value"] is None),
         "sale_value": sum(r["sale_value"] for r in rows),
+    }
+
+
+def _col(key, label, kind="text"):
+    return {"key": key, "label": label, "kind": kind}
+
+
+def _person(user):
+    return (user.get_full_name() or user.username) if user else ""
+
+
+def line_detail(line, start, end, first_day, last_day):
+    """
+    The rows behind one line of the profit and loss statement, for its detail window. Each answer
+    names its columns (text, num, money or date) so one table can show them all; rows may carry an
+    `href` to open the order, ticket or product.
+    """
+    if line in ("online", "shipping"):
+        orders = sold_orders(start, end).order_by("-created_at")
+        if line == "shipping":
+            orders = orders.filter(shipping_fee__gt=0)
+            cols = [_col("number", "سفارش"), _col("date", "تاریخ", "date"), _col("customer", "مشتری"), _col("amount", "هزینه‌ی ارسال", "money")]
+        else:
+            cols = [_col("number", "سفارش"), _col("date", "تاریخ", "date"), _col("customer", "مشتری"), _col("goods", "مبلغ کالاها", "money"),
+                    _col("discount", "تخفیف", "money"), _col("amount", "فروش", "money")]
+        rows = [{
+            "number": f"#{o.number}", "date": o.created_at, "customer": o.receiver_name, "goods": o.subtotal,
+            "discount": o.discount_amount, "amount": o.shipping_fee if line == "shipping" else o.subtotal - o.discount_amount,
+            "href": f"/panel/orders/{o.id}",
+        } for o in orders]
+    elif line == "store":
+        cols = [_col("number", "فاکتور"), _col("date", "تاریخ", "date"), _col("seller", "فروشنده"), _col("customer", "مشتری"),
+                _col("goods", "مبلغ کالاها", "money"), _col("discount", "تخفیف", "money"), _col("amount", "فروش", "money")]
+        rows = [{
+            "number": f"#{t.number}", "date": t.created_at, "seller": _person(t.seller), "customer": t.customer_name or t.customer_phone,
+            "goods": t.subtotal, "discount": t.discount, "amount": t.subtotal - t.discount,
+        } for t in till_sales(start, end).select_related("seller").order_by("-created_at")]
+    elif line == "returns":
+        cols = [_col("where", "کجا"), _col("number", "سفارش یا فاکتور"), _col("date", "تاریخ", "date"), _col("product", "کالا"),
+                _col("qty", "تعداد", "num"), _col("amount", "مبلغ پس‌داده", "money")]
+        rows = [{
+            "where": "اینترنتی", "number": f"#{r.order_item.order.number}", "date": r.request.updated_at, "product": r.order_item.product_name,
+            "qty": r.qty, "amount": _paid_unit(r.order_item.unit_price, r.order_item.order.subtotal, r.order_item.order.discount_amount) * r.qty,
+            "href": f"/panel/orders/{r.order_item.order_id}",
+        } for r in online_refunds(start, end).select_related("request")]
+        rows += [{
+            "where": "حضوری", "number": f"#{r.sale.number} (از #{r.item.sale.number})", "date": r.sale.created_at, "product": r.item.product_name,
+            "qty": r.qty, "amount": r.unit_refund * r.qty,
+        } for r in ReturnedItem.objects.filter(sale__in=till_sales(start, end)).select_related("sale", "item__sale")]
+        rows.sort(key=lambda r: r["date"], reverse=True)
+    elif line in ("cogs", "gross"):
+        products = sorted(product_sales(start, end), key=lambda r: -r["sales"])
+        cols = [_col("product", "محصول"), _col("category", "دسته"), _col("qty", "تعداد فروش", "num")]
+        if line == "cogs":
+            cols += [_col("amount", "قیمت خرید", "money"), _col("missing", "بدون قیمت خرید", "num")]
+        else:
+            cols += [_col("sales", "فروش", "money"), _col("cost", "قیمت خرید", "money"), _col("amount", "سود", "money")]
+        rows = [{
+            "product": r["name"], "category": r["category"], "qty": r["qty"], "sales": r["sales"], "cost": r["cost"],
+            "missing": r["missing_cost"] or None, "amount": r["cost"] if line == "cogs" else r["sales"] - r["cost"],
+            "href": f"/panel/products/{r['product_id']}" if r["product_id"] else None,
+        } for r in products if r["qty"] or r["sales"]]
+    elif line == "expenses":
+        cols = [_col("date", "تاریخ", "date"), _col("category", "دسته"), _col("note", "شرح"), _col("amount", "مبلغ", "money")]
+        rows = [{
+            "date": e.day.isoformat(), "category": e.get_category_display(), "note": e.note + (" (از صندوق)" if e.from_till else ""), "amount": e.amount,
+        } for e in Expense.objects.filter(day__gte=first_day, day__lte=last_day).order_by("-day", "-id")]
+    elif line == "write_offs":
+        cols = [_col("date", "تاریخ", "date"), _col("product", "محصول"), _col("variant", "رنگ و سایز"), _col("qty", "تعداد", "num"),
+                _col("reason", "دلیل"), _col("note", "توضیح"), _col("amount", "قیمت خرید", "money")]
+        rows = [{**r, "href": f"/panel/products/{r['product_id']}"} for r in write_offs(start, end)["rows"]]
+    else:
+        return None
+    return {
+        "line": line, "columns": cols, "count": len(rows), "rows": rows[:DETAIL_ROWS], "more": max(len(rows) - DETAIL_ROWS, 0),
+        "total": sum(r["amount"] or 0 for r in rows),
     }
 
 

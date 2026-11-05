@@ -67,4 +67,28 @@ class ReportTests(TestCase):
         seller = User.objects.create_user("sara")
         self.client.force_login(seller)
         self.assertEqual(self.client.get("/api/admin/reports/").status_code, 403)
+        self.assertEqual(self.client.get("/api/admin/reports/detail/store/").status_code, 403)
         self.assertEqual(self.client.get("/api/admin/expenses/").status_code, 403)
+
+    def test_damaged_and_lost_pieces_are_a_loss_but_supplier_returns_are_not(self):
+        move_stock(self.v, -2, StockMovement.Reason.DAMAGED, note="لکه")
+        move_stock(self.v, -1, StockMovement.Reason.LOST)
+        move_stock(self.v, -3, StockMovement.Reason.SUPPLIER)
+        pnl = self.client.get("/api/admin/reports/").json()["pnl"]
+        self.assertEqual(pnl["write_offs"], {"pieces": 3, "total": 1_800_000, "missing_cost": 0})
+        self.assertEqual(pnl["net_profit"], -1_800_000)
+        detail = self.client.get("/api/admin/reports/detail/write_offs/").json()
+        self.assertEqual((detail["count"], detail["total"]), (2, 1_800_000))
+        self.assertEqual({r["reason"] for r in detail["rows"]}, {"خراب یا آسیب‌دیده", "گم‌شده یا کسری"})
+
+    def test_each_statement_line_opens_the_rows_behind_it(self):
+        create_sale(self.admin, {"lines": [{"variant": self.v.pk, "qty": 2}], "discount": 200_000, "cash": 1_800_000})
+        Expense.objects.create(category="rent", amount=500_000, note="آبان")
+        Expense.objects.create(category="ads", amount=300_000)
+        store = self.client.get("/api/admin/reports/detail/store/").json()
+        self.assertEqual((store["count"], store["total"], store["rows"][0]["discount"]), (1, 1_800_000, 200_000))
+        expenses = self.client.get("/api/admin/reports/detail/expenses/").json()
+        self.assertEqual((expenses["count"], expenses["total"]), (2, 800_000))
+        gross = self.client.get("/api/admin/reports/detail/gross/").json()
+        self.assertEqual(gross["total"], 1_800_000 - 1_200_000)
+        self.assertEqual(self.client.get("/api/admin/reports/detail/nope/").status_code, 404)
