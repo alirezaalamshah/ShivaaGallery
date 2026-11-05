@@ -90,16 +90,17 @@
    npm run build:server
    ```
    روی هاست اشتراکی `npm run build` (با Turbopack) کار نمی‌کند: هاست تعداد پردازش‌های هر حساب را محدود کرده و `node_modules` یک میان‌بر به بیرون پروژه است. `build:server` با Webpack و فقط یک پردازش می‌سازد، تعداد نخ‌ها را کم نگه می‌دارد و کش جواب‌های قدیمی API را پاک می‌کند.
-4. در همان صفحه‌ی Setup Node.js App، بخش **Environment variables**، این متغیر را اضافه و ذخیره کنید:
-   - Name: `NODE_OPTIONS`
-   - Value: `--v8-pool-size=2`
-
-   Node به‌طور پیش‌فرض به تعداد هسته‌های کل سرور نخ می‌سازد و حساب را به سقف پردازش هاست می‌رساند.
-5. دکمه‌ی **Restart** را بزنید و `https://example.com` را باز کنید.
+4. دکمه‌ی **Restart** را بزنید و `https://example.com` را باز کنید.
 
 ### اگر سایت خطای ۵۰۳ داد یا عکس‌ها باز نشدند
 
-اگر در `backend/stderr.log` خطای `fork() failed, please increase process limit` هست، حساب به سقف پردازش هاست خورده. متغیر `NODE_OPTIONS` بالا را بررسی کنید. اگر با آن هم تکرار شد، در cPanel بخش **Resource Usage** را ببینید و از پشتیبانی هاست افزایش سقف پردازش (NPROC) را بخواهید.
+اگر در `backend/stderr.log` خطای `fork() failed, please increase process limit` هست یا ترمینال خطای `fork: Resource temporarily unavailable` می‌دهد، حساب به سقف حدود ۱۰۰ نخ هاست خورده. بخش Rust داخل Next.js به تعداد هسته‌های کل سرور نخ می‌سازد و `frontend/server.js` این را محدود می‌کند. مطمئن شوید `server.js` همان نسخه‌ی گیت است (`git checkout -- server.js`). برای دیدن تعداد نخ‌ها، حتی وقتی حساب پر است:
+
+```bash
+n=0; for d in /proc/[0-9]*; do t=0; for x in $d/task/*; do t=$((t+1)); done; c=; read -r -d '' c < $d/cmdline; n=$((n+t)); echo "${d#/proc/} threads=$t ${c:0:60}"; done; echo "TOTAL threads=$n"
+```
+
+اگر برنامه‌ی Node از سایت جدا نمی‌شود، آن را در Setup Node.js App با **Stop** ببندید و در صورت نیاز همان شماره‌ی `lsnode` را با `kill` ببندید. اگر با محدودیت هم تکرار شد، از پشتیبانی هاست افزایش سقف پردازش (NPROC) را بخواهید.
 
 ### اگر بیلد روی سرور شکست خورد
 

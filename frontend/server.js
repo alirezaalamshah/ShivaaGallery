@@ -2,10 +2,11 @@
 // cannot run `next start` and hands the app its port through PORT.
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-// The host caps processes and threads per account, and libraries size their thread pools by the
-// server's CPUs (88 here), not by that cap. Past it, new processes fail and the site answers 503.
-// These must be set before anything that starts a pool is loaded. V8's own pool can only be set
-// when node starts: NODE_OPTIONS=--v8-pool-size=2 in Setup Node.js App (deploy/README.md).
+// The host caps threads per account at about 100, and libraries size their pools by the server's
+// CPUs (88 here), not by that cap. Past it, new processes fail and the site answers 503.
+// These must be set before anything that starts a pool is loaded.
+process.env.TOKIO_WORKER_THREADS ??= "1"; // Next's Rust side: 88 threads without this
+process.env.RAYON_NUM_THREADS ??= "1"; // same
 process.env.VIPS_CONCURRENCY ??= "1"; // photo resizing
 process.env.UV_THREADPOOL_SIZE ??= "2";
 
