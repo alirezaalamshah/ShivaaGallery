@@ -5,7 +5,10 @@ import type { Banner } from "@/lib/types";
 
 import styles from "./Banners.module.css";
 
-/** Campaign banners from the panel: a swipeable row on a phone, two or three across on a computer. */
+/**
+ * Campaign banners from the panel: a swipeable row on a phone, two or three across on a computer.
+ * Each has a color (the site's complementary color stands out most) and a motion the admin picks.
+ */
 export function Banners({ banners }: { banners: Banner[] }) {
   return (
     <section className="sec" style={{ paddingTop: 0 }} aria-label="کمپین‌ها">
@@ -20,6 +23,12 @@ export function Banners({ banners }: { banners: Banner[] }) {
                 ) : (
                   <span className={styles.plain} aria-hidden="true" />
                 )}
+                {b.effect === "flow" && (
+                  <span className={styles.ribbon} aria-hidden="true">
+                    <span>{Array.from({ length: 6 }, () => `${b.title} ✦ `).join("")}</span>
+                    <span>{Array.from({ length: 6 }, () => `${b.title} ✦ `).join("")}</span>
+                  </span>
+                )}
                 <span className={styles.copy}>
                   <b>{b.title}</b>
                   {b.text && <span>{b.text}</span>}
@@ -31,10 +40,11 @@ export function Banners({ banners }: { banners: Banner[] }) {
                 </span>
               </>
             );
+            const cls = `${styles.banner} ${styles[b.tone] ?? ""} ${styles[b.effect] ?? ""}`;
             return b.link ? (
-              <Link key={b.id} href={b.link} className={styles.banner}>{inner}</Link>
+              <Link key={b.id} href={b.link} className={cls}>{inner}</Link>
             ) : (
-              <div key={b.id} className={styles.banner}>{inner}</div>
+              <div key={b.id} className={cls}>{inner}</div>
             );
           })}
         </div>

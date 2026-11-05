@@ -78,6 +78,9 @@ export function Footer({ store, categories }: { store: Store; categories: Catego
               {store.city && !store.address && (
                 <li><Icon name="pin" /><span>{store.city}</span></li>
               )}
+              {store.working_hours && (
+                <li><Icon name="clock" /><span>{store.working_hours}</span></li>
+              )}
             </ul>
             {store.enamad_id && store.enamad_code && (
               // The trust seal as eNamad hands it out; its image only loads with the origin as referrer.

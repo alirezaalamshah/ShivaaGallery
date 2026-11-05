@@ -52,6 +52,12 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
                 </span>
               </li>
             )}
+            {store.working_hours && (
+              <li>
+                <Icon name="clock" />
+                <span>{store.working_hours}</span>
+              </li>
+            )}
             {store.instagram && (
               <li>
                 <Icon name="insta" />

@@ -397,7 +397,7 @@ class MovementViewSet(StaffMixin, viewsets.ReadOnlyModelViewSet):
 
 
 # What the home page editor may change without access to the store settings.
-HOME_SETTINGS = {"hero_products"}
+HOME_SETTINGS = {"hero_products", "story_products"}
 
 
 @api_view(["GET", "PATCH"])

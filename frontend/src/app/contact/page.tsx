@@ -40,7 +40,7 @@ export default async function ContactPage() {
         )}
         {store.working_hours && (
           <div style={row}>
-            <Icon name="home" />
+            <Icon name="clock" />
             <span>ساعت کاری: {store.working_hours}</span>
           </div>
         )}

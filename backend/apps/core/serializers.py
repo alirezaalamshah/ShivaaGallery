@@ -26,7 +26,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
 
     def get_announcements(self, obj):
         """Live text campaigns for the line above every page."""
-        return [{"id": b.id, "title": b.title, "text": b.text, "link": b.link} for b in Banner.objects.live().filter(placement=Banner.Placement.BAR)]
+        return [{"id": b.id, "title": b.title, "text": b.text, "link": b.link, "effect": b.effect, "tone": b.tone} for b in Banner.objects.live().filter(placement=Banner.Placement.BAR)]
 
     def get_online_payment(self, obj):
         return settings.PAYMENT_GATEWAY != "none"
@@ -43,4 +43,4 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
 class BannerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Banner
-        fields = ["id", "title", "text", "image", "link", "button_label"]
+        fields = ["id", "title", "text", "image", "link", "button_label", "effect", "tone"]

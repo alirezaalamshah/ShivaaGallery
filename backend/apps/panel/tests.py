@@ -283,6 +283,21 @@ class HomeAndBannerTests(TestCase):
         too_many = self.client.patch("/api/admin/store/", {"hero_products": list(range(1, 10))}, content_type="application/json")
         self.assertEqual(too_many.status_code, 400)
 
+    def test_admin_picks_the_story_photos_too(self):
+        a, b, c = self.products
+        self.client.patch("/api/admin/store/", {"story_products": [b.pk, a.pk]}, content_type="application/json")
+        self.assertEqual([p["name"] for p in self.client.get("/api/home/").json()["story"]], ["دوم", "اول"])
+        four = self.client.patch("/api/admin/store/", {"story_products": [a.pk, b.pk, c.pk, a.pk + 100]}, content_type="application/json")
+        self.assertEqual(four.status_code, 400)
+
+    def test_banner_effect_and_color_reach_the_site(self):
+        self.client.post("/api/admin/banners/", {"title": "حراج", "effect": "pulse", "tone": "sale"}, content_type="application/json")
+        self.client.post("/api/admin/banners/", {"title": "ارسال رایگان", "placement": "bar", "effect": "flow"}, content_type="application/json")
+        banner = self.client.get("/api/home/").json()["banners"][0]
+        self.assertEqual((banner["effect"], banner["tone"]), ("pulse", "sale"))
+        bar = self.client.get("/api/store/").json()["announcements"][0]
+        self.assertEqual((bar["effect"], bar["tone"]), ("flow", "contrast"))
+
     def test_banners_show_only_while_live(self):
         from datetime import timedelta
 

@@ -98,3 +98,161 @@
     overflow: visible;
   }
 }
+
+/* ---------- color: --tone is the banner's own color ---------- */
+
+.banner {
+  --tone: var(--accent);
+  --on-tone: #fff;
+}
+
+/* The site's complementary color: opposite the accent on the color wheel, so it catches the eye on any theme. */
+.contrast {
+  --tone: #2f5fb3;
+}
+
+@supports (color: oklch(from red l c h)) {
+  .contrast {
+    --tone: oklch(from var(--accent) 0.52 0.16 calc(h + 180));
+  }
+}
+
+.sale {
+  --tone: var(--sale);
+}
+
+.brand {
+  --tone: color-mix(in oklab, var(--accent) 80%, black);
+}
+
+.dark {
+  --tone: var(--deep);
+}
+
+.banner {
+  box-shadow: 0 0 0 3px var(--tone), 0 14px 34px color-mix(in oklab, var(--tone), transparent 70%);
+}
+
+.banner .plain {
+  background:
+    radial-gradient(120% 90% at 85% 10%, color-mix(in oklab, var(--tone), white 25%), transparent 60%),
+    linear-gradient(160deg, var(--tone), color-mix(in oklab, var(--tone), black 45%));
+}
+
+/* The title sits on a solid band of the banner's color: readable on any photo and loud. */
+.banner .copy b {
+  justify-self: start;
+  padding: 4px 14px;
+  border-radius: 10px;
+  background: var(--tone);
+  color: var(--on-tone);
+  font-weight: 900;
+  box-decoration-break: clone;
+}
+
+.banner .cta {
+  justify-self: start;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--tone);
+  font-weight: 800;
+}
+
+/* ---------- motion ---------- */
+
+/* A band of light sweeps across now and then. */
+.shine::before {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% -60%;
+  z-index: 3;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  transform: skewX(-18deg);
+  animation: sweep 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sweep {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+/* The frame and the title blink to draw the eye. */
+.pulse {
+  animation: glow 1.6s ease-in-out infinite;
+}
+
+.pulse .copy b {
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 0 5px var(--tone), 0 0 36px 6px color-mix(in oklab, var(--tone), transparent 35%);
+  }
+}
+
+@keyframes blink {
+  50% {
+    background: #fff;
+    color: var(--tone);
+  }
+}
+
+/* A ribbon of the title runs across the top. */
+.ribbon {
+  position: absolute;
+  top: 14px;
+  inset-inline: 0;
+  z-index: 2;
+  display: flex;
+  overflow: hidden;
+  padding: 6px 0;
+  background: var(--tone);
+  color: var(--on-tone);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  transform: rotate(-2deg) scale(1.05);
+}
+
+.ribbon span {
+  flex: none;
+  padding-inline-end: 0.5em;
+  animation: run 14s linear infinite;
+}
+
+@keyframes run {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.flow img,
+.flow .plain {
+  animation: drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  to {
+    transform: scale(1.08) translateY(-2%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine::before,
+  .pulse,
+  .pulse .copy b,
+  .ribbon span,
+  .flow img,
+  .flow .plain {
+    animation: none;
+  }
+}

@@ -13,23 +13,38 @@ import { PhotoCropper } from "./PhotoCropper";
 import { Card, ConfirmButton, Empty, Field, Modal, PageHead, Switch, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 import type { AdminProductRow, Paged } from "./types";
+import type { BannerEffect, BannerTone } from "@/lib/types";
 
-const MAX_RING = 8;
+type Picks = "hero_products" | "story_products";
 
-/** The home page: which products turn on the ring at the top, and the campaign banners. */
+/** The home page: which products turn on the ring at the top and sit in the store's section at the bottom, and the campaign banners. */
 export function HomeAdmin() {
   return (
     <>
-      <PageHead title="صفحه‌ی اصلی و بنرها" sub="کارت‌های اسلایدر چرخان بالای صفحه‌ی اصلی، بنرهای کمپین و نوار متنی بالای سایت." />
-      <RingPicker />
+      <PageHead title="صفحه‌ی اصلی و بنرها" sub="کارت‌های اسلایدر چرخان بالای صفحه‌ی اصلی، عکس‌های بخش معرفی فروشگاه، بنرهای کمپین و نوار متنی بالای سایت." />
+      <ProductPicker
+        field="hero_products"
+        title="کارت‌های اسلایدر چرخان (بالای صفحه)"
+        max={8}
+        saved="اسلایدر صفحه‌ی اصلی ذخیره شد"
+        hint="تا ۸ محصول را به ترتیب دلخواه انتخاب کنید؛ ۶ تا ۸ تا بهترین حلقه را می‌سازد (اگر کمتر باشد، کارت‌ها تکرار می‌شوند). اگر فهرست خالی بماند، سایت خودش محصولات ویژه و تازه‌ترین‌ها را نشان می‌دهد."
+      />
+      <ProductPicker
+        field="story_products"
+        title="عکس‌های بخش معرفی فروشگاه (پایین صفحه، کنار آدرس و اینستاگرام)"
+        max={3}
+        saved="عکس‌های بخش معرفی فروشگاه ذخیره شد"
+        hint="سه محصولی که عکسشان با حرکت آرام کنار معرفی فروشگاه می‌آید. اولی عکس بزرگ است. اگر خالی بماند، سایت خودش محصولات ویژه و تازه‌ترین‌ها را نشان می‌دهد."
+      />
       <Banners />
     </>
   );
 }
 
-function RingPicker() {
+/** Products the admin picks, in order, for one place on the home page. */
+function ProductPicker({ field, title, max, hint, saved: savedText }: { field: Picks; title: string; max: number; hint: string; saved: string }) {
   const toast = useToast();
-  const { data: settings, setData: setSettings } = useAdmin<{ hero_products: number[] }>("/store");
+  const { data: settings, setData: setSettings } = useAdmin<Record<Picks, number[]>>("/store");
   const [ids, setIds] = useState<number[] | null>(null);
   const [rows, setRows] = useState<Record<number, AdminProductRow>>({});
   const [q, setQ] = useState("");
@@ -38,13 +53,13 @@ function RingPicker() {
 
   useEffect(() => {
     if (!settings || ids !== null) return;
-    setIds(settings.hero_products);
-    if (settings.hero_products.length) {
-      adminCall<Paged<AdminProductRow>>(`/products?ids=${settings.hero_products.join(",")}`).then((r) =>
+    setIds(settings[field]);
+    if (settings[field].length) {
+      adminCall<Paged<AdminProductRow>>(`/products?ids=${settings[field].join(",")}`).then((r) =>
         setRows((old) => ({ ...old, ...Object.fromEntries(r.results.map((p) => [p.id, p])) })),
       );
     }
-  }, [settings, ids]);
+  }, [settings, ids, field]);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -60,7 +75,7 @@ function RingPicker() {
   }, [q]);
 
   if (!settings || ids === null) return null;
-  const dirty = ids.join(",") !== settings.hero_products.join(",");
+  const dirty = ids.join(",") !== settings[field].join(",");
 
   const move = (i: number, by: number) => {
     const next = [...ids];
@@ -71,11 +86,11 @@ function RingPicker() {
   const save = async () => {
     setBusy(true);
     try {
-      const saved = await adminCall<{ hero_products: number[] }>("/store", { method: "PATCH", body: { hero_products: ids } });
-      setSettings({ ...settings, hero_products: saved.hero_products });
-      setIds(saved.hero_products);
+      const saved = await adminCall<Record<Picks, number[]>>("/store", { method: "PATCH", body: { [field]: ids } });
+      setSettings({ ...settings, [field]: saved[field] });
+      setIds(saved[field]);
       refreshSite();
-      toast({ text: "اسلایدر صفحه‌ی اصلی ذخیره شد" });
+      toast({ text: savedText });
     } catch (e) {
       toast({ text: e instanceof Error ? e.message : "ذخیره نشد." });
     } finally {
@@ -85,7 +100,7 @@ function RingPicker() {
 
   return (
     <Card
-      title="کارت‌های اسلایدر چرخان"
+      title={title}
       actions={
         <>
           {ids.length > 0 && <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setIds([])}>خالی کردن (انتخاب خودکار)</button>}
@@ -94,11 +109,11 @@ function RingPicker() {
       }
     >
       <p className="hint" style={{ marginTop: 0 }}>
-        تا {faNum(MAX_RING)} محصول را به ترتیب دلخواه انتخاب کنید؛ ۶ تا ۸ تا بهترین حلقه را می‌سازد (اگر کمتر باشد، کارت‌ها تکرار می‌شوند). اگر فهرست خالی بماند، سایت خودش محصولات ویژه و تازه‌ترین‌ها را نشان می‌دهد.
+        {hint}
       </p>
       <div className={s.cols}>
         <div>
-          <b>انتخاب‌شده‌ها ({faNum(ids.length)} از {faNum(MAX_RING)})</b>
+          <b>انتخاب‌شده‌ها ({faNum(ids.length)} از {faNum(max)})</b>
           {ids.length ? (
             <ol className={s.pickList}>
               {ids.map((id, i) => {
@@ -143,7 +158,7 @@ function RingPicker() {
                     <img src={p.thumb} alt="" />
                   ) : <span className={s.thumb} />}
                   <span className={s.cellStack}><b>{p.name}</b><small className="muted">{p.category_name}</small></span>
-                  <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={picked || ids.length >= MAX_RING} onClick={() => setIds([...ids, p.id])}>
+                  <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} disabled={picked || ids.length >= max} onClick={() => setIds([...ids, p.id])}>
                     {picked ? "انتخاب شده" : "افزودن"}
                   </button>
                 </li>
@@ -165,6 +180,8 @@ type Banner = {
   image: string | null;
   link: string;
   button_label: string;
+  effect: BannerEffect;
+  tone: BannerTone;
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
@@ -174,7 +191,21 @@ type Banner = {
 
 type Draft = Omit<Banner, "id" | "placement_label" | "live" | "image"> & { id?: number; image: string | null };
 
-const blank = (): Draft => ({ placement: "home", title: "", text: "", image: null, link: "", button_label: "", starts_at: null, ends_at: null, is_active: true, sort: 0 });
+const blank = (): Draft => ({ placement: "home", title: "", text: "", image: null, link: "", button_label: "", effect: "shine", tone: "contrast", starts_at: null, ends_at: null, is_active: true, sort: 0 });
+
+const TONES: { value: BannerTone; label: string }[] = [
+  { value: "contrast", label: "رنگ مکمل سایت (بیشترین جلب توجه)" },
+  { value: "sale", label: "قرمز حراج" },
+  { value: "brand", label: "رنگ اصلی سایت" },
+  { value: "dark", label: "تیره" },
+];
+
+const EFFECTS: { value: BannerEffect; label: string; hint: string }[] = [
+  { value: "shine", label: "درخشش", hint: "هر چند ثانیه نوری از روی بنر رد می‌شود." },
+  { value: "pulse", label: "چشمک‌زن", hint: "قاب و تیتر بنر چشمک می‌زنند؛ برای کمپین‌های کوتاه و فوری." },
+  { value: "flow", label: "روان", hint: "روی بنر عکس، نواری از تیتر حرکت می‌کند؛ در نوار بالای سایت، کل متن روان حرکت می‌کند." },
+  { value: "none", label: "ساده (بدون حرکت)", hint: "بدون حرکت؛ فقط با رنگ انتخاب‌شده." },
+];
 
 function period(b: Banner) {
   if (b.starts_at && b.ends_at) return `${faDateTime(b.starts_at)} تا ${faDateTime(b.ends_at)}`;
@@ -203,8 +234,8 @@ function Banners() {
     setBusy(true);
     setErrors({});
     try {
-      const { id, placement, title, text, link, button_label, starts_at, ends_at, is_active, sort } = draft;
-      const body = { placement, title, text, link, button_label, starts_at, ends_at, is_active, sort };
+      const { id, placement, title, text, link, button_label, effect, tone, starts_at, ends_at, is_active, sort } = draft;
+      const body = { placement, title, text, link, button_label, effect, tone, starts_at, ends_at, is_active, sort };
       let saved = await adminCall<Banner>(id ? `/banners/${id}` : "/banners", { method: id ? "PATCH" : "POST", body });
       if (photo && draft.placement === "home") {
         const fd = new FormData();
@@ -309,6 +340,23 @@ function Banners() {
                 <input className="input" value={draft.button_label} maxLength={30} onChange={(e) => setDraft({ ...draft, button_label: e.target.value })} placeholder="دیدن حراج" />
               </Field>
             )}
+            <Field label="رنگ" error={errors.tone} hint="«رنگ مکمل» رنگ روبه‌روی رنگ سایت است و بیشتر از همه به چشم می‌آید.">
+              <select className="input" value={draft.tone} onChange={(e) => setDraft({ ...draft, tone: e.target.value as BannerTone })}>
+                {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="جلوه‌ی حرکتی" error={errors.effect} hint={EFFECTS.find((x) => x.value === draft.effect)?.hint}>
+              <select className="input" value={draft.effect} onChange={(e) => setDraft({ ...draft, effect: e.target.value as BannerEffect })}>
+                {EFFECTS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+              </select>
+            </Field>
+            <div className={`field ${s.full}`}>
+              <span className="label">پیش‌نمایش</span>
+              <div className={`${s.bannerSample} ${s[`tone_${draft.tone}`] ?? ""} ${s[`fx_${draft.effect}`] ?? ""}`}>
+                <b>{draft.title || "تیتر بنر"}</b>
+                {draft.text && <span>{draft.text}</span>}
+              </div>
+            </div>
             <Field label="شروع نمایش (اختیاری)" error={errors.starts_at}>
               <DateTimeInput value={draft.starts_at} onChange={(v) => setDraft({ ...draft, starts_at: v })} />
             </Field>

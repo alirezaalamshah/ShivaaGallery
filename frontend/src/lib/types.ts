@@ -24,15 +24,18 @@ export type Store = {
   /** A payment gateway is connected; otherwise the store arranges payment by phone. */
   online_payment: boolean;
   /** Live text campaigns for the line above every page. */
-  announcements: { id: number; title: string; text: string; link: string }[];
+  announcements: { id: number; title: string; text: string; link: string; effect: BannerEffect; tone: BannerTone }[];
   /** Percent off in a customer's birthday week; 0 when the store gives none. */
   birthday_discount: number;
 };
 
-export type Banner = { id: number; title: string; text: string; image: string | null; link: string; button_label: string };
+export type BannerEffect = "none" | "shine" | "pulse" | "flow";
+export type BannerTone = "contrast" | "sale" | "brand" | "dark";
+
+export type Banner = { id: number; title: string; text: string; image: string | null; link: string; button_label: string; effect: BannerEffect; tone: BannerTone };
 
 /** The admin's picks for the home page ring (empty: the site chooses) and the live banners. */
-export type Home = { hero: ProductSummary[]; banners: Banner[] };
+export type Home = { hero: ProductSummary[]; story: ProductSummary[]; banners: Banner[] };
 
 export type Color = { id: number; name: string; hex: string };
 export type CategoryBrief = { id: number; name: string; slug: string };

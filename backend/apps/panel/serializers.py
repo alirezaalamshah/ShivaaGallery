@@ -240,14 +240,21 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
         model = StoreSettings
         exclude = ["id", "updated_at"]
 
-    def validate_hero_products(self, value):
+    @staticmethod
+    def _product_ids(value, most):
         if not isinstance(value, list) or not all(isinstance(i, int) for i in value):
             raise serializers.ValidationError("فهرست محصولات درست نیست.")
         ids = list(dict.fromkeys(value))
-        if len(ids) > 8:
-            raise serializers.ValidationError("حداکثر ۸ محصول را می‌شود در اسلایدر گذاشت.")
+        if len(ids) > most:
+            raise serializers.ValidationError(f"حداکثر {most} محصول را می‌شود این‌جا گذاشت.")
         known = set(Product.objects.filter(pk__in=ids).values_list("pk", flat=True))
         return [i for i in ids if i in known]
+
+    def validate_hero_products(self, value):
+        return self._product_ids(value, 8)
+
+    def validate_story_products(self, value):
+        return self._product_ids(value, 3)
 
     def validate_birthday_discount_percent(self, value):
         if not 1 <= value <= 100:
@@ -381,7 +388,7 @@ class BannerAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Banner
         fields = ["id", "placement", "placement_label", "title", "text", "image", "link", "button_label",
-                  "starts_at", "ends_at", "is_active", "sort", "live", "created_at"]
+                  "effect", "tone", "starts_at", "ends_at", "is_active", "sort", "live", "created_at"]
         read_only_fields = ["image", "created_at"]
 
     def get_live(self, obj):

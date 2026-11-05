@@ -78,6 +78,10 @@ class StoreSettings(models.Model):
         "کارت‌های اسلایدر صفحه‌ی اصلی", default=list, blank=True,
         help_text="شناسه‌ی محصولات به ترتیب نمایش. خالی یعنی محصولات ویژه و تازه‌ترین‌ها خودکار نشان داده شوند.",
     )
+    story_products = models.JSONField(
+        "عکس‌های بخش معرفی فروشگاه", default=list, blank=True,
+        help_text="سه محصولی که عکسشان در بخش معرفی فروشگاه، پایین صفحه‌ی اصلی، می‌آید. خالی یعنی انتخاب خودکار.",
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -127,6 +131,21 @@ class Banner(models.Model):
     image = models.ImageField("تصویر", upload_to="banners/", blank=True)
     link = models.CharField("لینک", max_length=300, blank=True, help_text="مثلاً /shop?on_sale=true یا /c/manto")
     button_label = models.CharField("متن دکمه", max_length=30, blank=True)
+
+    class Effect(models.TextChoices):
+        NONE = "none", "ساده"
+        SHINE = "shine", "درخشش"
+        PULSE = "pulse", "چشمک‌زن"
+        FLOW = "flow", "روان (متن در حرکت)"
+
+    class Tone(models.TextChoices):
+        CONTRAST = "contrast", "رنگ مکمل سایت (بیشترین جلب توجه)"
+        SALE = "sale", "قرمز حراج"
+        BRAND = "brand", "رنگ اصلی سایت"
+        DARK = "dark", "تیره"
+
+    effect = models.CharField("جلوه‌ی حرکتی", max_length=8, choices=Effect.choices, default=Effect.SHINE)
+    tone = models.CharField("رنگ", max_length=10, choices=Tone.choices, default=Tone.CONTRAST)
     starts_at = models.DateTimeField("شروع", null=True, blank=True)
     ends_at = models.DateTimeField("پایان", null=True, blank=True)
     is_active = models.BooleanField("فعال", default=True)

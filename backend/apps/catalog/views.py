@@ -112,10 +112,16 @@ def home(request):
     What the home page shows besides the usual lists: the products the admin picked for the
     turning ring (empty means "featured and newest", chosen by the site), and the live banners.
     """
-    ids = [i for i in StoreSettings.load().hero_products if isinstance(i, int)]
-    by_id = {p.id: p for p in ProductViewSet().get_queryset_for_lists().filter(pk__in=ids)} if ids else {}
+    store = StoreSettings.load()
     ctx = {"request": request}
+
+    def picked(ids):
+        ids = [i for i in ids if isinstance(i, int)]
+        by_id = {p.id: p for p in ProductViewSet().get_queryset_for_lists().filter(pk__in=ids)} if ids else {}
+        return ProductListSerializer([by_id[i] for i in ids if i in by_id], many=True, context=ctx).data
+
     return Response({
-        "hero": ProductListSerializer([by_id[i] for i in ids if i in by_id], many=True, context=ctx).data,
+        "hero": picked(store.hero_products),
+        "story": picked(store.story_products),
         "banners": BannerSerializer(Banner.objects.live().filter(placement=Banner.Placement.HOME), many=True, context=ctx).data,
     })

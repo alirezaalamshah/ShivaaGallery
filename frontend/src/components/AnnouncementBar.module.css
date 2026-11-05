@@ -52,3 +52,107 @@
     animation: none;
   }
 }
+
+/* ---------- color and motion picked in the panel ---------- */
+
+.bar {
+  position: relative;
+  --tone: var(--deep);
+}
+
+.contrast {
+  --tone: #2f5fb3;
+}
+
+@supports (color: oklch(from red l c h)) {
+  .contrast {
+    --tone: oklch(from var(--accent) 0.48 0.16 calc(h + 180));
+  }
+}
+
+.sale {
+  --tone: var(--sale);
+}
+
+.brand {
+  --tone: color-mix(in oklab, var(--accent) 75%, black);
+}
+
+.contrast,
+.sale,
+.brand {
+  background: var(--tone);
+  color: #fff;
+  font-weight: 600;
+}
+
+.contrast .item b,
+.sale .item b,
+.brand .item b {
+  color: #fff;
+  font-weight: 900;
+}
+
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 30%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.4), transparent);
+  animation: sweep 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sweep {
+  0%,
+  50% {
+    left: -40%;
+  }
+  100% {
+    left: 120%;
+  }
+}
+
+.pulse .item b {
+  padding: 1px 10px;
+  border-radius: 99px;
+  animation: blink 1.3s ease-in-out infinite;
+}
+
+@keyframes blink {
+  50% {
+    background: #fff;
+    color: var(--tone);
+  }
+}
+
+/* «flow»: the line runs across the bar, repeated so there is no gap. */
+.run {
+  justify-content: flex-start;
+  gap: 0;
+  padding-inline: 0;
+  animation: none;
+}
+
+.run > span {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 48px;
+  animation: run 16s linear infinite;
+}
+
+@keyframes run {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine::after,
+  .pulse .item b,
+  .run > span {
+    animation: none;
+  }
+}

@@ -1675,3 +1675,94 @@
 .saveBar small {
   color: var(--muted);
 }
+
+/* Banner preview in the banner form: the same colors and motion as on the site. */
+.bannerSample {
+  --tone: var(--accent);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--tone);
+  color: #fff;
+}
+
+.bannerSample b {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.tone_contrast {
+  --tone: #2f5fb3;
+}
+
+@supports (color: oklch(from red l c h)) {
+  .tone_contrast {
+    --tone: oklch(from var(--accent) 0.52 0.16 calc(h + 180));
+  }
+}
+
+.tone_sale {
+  --tone: var(--sale);
+}
+
+.tone_brand {
+  --tone: color-mix(in oklab, var(--accent) 80%, black);
+}
+
+.tone_dark {
+  --tone: var(--deep);
+}
+
+.fx_shine::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -50%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  animation: sampleSweep 3.6s ease-in-out infinite;
+}
+
+@keyframes sampleSweep {
+  0%,
+  55% {
+    left: -50%;
+  }
+  100% {
+    left: 120%;
+  }
+}
+
+.fx_pulse {
+  animation: sampleGlow 1.6s ease-in-out infinite;
+}
+
+@keyframes sampleGlow {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--tone), white 30%), 0 0 26px var(--tone);
+  }
+}
+
+.fx_flow b {
+  animation: sampleRun 6s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes sampleRun {
+  from {
+    transform: translateX(-60%);
+  }
+  to {
+    transform: translateX(60%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx_shine::after,
+  .fx_pulse,
+  .fx_flow b {
+    animation: none;
+  }
+}

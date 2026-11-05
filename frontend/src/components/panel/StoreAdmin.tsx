@@ -331,7 +331,7 @@ export function StoreSettings() {
               {text("city", "شهر")}
               {text("currency_label", "واحد پول")}
               {text("address", "آدرس فروشگاه حضوری", { full: true, area: true })}
-              {text("working_hours", "ساعت کاری", { full: true, hint: "در صفحه‌ی «تماس با ما» نمایش داده می‌شود" })}
+              {text("working_hours", "ساعت کاری", { full: true, hint: "در پایین همه‌ی صفحه‌ها، بخش معرفی فروشگاه و صفحه‌ی «تماس با ما» نمایش داده می‌شود" })}
             </div>
           </Card>
           <Card title="سفارش‌ها">

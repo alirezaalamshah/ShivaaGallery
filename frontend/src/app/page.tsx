@@ -21,7 +21,7 @@ export default async function HomePage() {
     api.categories(),
     api.products({ ordering: "-created_at" }),
     api.products({ featured: true }),
-    api.home().catch(() => ({ hero: [], banners: [] })),
+    api.home().catch(() => ({ hero: [], story: [], banners: [] })),
   ]);
   const storyProducts = [...featured.results, ...latest.results].filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i);
   // The ring shows the admin's picks, in their order; with none picked, featured then newest.
@@ -111,7 +111,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <StoreStory store={store} products={storyProducts} />
+      <StoreStory store={store} products={home.story?.length ? home.story : storyProducts} />
 
       <div className={styles.svcBand}>
         <div className={`wrap ${styles.svc}`} data-reveal-group>
