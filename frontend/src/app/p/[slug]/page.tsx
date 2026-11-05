@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { Icon } from "@/components/Icon";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductReviews } from "@/components/product/ProductReviews";
-import { ProductView } from "@/components/product/ProductView";
+import { ProductView, ProductViewFromUrl } from "@/components/product/ProductView";
 import { api } from "@/lib/api";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ color?: string }> };
+type Props = { params: Promise<{ slug: string }> };
+
+// Each product page is built once and kept, then rebuilt at most once a minute (or right away
+// when the panel saves a change), instead of on every visit. None are built ahead of time.
+export const revalidate = 60;
+export const generateStaticParams = async () => [];
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await api.product(decodeURIComponent((await params).slug));
@@ -20,10 +26,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductPage({ params, searchParams }: Props) {
+export default async function ProductPage({ params }: Props) {
   const slug = decodeURIComponent((await params).slug);
   const [product, store, related] = await Promise.all([api.product(slug), api.store(), api.related(slug).catch(() => [])]);
-  const color = Number((await searchParams).color) || undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -46,7 +51,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
   return (
     <div className="wrap">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <ProductView product={product} initialColor={color} />
+      {/* ?color= is read in the browser, so the page itself can be kept ready for everyone. */}
+      <Suspense fallback={<ProductView product={product} />}>
+        <ProductViewFromUrl product={product} />
+      </Suspense>
       <ProductReviews slug={product.slug} />
       {related.length > 0 && (
         <section className="sec" style={{ paddingInline: 0 }}>

@@ -32,7 +32,7 @@ export function AnnouncementBar({ items }: { items: Item[] }) {
   );
   const line = a.link ? <Link href={a.link}>{body}</Link> : body;
   return (
-    <div className={`${styles.bar} ${styles[a.tone] ?? ""} ${styles[a.effect] ?? ""}`} role="region" aria-label="اطلاعیه‌ها">
+    <div className={`${styles.bar} ${styles[a.tone] ?? ""} ${styles[a.effect] ?? ""}`} role="region" aria-label="اطلاعیه‌ها" data-motion>
       {a.effect === "flow" ? (
         <p key={a.id} className={`${styles.item} ${styles.run}`}>
           <span>{line}</span>

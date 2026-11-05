@@ -31,7 +31,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className={heroStyles.hero}>
+      <section className={heroStyles.hero} data-motion>
         <div className={`wrap ${heroStyles.grid}`}>
           <div className={heroStyles.copy}>
             {store.name_latin && <span className={`${heroStyles.eyebrow} latin`}>{store.name_latin}</span>}
@@ -66,7 +66,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <div className={styles.marquee} aria-label="دسته‌ها">
+      <div className={styles.marquee} aria-label="دسته‌ها" data-motion>
         <div className={styles.track}>
           {[0, 1].map((copy) =>
             shelves(categories).map((c) => (

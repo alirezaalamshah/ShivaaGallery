@@ -1,3 +1,4 @@
+import secrets
 from io import BytesIO
 from pathlib import Path
 
@@ -37,4 +38,6 @@ def prepare_photo(upload, size=PHOTO_SIZE):
     im = ImageOps.fit(im.convert("RGB"), size, Image.LANCZOS)
     buf = BytesIO()
     im.save(buf, "WEBP", quality=QUALITY, method=6)
-    return ContentFile(buf.getvalue(), name=f"{Path(upload.name).stem[:40] or 'photo'}.webp")
+    # A short random part makes every upload's name new, even after the old file is deleted,
+    # so browsers and the image resizer may keep a copy for a long time (see config/urls.py).
+    return ContentFile(buf.getvalue(), name=f"{Path(upload.name).stem[:40] or 'photo'}-{secrets.token_hex(4)}.webp")

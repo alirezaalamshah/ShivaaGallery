@@ -12,7 +12,7 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
   const photos = products.filter((p) => p.image).slice(0, 3);
   const title = splitHighlight(store.about_title || store.name);
   return (
-    <section className={styles.story}>
+    <section className={styles.story} data-motion>
       <div className={`wrap ${styles.grid}`}>
         <div className={styles.collage} aria-hidden="true">
           <span className={styles.ring} />

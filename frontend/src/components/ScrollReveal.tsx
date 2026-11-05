@@ -8,9 +8,27 @@ import { useEffect } from "react";
  * into place the first time it enters the viewport; siblings marked
  * data-reveal-group stagger. Content stays visible without JavaScript and
  * for people who prefer reduced motion.
+ *
+ * Endless animations inside an element marked data-motion pause while it is
+ * off screen (it gets data-off), so a phone does not keep redrawing what
+ * nobody sees.
  */
 export function ScrollReveal() {
   const path = usePathname();
+
+  useEffect(() => {
+    const motion = new IntersectionObserver((entries) => {
+      for (const e of entries) e.target.toggleAttribute("data-off", !e.isIntersecting);
+    });
+    const watchMotion = () => document.querySelectorAll("[data-motion]").forEach((el) => motion.observe(el));
+    watchMotion();
+    const mm = new MutationObserver(watchMotion);
+    mm.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      motion.disconnect();
+      mm.disconnect();
+    };
+  }, [path]);
 
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;

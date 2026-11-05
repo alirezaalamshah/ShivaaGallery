@@ -15,7 +15,7 @@ const DEVELOPER = { name: "هوشیوا", url: "https://houshiva.ir" };
 export function Footer({ store, categories }: { store: Store; categories: CategoryNode[] }) {
   const year = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date());
   return (
-    <footer className={styles.ftr}>
+    <footer className={styles.ftr} data-motion>
       <div className={styles.glow} aria-hidden="true" />
       <div className="wrap">
         <div className={styles.top} data-reveal>

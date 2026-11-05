@@ -25,38 +25,62 @@ export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
     const mobile = matchMedia("(max-width: 699px)");
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
+    let nap = 0;
     let pausedUntil = 0;
     let visible = false;
     let pos = Math.abs(el.scrollLeft);
+    // In RTL, scrollLeft counts down from 0 into negative numbers. Read once: asking for the
+    // computed style in every frame makes the browser recompute styles sixty times a second.
+    const rtl = getComputedStyle(el).direction === "rtl";
+    let half = el.scrollWidth / 2;
 
+    // Runs only while it drifts: on a phone, on screen and not held. Otherwise it stops and
+    // `start` brings it back when one of those changes.
     const tick = (now: number) => {
-      if (mobile.matches && visible && now > pausedUntil) {
-        const half = el.scrollWidth / 2;
-        pos += SPEED;
-        if (pos >= half) pos -= half;
-        // In RTL, scrollLeft counts down from 0 into negative numbers.
-        el.scrollLeft = getComputedStyle(el).direction === "rtl" ? -pos : pos;
-      } else {
+      raf = 0;
+      if (!mobile.matches || !visible) return;
+      if (now < pausedUntil) {
         pos = Math.abs(el.scrollLeft);
+        nap = window.setTimeout(start, pausedUntil - now);
+        return;
       }
+      pos += SPEED;
+      if (pos >= half) pos -= half;
+      el.scrollLeft = rtl ? -pos : pos;
       raf = requestAnimationFrame(tick);
     };
+    function start() {
+      clearTimeout(nap);
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
     const pause = () => {
       pausedUntil = performance.now() + 60_000;
     };
     const resume = () => {
       pausedUntil = performance.now() + RESUME_AFTER;
+      start();
     };
-    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+    const onResize = () => {
+      half = el.scrollWidth / 2;
+      start();
+    };
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible) start();
+    });
     io.observe(el);
+    mobile.addEventListener("change", onResize);
+    addEventListener("resize", onResize);
     el.addEventListener("pointerdown", pause, { passive: true });
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("pointerup", resume, { passive: true });
     el.addEventListener("touchend", resume, { passive: true });
-    raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(nap);
       io.disconnect();
+      mobile.removeEventListener("change", onResize);
+      removeEventListener("resize", onResize);
       el.removeEventListener("pointerdown", pause);
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("pointerup", resume);

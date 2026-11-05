@@ -601,3 +601,26 @@ html.lenis body {
 .lenis.lenis-stopped {
   overflow: hidden;
 }
+
+/* Endless animations wait while their section is off screen (see ScrollReveal). */
+[data-off],
+[data-off] *,
+[data-off] *::before,
+[data-off] *::after {
+  animation-play-state: paused !important;
+}
+
+/* Grey shapes standing in for a page that is on its way (the loading.tsx files). */
+.skel {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  background: var(--line);
+  animation: skel 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes skel {
+  to {
+    opacity: 0.45;
+  }
+}

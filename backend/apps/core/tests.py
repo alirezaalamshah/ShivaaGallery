@@ -45,3 +45,50 @@ class BackupCommandTests(TestCase):
             self.assertNotIn("20000101", zips[0].name)
             with zipfile.ZipFile(zips[0]) as zf:
                 self.assertEqual(zf.namelist(), ["db.sqlite3"])
+
+
+class UploadCachingTests(TestCase):
+    def test_uploads_get_a_new_name_and_a_long_cache(self):
+        import tempfile
+        from io import BytesIO
+        from pathlib import Path
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import RequestFactory
+        from PIL import Image
+
+        from apps.panel.images import prepare_photo
+        from config.urls import cached
+
+        buf = BytesIO()
+        Image.new("RGB", (30, 40)).save(buf, "JPEG")
+        names = {prepare_photo(SimpleUploadedFile("banner.jpg", buf.getvalue())).name for _ in range(2)}
+        self.assertEqual(len(names), 2)
+        self.assertTrue(all(n.startswith("banner-") and n.endswith(".webp") for n in names))
+
+        with tempfile.TemporaryDirectory() as root:
+            Path(root, "a.webp").write_bytes(b"x")
+            res = cached(3600)(RequestFactory().get("/media/a.webp"), "a.webp", document_root=root)
+            res.close()
+        self.assertEqual(res["Cache-Control"], "public, max-age=3600")
+
+
+class CompressionTests(TestCase):
+    def test_api_answers_are_compressed_and_files_are_not(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.http import FileResponse, HttpResponse
+        from django.test import RequestFactory
+
+        from config.middleware import CompressJson
+
+        request = RequestFactory().get("/api/products/", HTTP_ACCEPT_ENCODING="gzip")
+        self.assertEqual(CompressJson(lambda r: HttpResponse("x" * 1000))(request)["Content-Encoding"], "gzip")
+
+        with tempfile.TemporaryDirectory() as root:
+            photo = Path(root, "a.webp")
+            photo.write_bytes(b"x" * 1000)
+            res = CompressJson(lambda r: FileResponse(photo.open("rb")))(request)
+            self.assertFalse(res.has_header("Content-Encoding"))
+            res.close()

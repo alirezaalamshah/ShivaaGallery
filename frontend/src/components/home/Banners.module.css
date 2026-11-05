@@ -165,22 +165,23 @@
 .shine::before {
   content: "";
   position: absolute;
-  inset: -20% auto -20% -60%;
+  inset: -20% auto -20% 0;
   z-index: 3;
   width: 45%;
   background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
-  transform: skewX(-18deg);
+  transform: translateX(-140%) skewX(-18deg);
   animation: sweep 3.6s ease-in-out infinite;
   pointer-events: none;
 }
 
+/* Moved with transform, not left: the graphics card slides it without laying out the page again. */
 @keyframes sweep {
   0%,
   55% {
-    left: -60%;
+    transform: translateX(-140%) skewX(-18deg);
   }
   100% {
-    left: 130%;
+    transform: translateX(300%) skewX(-18deg);
   }
 }
 

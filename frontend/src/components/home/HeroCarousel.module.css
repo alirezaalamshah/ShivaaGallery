@@ -98,7 +98,8 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--shade), transparent 30%));
-  opacity: calc((1 - var(--f, 1)) * 0.75);
+  /* set per card by HeroCarousel as it turns */
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -107,8 +108,8 @@
   position: absolute;
   inset: -20% -60%;
   background: linear-gradient(105deg, transparent 38%, color-mix(in oklab, var(--accent-hi), transparent 35%) 48%, rgb(255 255 255 / 0.55) 50%, color-mix(in oklab, var(--accent-hi), transparent 35%) 52%, transparent 62%);
-  transform: translateX(calc(var(--s, 0) * -45%));
-  opacity: calc(var(--f, 1) * 0.55);
+  /* moved and faded per card by HeroCarousel as it turns */
+  opacity: 0.55;
   mix-blend-mode: soft-light;
   pointer-events: none;
 }

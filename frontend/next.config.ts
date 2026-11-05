@@ -10,8 +10,16 @@ const backendOrigin = new URL(internalApi).origin;
 const buildCpus = Number(process.env.NEXT_BUILD_CPUS) || 0;
 
 const nextConfig: NextConfig = {
+  // Do not turn on experimental.inlineCss: it puts every style in each page twice (home page
+  // 156 KB -> 419 KB), and unlike a separate CSS file that copy is never kept by the browser.
   ...(buildCpus && { experimental: { cpus: buildCpus, webpackBuildWorker: false } }),
   images: {
+    // Every photo is resized on the server the first time a size is asked for, which is heavy
+    // on shared hosting. Fewer sizes mean fewer resizes and a smaller srcset in every page;
+    // uploaded files never change (a new upload gets a new name), so a resized copy is kept a month.
+    deviceSizes: [640, 828, 1080, 1200, 1920],
+    imageSizes: [48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: publicApi.protocol.replace(":", "") as "http" | "https",

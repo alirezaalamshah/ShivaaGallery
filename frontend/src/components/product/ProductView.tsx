@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCart } from "@/components/cart/CartProvider";
@@ -38,6 +39,12 @@ function saleSummary(product: ProductDetail) {
     .filter((d) => d.sizes.length);
   const same = new Set(onSale.map(pct)).size === 1;
   return { byColor, partial: onSale.length > 0 && (onSale.length < live.length || !same), max: Math.max(0, ...onSale.map(pct)) };
+}
+
+/** The product view with the color picked in the link (?color=), e.g. from a color dot on a product card. */
+export function ProductViewFromUrl({ product }: { product: ProductDetail }) {
+  const color = Number(useSearchParams().get("color")) || undefined;
+  return <ProductView key={color} product={product} initialColor={color} />;
 }
 
 export function ProductView({ product, initialColor }: { product: ProductDetail; initialColor?: number }) {

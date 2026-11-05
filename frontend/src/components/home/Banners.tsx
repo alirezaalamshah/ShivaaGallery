@@ -11,7 +11,7 @@ import styles from "./Banners.module.css";
  */
 export function Banners({ banners }: { banners: Banner[] }) {
   return (
-    <section className="sec" style={{ paddingTop: 0 }} aria-label="کمپین‌ها">
+    <section className="sec" style={{ paddingTop: 0 }} aria-label="کمپین‌ها" data-motion>
       <div className="wrap">
         <div className={styles.row} data-reveal-group>
           {banners.map((b, i) => {

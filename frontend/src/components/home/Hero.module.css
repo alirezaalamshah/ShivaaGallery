@@ -81,7 +81,8 @@
 }
 
 .w > span.gold {
-  animation: rise 1.15s var(--ease-out) both, shimmer 7s ease-in-out infinite;
+  /* The gold shine repaints the text in every frame, so it plays a few times and then rests. */
+  animation: rise 1.15s var(--ease-out) both, shimmer 7s ease-in-out 3;
   animation-delay: calc(var(--i) * 110ms + 180ms), 1.6s;
 }
 
