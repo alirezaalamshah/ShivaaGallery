@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack -p 3100",
     "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "build": "next build --turbopack",
-    "build:server": "NEXT_BUILD_CPUS=1 RAYON_NUM_THREADS=1 UV_THREADPOOL_SIZE=2 NEXT_TELEMETRY_DISABLED=1 next build",
+    "build:server": "rm -rf .next/cache/fetch-cache && NEXT_BUILD_CPUS=1 RAYON_NUM_THREADS=1 TOKIO_WORKER_THREADS=1 UV_THREADPOOL_SIZE=2 NODE_OPTIONS=--v8-pool-size=1 NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "next start -p 3100",
     "lint": "eslint"
   },

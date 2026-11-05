@@ -6,6 +6,7 @@ local `.env` file next to manage.py), so the same code runs any store.
 """
 
 import os
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -166,6 +167,8 @@ SESSION_COOKIE_SAMESITE = "Lax"
 
 # SMS: "console" prints messages to the server log; "melipayamak" sends them.
 SMS_BACKEND = env("SMS_BACKEND", "console")
+if "test" in sys.argv:  # a real backend in .env must never cost money during tests
+    SMS_BACKEND = "console"
 SMS_USERNAME = env("SMS_USERNAME", "")
 SMS_API_KEY = env("SMS_API_KEY", "")  # sent in place of the panel password
 SMS_PATTERN_OTP = env("SMS_PATTERN_OTP", "")

@@ -1,5 +1,10 @@
+import json
+from urllib.parse import quote
+
 from django.db.models import ProtectedError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
+
+from apps.catalog.models import Category, Color, Product, ProductImage, Size, SizeSystem, Variant
 
 from .models import StoreSettings
 
@@ -92,3 +97,35 @@ class CompressionTests(TestCase):
             res = CompressJson(lambda r: FileResponse(photo.open("rb")))(request)
             self.assertFalse(res.has_header("Content-Encoding"))
             res.close()
+
+
+class HostPathTests(TestCase):
+    """This host passes the path still escaped, and sets SCRIPT_URL; Persian slugs must still work."""
+
+    def get(self, path):
+        from passenger_wsgi import application
+
+        environ = RequestFactory()._base_environ(PATH_INFO=path, SCRIPT_URL=path)
+        statuses = []
+        response = application(environ, lambda status, headers: statuses.append(status))
+        body = b"".join(response)
+        response.close()
+        return statuses[0], body
+
+    def test_a_persian_slug_opens_with_clean_urls(self):
+        system = SizeSystem.objects.create(name="حروفی")
+        category = Category.objects.create(name="مانتو", size_system=system)
+        product = Product.objects.create(category=category, name="مانتو کتان", price=1000)
+        color = Color.objects.create(name="مشکی", hex="#000000")
+        size = Size.objects.create(system=system, label="M")
+        Variant.objects.create(product=product, color=color, size=size, stock=1)
+        ProductImage.objects.create(product=product, image="products/a.webp")
+
+        status, body = self.get(f"/api/products/{quote(product.slug)}/")
+
+        self.assertTrue(status.startswith("200"), status)
+        self.assertEqual(json.loads(body)["images"][0]["image"], "http://testserver/media/products/a.webp")
+
+    def test_a_path_that_is_not_utf8_is_not_found_rather_than_a_crash(self):
+        status, _ = self.get("/api/products/ã/")
+        self.assertTrue(status.startswith("404"), status)

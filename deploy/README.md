@@ -89,10 +89,22 @@
    npm install --include=dev
    npm run build:server
    ```
-   روی هاست اشتراکی `npm run build` (با Turbopack) کار نمی‌کند: هاست تعداد پردازش‌های هر حساب را محدود کرده و `node_modules` یک میان‌بر به بیرون پروژه است. `build:server` با Webpack و فقط یک پردازش می‌سازد.
-4. دکمه‌ی **Restart** را بزنید و `https://example.com` را باز کنید.
+   روی هاست اشتراکی `npm run build` (با Turbopack) کار نمی‌کند: هاست تعداد پردازش‌های هر حساب را محدود کرده و `node_modules` یک میان‌بر به بیرون پروژه است. `build:server` با Webpack و فقط یک پردازش می‌سازد، تعداد نخ‌ها را کم نگه می‌دارد و کش جواب‌های قدیمی API را پاک می‌کند.
+4. در همان صفحه‌ی Setup Node.js App، بخش **Environment variables**، این متغیر را اضافه و ذخیره کنید:
+   - Name: `NODE_OPTIONS`
+   - Value: `--v8-pool-size=2`
+
+   Node به‌طور پیش‌فرض به تعداد هسته‌های کل سرور نخ می‌سازد و حساب را به سقف پردازش هاست می‌رساند.
+5. دکمه‌ی **Restart** را بزنید و `https://example.com` را باز کنید.
+
+### اگر سایت خطای ۵۰۳ داد یا عکس‌ها باز نشدند
+
+اگر در `backend/stderr.log` خطای `fork() failed, please increase process limit` هست، حساب به سقف پردازش هاست خورده. متغیر `NODE_OPTIONS` بالا را بررسی کنید. اگر با آن هم تکرار شد، در cPanel بخش **Resource Usage** را ببینید و از پشتیبانی هاست افزایش سقف پردازش (NPROC) را بخواهید.
 
 ### اگر بیلد روی سرور شکست خورد
+
+- **`spawn ... node EAGAIN`**: حساب به سقف پردازش یا نخ هاست خورده. روی هاست `nphost6` با ۸۸ هسته، بیلد بدون محدود کردن نخ‌ها همین خطا را داد. `build:server` این تنظیم‌ها را دارد؛ مطمئن شوید بیلد را با همین دستور می‌زنید، نه `npm run build`.
+- **`Cannot read properties of undefined` هنگام `Generating static pages`**: بیلد از جواب قدیمی API که در `.next/cache/fetch-cache` مانده استفاده کرده. `build:server` این پوشه را خودش پاک می‌کند.
 
 اگر بیلد با `Killed` یا خطای کمبود حافظه متوقف شد، آن را روی ویندوز بسازید:
 
