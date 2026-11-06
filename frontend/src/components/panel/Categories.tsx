@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faNum } from "@/lib/format";
@@ -152,16 +153,10 @@ export function Categories() {
               <input id="c-name" className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} autoFocus />
             </Field>
             <Field label="زیرمجموعه‌ی" error={errors.parent}>
-              <select id="c-parent" className="input" value={draft.parent ?? ""} onChange={(e) => setDraft({ ...draft, parent: e.target.value ? Number(e.target.value) : null })}>
-                <option value="">— دسته‌ی اصلی —</option>
-                {cats && categoryOptions(cats).filter((o) => o.id !== draft.id).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
+              <Select id="c-parent" label="زیرمجموعه‌ی کدام دسته" value={draft.parent ?? ""} options={[{ value: "", label: "— دسته‌ی اصلی —" }, ...(cats ? categoryOptions(cats).filter((o) => o.id !== draft.id).map((o) => ({ value: o.id, label: o.label })) : [])]} onChange={(v) => setDraft({ ...draft, parent: v ? Number(v) : null })} />
             </Field>
             <Field label="سایزبندی" hint="خالی یعنی از دسته‌ی بالاتر گرفته شود">
-              <select id="c-system" className="input" value={draft.size_system ?? ""} onChange={(e) => setDraft({ ...draft, size_system: e.target.value ? Number(e.target.value) : null })}>
-                <option value="">از دسته‌ی بالاتر</option>
-                {systems?.map((x) => <option key={x.id} value={x.id}>{x.name} ({x.sizes.map((z) => z.label).join("، ")})</option>)}
-              </select>
+              <Select id="c-system" label="سایزبندی" value={draft.size_system ?? ""} options={[{ value: "", label: "از دسته‌ی بالاتر" }, ...(systems?.map((x) => ({ value: x.id, label: `${x.name} (${x.sizes.map((z) => z.label).join("، ")})` })) ?? [])]} onChange={(v) => setDraft({ ...draft, size_system: v ? Number(v) : null })} />
             </Field>
             <Field label="ترتیب نمایش" hint="عدد کوچک‌تر اول می‌آید">
               <input id="c-sort" className="input ltr num" inputMode="numeric" value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value.replace(/\D/g, "")) || 0 })} />

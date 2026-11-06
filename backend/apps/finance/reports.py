@@ -239,7 +239,7 @@ def _idle_rows(products, last_sold):
     return rows
 
 
-def slow_movers(start, end, sold_ids, limit=40):
+def slow_movers(start, end, sold_ids, limit=10):
     """Products on sale with pieces in stock that sold nothing in the period, longest idle first."""
     return _idle_rows(Product.objects.filter(is_active=True).exclude(pk__in=sold_ids), _last_sold())[:limit]
 

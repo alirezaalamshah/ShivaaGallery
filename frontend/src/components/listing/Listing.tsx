@@ -68,7 +68,7 @@ export async function Listing({
         </nav>
       )}
 
-      <FilterBar facets={facets} count={page.count} />
+      <FilterBar facets={facets} />
 
       {page.results.length ? (
         <div className="grid" data-reveal-group>

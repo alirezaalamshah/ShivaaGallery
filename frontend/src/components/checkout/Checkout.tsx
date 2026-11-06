@@ -8,12 +8,13 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { PhoneLogin } from "@/components/auth/PhoneLogin";
 import { useCart } from "@/components/cart/CartProvider";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
 import { ApiError, call, fieldErrors } from "@/lib/client";
 import { faNum, latinCode, signed, toEnDigits, toFaDigits } from "@/lib/format";
-import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
+import { cityOptions, OTHER_CITY, PROVINCE_OPTIONS, PROVINCES, provinceOf } from "@/lib/iran";
 import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
 
 import styles from "./Checkout.module.css";
@@ -123,7 +124,7 @@ export function Checkout() {
     if (!shipping) return focus(refs.shipping);
     const errs: Record<string, string> = {};
     const receiverPhone = chosen.receiver_phone ?? "";
-    if (chosen.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
+    if (chosen.receiver_name.trim() && chosen.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
     if (receiverPhone && !/^09\d{9}$/.test(receiverPhone)) errs.receiver_phone = "شماره موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.";
     if (addressId === "new" && !form.province) errs.province = "استان را انتخاب کن.";
     if (!city) errs.city = "شهر را انتخاب کن.";
@@ -226,7 +227,7 @@ export function Checkout() {
                 <input type="radio" name="address" checked={addressId === a.id} onChange={() => setAddressId(a.id)} />
                 <span className={styles.dot} />
                 <span>
-                  <b>{a.receiver_name} · {a.province ? `${a.province}، ` : ""}{a.city}</b>
+                  <b>{a.receiver_name ? `${a.receiver_name} · ` : ""}{a.province ? `${a.province}، ` : ""}{a.city}</b>
                   <small>{a.address}</small>
                 </span>
               </label>
@@ -241,9 +242,9 @@ export function Checkout() {
         {addressId === "new" && (
           <div className={styles.fields}>
             <label className="field">
-              <span className="label">نام تحویل‌گیرنده</span>
-              <input id="co-name" className="input" autoComplete="name" value={form.receiver_name} onChange={set("receiver_name")} aria-invalid={!!errors.receiver_name} placeholder="مثلاً مریم احمدی" />
-              {errors.receiver_name && <span className="err">{errors.receiver_name}</span>}
+              <span className="label">نام تحویل‌گیرنده (اختیاری)</span>
+              <input id="co-name" className="input" autoComplete="name" value={form.receiver_name} onChange={set("receiver_name")} aria-invalid={!!errors.receiver_name} placeholder={me?.name || "مثلاً مریم احمدی"} />
+              {errors.receiver_name ? <span className="err">{errors.receiver_name}</span> : <span className="hint">اگر خالی بماند، سفارش به نام خودت ثبت می‌شود.</span>}
             </label>
             <label className="field">
               <span className="label">موبایل تحویل‌گیرنده (اختیاری)</span>
@@ -253,47 +254,42 @@ export function Checkout() {
             <div className="row2">
               <label className="field">
                 <span className="label">استان</span>
-                <select
+                <Select
                   id="co-province"
-                  className="input"
+                  label="استان"
                   value={form.province}
-                  aria-invalid={!!errors.province}
-                  onChange={(e) => {
-                    setForm({ ...form, province: e.target.value, city: "" });
+                  options={PROVINCE_OPTIONS}
+                  invalid={!!errors.province}
+                  onChange={(v) => {
+                    setForm({ ...form, province: v, city: "" });
                     setCustomCity(false);
                     setErrors((er) => ({ ...er, province: "", city: "" }));
                   }}
-                >
-                  <option value="">انتخاب استان</option>
-                  {PROVINCE_NAMES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                />
                 {errors.province && <span className="err">{errors.province}</span>}
               </label>
               <label className="field">
                 <span className="label">شهر</span>
-                <select
+                <Select
                   id="co-city"
-                  className="input"
+                  label="شهر"
+                  value={customCity ? OTHER_CITY : form.city}
+                  options={cityOptions(form.province)}
                   disabled={!form.province}
-                  value={customCity ? "__other" : form.city}
-                  aria-invalid={!!errors.city}
-                  onChange={(e) => {
-                    const other = e.target.value === "__other";
+                  invalid={!!errors.city}
+                  onChange={(v) => {
+                    const other = v === OTHER_CITY;
                     setCustomCity(other);
-                    setForm({ ...form, city: other ? "" : e.target.value });
+                    setForm({ ...form, city: other ? "" : v });
                     setErrors((er) => ({ ...er, city: "" }));
                   }}
-                >
-                  <option value="">{form.province ? "انتخاب شهر" : "اول استان را انتخاب کن"}</option>
-                  {(PROVINCES[form.province] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
-                  {form.province && <option value="__other">شهر دیگر…</option>}
-                </select>
+                />
                 {errors.city && !customCity && <span className="err">{errors.city}</span>}
               </label>
             </div>
             {customCity && (
               <label className="field">
-                <span className="label">نام شهر</span>
+                <span className="label">نام شهر یا روستا</span>
                 <input id="co-city-other" className="input" value={form.city} onChange={set("city")} aria-invalid={!!errors.city} autoFocus />
                 {errors.city && <span className="err">{errors.city}</span>}
               </label>

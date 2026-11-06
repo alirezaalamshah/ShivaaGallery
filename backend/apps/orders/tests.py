@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 
+from apps.accounts.models import Address
 from apps.catalog.models import Category, Color, Product, Size, SizeSystem, Variant
 from apps.inventory.models import StockMovement
 from apps.inventory.services import move_stock
@@ -109,6 +110,44 @@ class PlaceOrderTests(OrderFixture):
 
 
 class OrderApiTests(OrderFixture):
+    def post_without_name(self, **kw):
+        self.client.force_login(self.user)
+        res = self.client.post("/api/orders/", self.data(receiver_name="", **kw), content_type="application/json")
+        self.assertEqual(res.status_code, 201, res.content)
+        return Order.objects.get(number=res.json()["number"])
+
+    def test_a_typed_receiver_name_is_kept(self):
+        self.client.force_login(self.user)
+        res = self.client.post("/api/orders/", self.data(receiver_name="سارا کریمی"), content_type="application/json")
+        self.assertEqual(res.json()["receiver_name"], "سارا کریمی")
+
+    def test_no_receiver_name_falls_back_to_the_account_name(self):
+        User.objects.filter(pk=self.user.pk).update(first_name="مریم", last_name="احمدی")
+        self.user.refresh_from_db()
+        self.assertEqual(self.post_without_name().receiver_name, "مریم احمدی")
+
+    def test_an_address_held_twice_does_not_break_the_order(self):
+        for _ in range(2):
+            Address.objects.create(user=self.user, receiver_name="", city="اهواز", address=self.data()["address"])
+        self.client.force_login(self.user)
+        body = self.data(receiver_name="", save_address=True, postal_code="1234567890")
+        res = self.client.post("/api/orders/", body, content_type="application/json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(Address.objects.filter(user=self.user).count(), 2)
+        self.assertTrue(Address.objects.filter(user=self.user, postal_code="1234567890").exists())
+
+    def test_no_name_at_all_falls_back_to_the_mobile(self):
+        self.assertEqual(self.post_without_name().receiver_name, "09121234567")
+
+    def test_an_address_saved_without_a_name_stays_blank(self):
+        self.post_without_name()
+        self.assertEqual(self.user.addresses.get().receiver_name, "")
+
+    def test_a_too_short_receiver_name_is_still_refused(self):
+        self.client.force_login(self.user)
+        res = self.client.post("/api/orders/", self.data(receiver_name="ab"), content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+
     def test_checkout_requires_login(self):
         res = self.client.post("/api/orders/", self.data(), content_type="application/json")
         self.assertEqual(res.status_code, 403)

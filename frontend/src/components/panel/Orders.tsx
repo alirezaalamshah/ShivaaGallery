@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
@@ -76,9 +77,7 @@ export function OrdersList() {
         <div className={s.toolbar}>
           <label className={s.inlineField}>
             <span>بازه‌ی زمانی</span>
-            <select className="input" value={range} onChange={(e) => { setRange(e.target.value as RangeValue); setPage(1); }}>
-              {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+            <Select label="بازه‌ی زمانی" value={range} options={RANGES} onChange={(v) => { setRange(v as RangeValue); setPage(1); }} />
           </label>
           {range === "custom" && (
             <>

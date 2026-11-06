@@ -239,7 +239,7 @@ def customer(request):
     name = (
         (profile.name if profile else "") or (user.get_full_name() if user else "")
         or sales.exclude(customer_name="").values_list("customer_name", flat=True).first()
-        or orders.values_list("receiver_name", flat=True).first() or ""
+        or orders.exclude(receiver_name=phone).values_list("receiver_name", flat=True).first() or ""
     )
     count = sales.count() + orders.count()
     last = max(filter(None, [sales.aggregate(m=Max("created_at"))["m"], orders.aggregate(m=Max("created_at"))["m"]]), default=None)

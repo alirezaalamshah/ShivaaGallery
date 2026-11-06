@@ -18,7 +18,7 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
           <span className={styles.ring} />
           {photos.map((p, i) => (
             <Link key={p.id} href={`/p/${p.slug}`} tabIndex={-1} className={`${styles.photo} ${styles[`p${i + 1}`]}`} data-reveal>
-              <ProductMedia image={p.image} alt={p.name} sizes="(max-width: 899px) 45vw, 300px" />
+              <ProductMedia image={p.image} alt={p.name} sizes="(max-width: 639px) 90px, 180px" />
             </Link>
           ))}
           {store.logo && (
@@ -59,7 +59,7 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
               </li>
             )}
             {store.instagram && (
-              <li>
+              <li className={styles.factInsta}>
                 <Icon name="insta" />
                 <span dir="ltr">@{store.instagram}</span>
               </li>
@@ -68,11 +68,11 @@ export function StoreStory({ store, products }: { store: Store; products: Produc
           <div className={styles.cta}>
             {store.instagram && (
               <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" className="btn btn-gold">
-                <Icon name="insta" /> دنبال کردن در اینستاگرام
+                <Icon name="insta" /> اینستاگرام
               </a>
             )}
             <Link href="/shop" className={`btn ${styles.ghost}`}>
-              دیدن همه‌ی مدل‌ها <Icon name="arrow" />
+              همه‌ی مدل‌ها <Icon name="arrow" />
             </Link>
           </div>
         </div>

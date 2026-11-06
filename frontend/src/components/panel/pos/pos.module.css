@@ -623,16 +623,43 @@
     inset: auto 12px calc(var(--panel-nav, 0px) + 10px);
     z-index: 20;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    padding: 0 18px;
+    align-items: stretch;
     min-height: 56px;
     border-radius: 16px;
+    overflow: hidden;
     background: var(--ink);
     color: var(--accent-hi);
     font-size: 14px;
     box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.5);
+  }
+
+  .mobileGo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    color: inherit;
+  }
+
+  /* Kept apart from the pay side, and it asks once, so a thumb cannot empty the ticket by accident. */
+  .mobileClear {
+    flex: none;
+    min-width: 52px;
+    padding: 0 12px;
+    display: grid;
+    place-items: center;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    border-inline-end: 1px solid color-mix(in oklab, currentColor, transparent 75%);
+  }
+
+  .mobileClearAsk {
+    background: var(--sale);
+    color: #fff;
   }
 
   .mobileBar span {
@@ -775,8 +802,19 @@
   gap: 8px;
 }
 
-.backBtn {
+.backBtn,
+.clearBtn {
   margin-inline-start: auto;
+}
+
+.backBtn + .clearBtn {
+  margin-inline-start: 0;
+}
+
+.clearAsk {
+  background: var(--sale);
+  border-color: var(--sale);
+  color: #fff;
 }
 
 .backHead {

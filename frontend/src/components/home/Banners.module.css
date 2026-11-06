@@ -6,7 +6,9 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  padding-bottom: 4px;
+  /* A scrolling row clips what is outside it, so this keeps the colored frame whole. */
+  padding: 3px 3px 12px;
+  scroll-padding-inline: 3px;
 }
 
 .row::-webkit-scrollbar {
@@ -16,7 +18,8 @@
 .banner {
   position: relative;
   display: block;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
+  max-height: 260px;
   border-radius: 22px;
   overflow: hidden;
   scroll-snap-align: start;
@@ -45,7 +48,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgb(0 0 0 / 0.62));
+  background: linear-gradient(180deg, transparent 30%, rgb(0 0 0 / 0.72));
   z-index: 1;
 }
 
@@ -70,6 +73,20 @@
   opacity: 0.92;
 }
 
+.copy .text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.6;
+  opacity: 1;
+  text-wrap: pretty;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.45);
+}
+
 .cta {
   display: inline-flex;
   align-items: center;
@@ -88,14 +105,6 @@
   .banner:hover img,
   .banner:hover .plain {
     transform: scale(1.04);
-  }
-}
-
-@media (min-width: 900px) {
-  .row {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    overflow: visible;
   }
 }
 
@@ -170,7 +179,7 @@
   width: 45%;
   background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
   transform: translateX(-140%) skewX(-18deg);
-  animation: sweep 3.6s ease-in-out infinite;
+  animation: sweep 3.6s linear infinite;
   pointer-events: none;
 }
 
@@ -182,6 +191,28 @@
   }
   100% {
     transform: translateX(300%) skewX(-18deg);
+  }
+}
+
+/*
+ * A moving band makes a whole banner tremble on phones, though nothing in its layout moves.
+ * There the light stays still and only fades in and out.
+ */
+@media (max-width: 899.98px), (pointer: coarse) {
+  .shine::before {
+    inset: 0;
+    width: auto;
+    border-radius: inherit;
+    background: radial-gradient(120% 95% at 50% 0%, rgb(255 255 255 / 0.3), transparent 68%);
+    opacity: 0;
+    transform: none;
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 1;
   }
 }
 
@@ -255,5 +286,137 @@
   .flow img,
   .flow .plain {
     animation: none;
+  }
+}
+
+/* ---------- size: the height is fixed, so a wider page never makes a banner taller ---------- */
+
+@media (max-width: 639.98px) {
+  .row {
+    grid-auto-columns: 86%;
+    gap: 12px;
+  }
+
+  .solo {
+    grid-auto-columns: 100%;
+  }
+
+  .banner {
+    border-radius: 18px;
+    box-shadow: 0 0 0 2px var(--tone), 0 6px 14px color-mix(in oklab, var(--tone), transparent 72%);
+  }
+
+  .banner::after {
+    background: linear-gradient(180deg, transparent 35%, rgb(0 0 0 / 0.78));
+  }
+
+  /* The button stands beside the text, so the copy stays low and the photo stays visible. */
+  .copy {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 4px 10px;
+    padding: 12px 14px;
+  }
+
+  .banner .copy b {
+    grid-column: 1;
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .copy .text {
+    grid-column: 1;
+    margin-top: 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .banner .cta {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-top: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .cta svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .ribbon {
+    top: 10px;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 640px) {
+  .solo {
+    --h: clamp(210px, 24vw, 300px);
+    grid-auto-columns: 100%;
+  }
+
+  .solo .banner {
+    aspect-ratio: auto;
+    height: var(--h);
+    max-height: none;
+    background: linear-gradient(160deg, var(--tone), color-mix(in oklab, var(--tone), black 45%));
+  }
+
+  .solo .banner::after {
+    display: none;
+  }
+
+  /* The whole 4:3 photo on one side and the text on the banner's color on the other. */
+  .solo .banner img {
+    inset-inline-start: auto;
+    width: calc(var(--h) * 4 / 3);
+  }
+
+  .solo .copy {
+    inset-block: 0;
+    inset-inline-end: calc(var(--h) * 4 / 3);
+    align-content: center;
+    gap: 10px;
+    padding: 20px clamp(24px, 4vw, 48px);
+  }
+
+  .solo .banner .copy b {
+    padding: 0;
+    background: none;
+    font-size: clamp(22px, 2.6vw, 32px);
+  }
+
+  .solo .copy .text {
+    -webkit-line-clamp: 3;
+    font-size: clamp(14.5px, 1.3vw, 16px);
+    text-shadow: none;
+  }
+
+  /* The title has no band of its own here, so its blink must not paint one. */
+  .solo .pulse .copy b {
+    animation: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .row {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    overflow: visible;
+    padding: 0;
+  }
+
+  .banner {
+    aspect-ratio: auto;
+    height: clamp(230px, 24vw, 300px);
+    max-height: none;
+  }
+
+  .solo {
+    grid-template-columns: 100%;
   }
 }

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
@@ -192,15 +193,8 @@ function StockList({ initialFilter }: { initialFilter: Filter }) {
               <button key={v} type="button" className={s.tab} aria-pressed={filter === v} onClick={() => setFilter(v)}>{label}</button>
             ))}
           </div>
-          <select className="input" aria-label="دسته" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "auto" }}>
-            <option value="">همه‌ی دسته‌ها</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="input" aria-label="مرتب‌سازی" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} style={{ width: "auto" }}>
-            <option value="name">بر اساس دسته و نام</option>
-            <option value="stock">کمترین موجودی اول</option>
-            <option value="value">بیشترین ارزش اول</option>
-          </select>
+          <Select label="دسته" value={category} options={[{ value: "", label: "همه‌ی دسته‌ها" }, ...categories.map((c) => ({ value: c, label: c }))]} fit onChange={setCategory} />
+          <Select label="مرتب‌سازی" value={sort} options={[{ value: "name", label: "بر اساس دسته و نام" }, { value: "stock", label: "کمترین موجودی اول" }, { value: "value", label: "بیشترین ارزش اول" }]} fit onChange={(v) => setSort(v as typeof sort)} />
           <label className={s.search}>
             <Icon name="search" />
             <span className="sr-only">جستجو</span>
@@ -459,10 +453,7 @@ function Stale() {
             <input className="input num" inputMode="numeric" placeholder="روز دلخواه" value={toFaDigits(typed)} onChange={(e) => setTyped(toEnDigits(e.target.value).replace(/\D/g, "").slice(0, 4))} aria-label="تعداد روز دلخواه" />
             <span>روز اخیر</span>
           </label>
-          <select className="input" aria-label="دسته" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "auto" }}>
-            <option value="">همه‌ی دسته‌ها</option>
-            {data?.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <Select label="دسته" value={category} options={[{ value: "", label: "همه‌ی دسته‌ها" }, ...(data?.categories.map((c) => ({ value: c.id, label: c.name })) ?? [])]} fit onChange={setCategory} />
         </div>
       </Card>
 
@@ -483,10 +474,7 @@ function Stale() {
       <Card
         title="فهرست کالاهای راکد"
         actions={
-          <select className="input" aria-label="مرتب‌سازی" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} style={{ width: "auto" }}>
-            <option value="idle">طولانی‌ترین بی‌فروشی اول</option>
-            <option value="value">بیشترین ارزش اول</option>
-          </select>
+          <Select label="مرتب‌سازی" value={sort} options={[{ value: "idle", label: "طولانی‌ترین بی‌فروشی اول" }, { value: "value", label: "بیشترین ارزش اول" }]} fit onChange={(v) => setSort(v as typeof sort)} />
         }
       >
         <p className="hint" style={{ marginTop: 0 }}>
@@ -542,9 +530,7 @@ function Deductions() {
     <>
       <Card>
         <div className={s.toolbar} style={{ marginBottom: 0 }}>
-          <select className="input" aria-label="بازه‌ی زمانی" value={range} onChange={(e) => setRange(e.target.value as RangeValue)} style={{ width: "auto" }}>
-            {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
+          <Select label="بازه‌ی زمانی" value={range} options={RANGES} fit onChange={(v) => setRange(v as RangeValue)} />
           {range === "custom" && (
             <>
               <DateInput label="از" placeholder="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => setCustom({ ...custom, from: v })} style={{ width: "auto" }} />

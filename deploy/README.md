@@ -64,6 +64,7 @@
    # SMS_USERNAME، SMS_API_KEY و ZARINPAL_MERCHANT_ID را بعداً از فایل API_key.txt روی کامپیوترتان در .env بنویسید
 
    python manage.py migrate
+   python manage.py seed_attributes
    python manage.py collectstatic --noinput
    ```
 3. در صفحه‌ی Setup Python App دکمه‌ی **Restart** را بزنید (یا در Terminal: `touch tmp/restart.txt`). اگر خطای ۵۰۰ داد، متن خطا در `backend/stderr.log` است.
@@ -200,6 +201,12 @@ for d in /proc/[0-9]*; do c=; read -r -d '' c < $d/cmdline; case "$c" in lsnode*
 ```
 
 اگر نسخه‌ی قدیمی موقع بیلد روشن بماند، صفحه‌های کهنه را با نام فایل‌هایی که دیگر وجود ندارند ذخیره می‌کند و صفحه خطای ۴۰۴ برای `/_next/static/...` می‌دهد و بی‌استایل دیده می‌شود. این صفحه‌ها حداکثر چند دقیقه بعد با یک بازدید تازه می‌شوند.
+
+**فقط یک بار، در به‌روزرسانی بعد از اضافه شدن رنگ‌ها و سایزهای آماده:** بعد از `migrate` این دستور را هم بزنید. در بلوک بالا نیست تا رنگی که بعداً پاک می‌کنید دوباره برنگردد.
+
+```bash
+python manage.py seed_attributes
+```
 
 > **هرگز** پوشه‌ی `deploy/initial-data` را دوباره کپی نکنید. این کار سفارش‌ها، محصولات و عکس‌های واقعی سرور را پاک می‌کند.
 

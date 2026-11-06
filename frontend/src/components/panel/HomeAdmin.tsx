@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faDateTime, faNum } from "@/lib/format";
@@ -10,7 +11,7 @@ import { faDateTime, faNum } from "@/lib/format";
 import { DateTimeInput } from "./DateInput";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import { PhotoCropper } from "./PhotoCropper";
-import { Card, ConfirmButton, Empty, Field, Modal, PageHead, Switch, SwitchRow } from "./ui";
+import { Card, ConfirmButton, Empty, Field, Modal, PageHead, SaveBar, Switch, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 import type { AdminProductRow, Paged } from "./types";
 import type { BannerEffect, BannerTone } from "@/lib/types";
@@ -101,12 +102,7 @@ function ProductPicker({ field, title, max, hint, saved: savedText }: { field: P
   return (
     <Card
       title={title}
-      actions={
-        <>
-          {ids.length > 0 && <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setIds([])}>خالی کردن (انتخاب خودکار)</button>}
-          <button type="button" className={`${s.btn} ${s.btnSm}`} disabled={!dirty || busy} onClick={save}>ذخیره</button>
-        </>
-      }
+      actions={ids.length > 0 && <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} onClick={() => setIds([])}>خالی کردن (انتخاب خودکار)</button>}
     >
       <p className="hint" style={{ marginTop: 0 }}>
         {hint}
@@ -167,6 +163,7 @@ function ProductPicker({ field, title, max, hint, saved: savedText }: { field: P
           </ul>
         </div>
       </div>
+      {dirty && <SaveBar saving={busy} onSave={save} />}
     </Card>
   );
 }
@@ -321,10 +318,7 @@ function Banners() {
         >
           <div className={s.formGrid}>
             <Field label="جای نمایش" error={errors.placement}>
-              <select className="input" value={draft.placement} onChange={(e) => setDraft({ ...draft, placement: e.target.value as Draft["placement"] })}>
-                <option value="home">بنر تصویری صفحه‌ی اصلی</option>
-                <option value="bar">نوار متنی بالای همه‌ی صفحه‌ها</option>
-              </select>
+              <Select label="جای نمایش" value={draft.placement} options={[{ value: "home", label: "بنر تصویری صفحه‌ی اصلی" }, { value: "bar", label: "نوار متنی بالای همه‌ی صفحه‌ها" }]} onChange={(v) => setDraft({ ...draft, placement: v as Draft["placement"] })} />
             </Field>
             <Field label="تیتر" error={errors.title}>
               <input className="input" value={draft.title} maxLength={80} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="مثلاً حراج پاییزه" />
@@ -341,14 +335,10 @@ function Banners() {
               </Field>
             )}
             <Field label="رنگ" error={errors.tone} hint="«رنگ مکمل» رنگ روبه‌روی رنگ سایت است و بیشتر از همه به چشم می‌آید.">
-              <select className="input" value={draft.tone} onChange={(e) => setDraft({ ...draft, tone: e.target.value as BannerTone })}>
-                {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <Select label="رنگ" value={draft.tone} options={TONES} onChange={(v) => setDraft({ ...draft, tone: v as BannerTone })} />
             </Field>
             <Field label="جلوه‌ی حرکتی" error={errors.effect} hint={EFFECTS.find((x) => x.value === draft.effect)?.hint}>
-              <select className="input" value={draft.effect} onChange={(e) => setDraft({ ...draft, effect: e.target.value as BannerEffect })}>
-                {EFFECTS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
-              </select>
+              <Select label="جلوه‌ی حرکتی" value={draft.effect} options={EFFECTS} onChange={(v) => setDraft({ ...draft, effect: v as BannerEffect })} />
             </Field>
             <div className={`field ${s.full}`}>
               <span className="label">پیش‌نمایش</span>

@@ -122,6 +122,7 @@ export function Register({ returning = false }: { returning?: boolean }) {
   const [showCustomer, setShowCustomer] = useState(false);
   const [picking, setPicking] = useState(false);
   const [known, setKnown] = useState<Known | null>(null);
+  const [askClear, setAskClear] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const ticketRef = useRef<HTMLElement>(null);
 
@@ -338,6 +339,24 @@ export function Register({ returning = false }: { returning?: boolean }) {
   const setBackQty = (item: number, qty: number) =>
     setTicket((t) => ({ ...t, back: qty <= 0 ? t.back.filter((b) => b.item !== item) : t.back.map((b) => (b.item === item ? { ...b, qty: Math.min(qty, b.max) } : b)) }));
 
+  useEffect(() => {
+    if (!askClear) return;
+    const t = setTimeout(() => setAskClear(false), 3000);
+    return () => clearTimeout(t);
+  }, [askClear]);
+
+  const clearTicket = () => {
+    if (!askClear) {
+      setAskClear(true);
+      return;
+    }
+    setAskClear(false);
+    setTicket(fresh());
+    setShort({});
+    setError("");
+    setKnown(null);
+  };
+
   const nextSale = () => {
     setDone(null);
     if (returning) setPicking(true);
@@ -429,6 +448,11 @@ export function Register({ returning = false }: { returning?: boolean }) {
           {returning && (
             <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.backBtn}`} onClick={() => setPicking(true)}>
               <Icon name="ret" /> {ticket.back.length ? "کالای پس‌آورده‌ی دیگر" : "مرجوعی یا تعویض"}
+            </button>
+          )}
+          {!empty && (
+            <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.clearBtn} ${askClear ? p.clearAsk : ""}`} onClick={clearTicket}>
+              <Icon name="trash" /> {askClear ? "خالی شود؟" : "خالی کردن"}
             </button>
           )}
         </h2>
@@ -620,20 +644,20 @@ export function Register({ returning = false }: { returning?: boolean }) {
                     ? `ثبت ${KIND_LABEL[kind]} — دریافت ${faNum(total)} ${store.currency_label}`
                     : `ثبت ${KIND_LABEL[kind]}`}
           </button>
-          {!empty && (
-            <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={() => { setTicket(fresh()); setShort({}); setError(""); setKnown(null); }}>
-              فاکتور خالی
-            </button>
-          )}
         </div>
       </aside>
 
       {!empty && (
-        <button type="button" className={p.mobileBar} onClick={() => ticketRef.current?.scrollIntoView({ behavior: "smooth" })}>
-          <span className="num">{faNum(pieces)} عدد{backPieces ? ` · ${faNum(backPieces)} پس‌گرفته` : ""}</span>
-          <b className="num">{refund ? "پس دادن " : ""}{faNum(Math.abs(total))} {store.currency_label}</b>
-          <span>پرداخت <Icon name="chev" /></span>
-        </button>
+        <div className={p.mobileBar}>
+          <button type="button" className={`${p.mobileClear} ${askClear ? p.mobileClearAsk : ""}`} aria-label="خالی کردن فاکتور" onClick={clearTicket}>
+            {askClear ? "خالی شود؟" : <Icon name="trash" />}
+          </button>
+          <button type="button" className={p.mobileGo} onClick={() => ticketRef.current?.scrollIntoView({ behavior: "smooth" })}>
+            <span className="num">{faNum(pieces)} عدد{backPieces ? ` · ${faNum(backPieces)} پس‌گرفته` : ""}</span>
+            <b className="num">{refund ? "پس دادن " : ""}{faNum(Math.abs(total))} {store.currency_label}</b>
+            <span>پرداخت <Icon name="chev" /></span>
+          </button>
+        </div>
       )}
 
       {done && (

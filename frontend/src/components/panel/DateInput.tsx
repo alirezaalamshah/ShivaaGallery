@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { faDate, faNum, toFaDigits } from "@/lib/format";
 import { J_MONTHS, J_WEEKDAYS, fromJalali, jalaliMonthLength, toJalali, weekdayIndex } from "@/lib/jalali";
 
@@ -252,13 +253,9 @@ export function DateTimeInput({ id, value, onChange, defaultTime = "00:00", labe
     <span className={s.dateTime}>
       <DateInput id={id} label={label} value={at ? isoDay(at) : ""} clearable onChange={(day) => (day ? emit(day, hour, minute) : onChange(null))} />
       <span className={s.time} dir="ltr">
-        <select className="input num" aria-label="ساعت" disabled={!at} value={hour} onChange={(e) => at && emit(isoDay(at), Number(e.target.value), minute)}>
-          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{toFaDigits(pad(h))}</option>)}
-        </select>
+        <Select label="ساعت" searchable={false} value={hour} options={Array.from({ length: 24 }, (_, h) => ({ value: h, label: toFaDigits(pad(h)) }))} disabled={!at} className="num" onChange={(v) => at && emit(isoDay(at), Number(v), minute)} />
         <b>:</b>
-        <select className="input num" aria-label="دقیقه" disabled={!at} value={minute} onChange={(e) => at && emit(isoDay(at), hour, Number(e.target.value))}>
-          {minutes.map((m) => <option key={m} value={m}>{toFaDigits(pad(m))}</option>)}
-        </select>
+        <Select label="دقیقه" searchable={false} value={minute} options={minutes.map((m) => ({ value: m, label: toFaDigits(pad(m)) }))} disabled={!at} className="num" onChange={(v) => at && emit(isoDay(at), hour, Number(v))} />
       </span>
     </span>
   );

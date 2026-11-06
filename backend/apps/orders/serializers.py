@@ -29,7 +29,7 @@ class QuoteSerializer(CartSerializer):
 
 
 class CheckoutSerializer(CartSerializer):
-    receiver_name = serializers.CharField(max_length=80, min_length=3)
+    receiver_name = serializers.CharField(max_length=80, min_length=3, required=False, allow_blank=True)
     receiver_phone = OptionalPhoneField(required=False, allow_blank=True)
     province = serializers.CharField(max_length=40, required=False, allow_blank=True)
     city = serializers.CharField(max_length=60)

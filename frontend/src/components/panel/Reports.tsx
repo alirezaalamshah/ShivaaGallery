@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useStore } from "@/components/StoreProvider";
 import { faDate, faNum, signed } from "@/lib/format";
 
@@ -72,9 +73,7 @@ export function Reports() {
       <PageHead title="سود و زیان و گزارش‌ها" sub="فروش سایت و مغازه با هم. سود از روی قیمت خریدی حساب می‌شود که هنگام هر فروش در محصول ثبت بوده است." />
       <Card>
         <div className={s.toolbar} style={{ marginBottom: 0 }}>
-          <select className="input" aria-label="بازه‌ی زمانی" value={range} onChange={(e) => setRange(e.target.value as RangeValue)} style={{ width: "auto" }}>
-            {PRESETS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
+          <Select label="بازه‌ی زمانی" value={range} options={PRESETS} fit onChange={(v) => setRange(v as RangeValue)} />
           {range === "custom" && (
             <>
               <DateInput label="از" placeholder="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => setCustom({ ...custom, from: v })} style={{ width: "auto" }} />
@@ -139,28 +138,6 @@ export function Reports() {
             ) : <p className="muted">در این بازه فروشی نبوده.</p>}
           </Card>
 
-          <Card title="کالاهای راکد" actions={<Link href="/panel/stock?tab=stale" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>با فیلتر روز و دسته</Link>}>
-            <p className="hint" style={{ marginTop: 0 }}>محصولاتی که موجودی دارند ولی در این بازه هیچ فروشی نداشتند؛ هر چه بیشتر مانده، بالاتر. برای حراج یا بنر گزینه‌ی خوبی‌اند.</p>
-            {data.slow_movers.length ? (
-              <div className={s.tableWrap}>
-                <table className={s.table}>
-                  <thead><tr><th>محصول</th><th>موجودی</th><th>ارزش خرید موجودی ({cur})</th><th>آخرین فروش</th><th>روز بی‌فروش</th></tr></thead>
-                  <tbody>
-                    {data.slow_movers.map((r) => (
-                      <tr key={r.product_id}>
-                        <td><Link href={`/panel/products/${r.product_id}`}>{r.name}</Link> <small className="muted">{r.category}</small></td>
-                        <td className="num">{faNum(r.stock)}{r.stock_unknown ? " +؟" : ""}</td>
-                        <td className="num">{r.stock_value === null ? <span className="muted">قیمت خرید ندارد</span> : faNum(r.stock_value)}</td>
-                        <td className="muted">{r.last_sold ? faDate(r.last_sold) : "هرگز فروخته نشده"}</td>
-                        <td className="num">{faNum(r.idle_days)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p className="muted">همه‌ی محصولات موجود در این بازه فروش داشته‌اند.</p>}
-          </Card>
-
           <div className={s.cols}>
             <Card title="فروش هر دسته">
               {data.by_category.length ? (
@@ -187,6 +164,28 @@ export function Reports() {
               ) : <p className="muted">در این بازه فروش حضوری نبوده.</p>}
             </Card>
           </div>
+
+          <Card title="کالاهای راکد" actions={<Link href="/panel/stock?tab=stale" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>دیدن همه</Link>}>
+            <p className="hint" style={{ marginTop: 0 }}>۱۰ محصولی که موجودی دارند، در این بازه فروشی نداشتند و از همه بیشتر مانده‌اند. برای حراج یا بنر گزینه‌ی خوبی‌اند. فهرست کامل با فیلتر روز و دسته در «دیدن همه» است.</p>
+            {data.slow_movers.length ? (
+              <div className={s.tableWrap}>
+                <table className={s.table}>
+                  <thead><tr><th>محصول</th><th>موجودی</th><th>ارزش خرید موجودی ({cur})</th><th>آخرین فروش</th><th>روز بی‌فروش</th></tr></thead>
+                  <tbody>
+                    {data.slow_movers.map((r) => (
+                      <tr key={r.product_id}>
+                        <td><Link href={`/panel/products/${r.product_id}`}>{r.name}</Link> <small className="muted">{r.category}</small></td>
+                        <td className="num">{faNum(r.stock)}{r.stock_unknown ? " +؟" : ""}</td>
+                        <td className="num">{r.stock_value === null ? <span className="muted">قیمت خرید ندارد</span> : faNum(r.stock_value)}</td>
+                        <td className="muted">{r.last_sold ? faDate(r.last_sold) : "هرگز فروخته نشده"}</td>
+                        <td className="num">{faNum(r.idle_days)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="muted">همه‌ی محصولات موجود در این بازه فروش داشته‌اند.</p>}
+          </Card>
           {open && <DetailModal key={open} line={open} pnl={data.pnl} params={params} currency={cur} onClose={() => setOpen(null)} onOpen={setOpen} />}
         </>
       )}

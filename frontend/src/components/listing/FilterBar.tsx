@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { Icon } from "@/components/Icon";
 import { navStart } from "@/components/NavProgress";
+import { Select } from "@/components/Select";
 import { faNum, toEnDigits } from "@/lib/format";
 import type { Facets } from "@/lib/types";
 
@@ -16,7 +17,7 @@ const SORTS = [
   { value: "-current", label: "گران‌ترین" },
 ];
 
-export function FilterBar({ facets, count }: { facets: Facets; count: number }) {
+export function FilterBar({ facets }: { facets: Facets }) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
@@ -75,19 +76,7 @@ export function FilterBar({ facets, count }: { facets: Facets; count: number }) 
         <button type="button" className="chip" aria-pressed={params.get("in_stock") === "true"} onClick={() => set("in_stock", params.get("in_stock") ? null : "true")}>
           فقط موجود
         </button>
-        <label className={styles.sort}>
-          <span className="sr-only">مرتب‌سازی</span>
-          <select id="sort" value={params.get("ordering") ?? ""} onChange={(e) => set("ordering", e.target.value || null)}>
-            {SORTS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className={`${styles.count} num`} aria-live="polite">
-          {faNum(count)} محصول
-        </span>
+        <Select id="sort" label="مرتب‌سازی" value={params.get("ordering") ?? ""} options={SORTS} fit className={styles.sort} onChange={(v) => set("ordering", v || null)} />
       </div>
 
       <div id="filters" className={`${styles.panel} ${open ? styles.on : ""}`}>

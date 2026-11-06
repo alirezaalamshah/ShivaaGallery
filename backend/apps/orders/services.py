@@ -180,7 +180,7 @@ def place_order(user, data):
             with transaction.atomic():
                 order = Order.objects.create(
                     user=user, phone=user.username, client_key=key,
-                    receiver_name=data["receiver_name"], receiver_phone=data.get("receiver_phone", ""),
+                    receiver_name=data.get("receiver_name") or user.get_full_name() or user.username, receiver_phone=data.get("receiver_phone", ""),
                     province=data.get("province", ""), city=data["city"], address=data["address"],
                     postal_code=data.get("postal_code", ""), note=data.get("note", ""),
                     shipping_method=method, shipping_name=method.name, shipping_fee=fee,
@@ -260,8 +260,8 @@ ORDER_STATUS_SMS = {
     "cancelled": "لغوشده",
 }
 
-# The approved pattern reads "درخواست مرجوعی سفارش {0}: {1} شد."
-RETURN_STATUS_SMS = {"new": "ثبت", "approved": "تأیید", "rejected": "رد", "completed": "انجام"}
+# The approved pattern ends "وضعیت درخواست مرجوعی شما: {1} میباشد." "pending" goes to the store only.
+RETURN_STATUS_SMS = {"pending": "در انتظار بررسی", "approved": "تأییدشده", "rejected": "ردشده", "completed": "انجام‌شده"}
 
 
 def notify_status(order):
@@ -336,7 +336,7 @@ def request_return(order, data):
     req = ReturnRequest.objects.create(order=order, reason=data["reason"], wants=data["wants"], text=data.get("text", "").strip())
     ReturnItem.objects.bulk_create([ReturnItem(request=req, order_item=item, qty=qty) for item, qty in chosen])
     for phone in StoreSettings.load().notify_phones():
-        transaction.on_commit(lambda phone=phone: send_sms(phone, "return_status", order.number, RETURN_STATUS_SMS["new"]))
+        transaction.on_commit(lambda phone=phone: send_sms(phone, "return_status", order.number, RETURN_STATUS_SMS["pending"]))
     return req
 
 

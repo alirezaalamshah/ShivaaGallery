@@ -1,4 +1,5 @@
 from django.db.models import Count, OuterRef, Subquery
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
@@ -74,13 +75,17 @@ def orders(request):
     except CheckoutError as e:
         return Response({"detail": e.message, "field": e.field, "lines": e.lines}, status=status.HTTP_409_CONFLICT)
     if d["save_address"]:
-        Address.objects.update_or_create(
-            user=request.user, receiver_name=d["receiver_name"], address=d["address"],
-            defaults={
-                "province": d.get("province", ""), "city": d["city"], "postal_code": d.get("postal_code", ""),
-                "receiver_phone": d.get("receiver_phone", ""),
-            },
-        )
+        # Not update_or_create: the address book may hold this address twice, and the order already stands.
+        same = {"user": request.user, "receiver_name": d.get("receiver_name", ""), "address": d["address"]}
+        details = {
+            "province": d.get("province", ""), "city": d["city"], "postal_code": d.get("postal_code", ""),
+            "receiver_phone": d.get("receiver_phone", ""),
+        }
+        saved = Address.objects.filter(**same).first()
+        if saved:
+            Address.objects.filter(pk=saved.pk).update(**details, updated_at=timezone.now())
+        else:
+            Address.objects.create(**same, **details)
     return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data, status=status.HTTP_201_CREATED)
 
 

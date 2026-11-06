@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type MouseEvent, useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { navStart } from "@/components/NavProgress";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
@@ -114,9 +115,7 @@ export function Customers() {
               <button key={k.value} type="button" className={s.tab} aria-pressed={kind === k.value} onClick={() => { setKind(k.value); setPage(1); }}>{k.label}</button>
             ))}
           </div>
-          <select className="input" aria-label="مرتب‌سازی" value={ordering} onChange={(e) => { setOrdering(e.target.value); setPage(1); }} style={{ width: "auto" }}>
-            {ORDERINGS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <Select label="مرتب‌سازی" value={ordering} options={ORDERINGS} fit onChange={(v) => { setOrdering(v); setPage(1); }} />
         </div>
         {data && <p className="muted" style={{ margin: "0 0 10px" }}>{faNum(data.count)} مشتری</p>}
         {data?.results.length ? (
@@ -424,7 +423,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
               <ul className={s.stack} style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {data.addresses.map((a) => (
                   <li key={a.id}>
-                    <b>{a.receiver_name}</b> {a.receiver_phone && <span className="num" dir="ltr">{toFaDigits(a.receiver_phone)}</span>}
+                    <b>{a.receiver_name || "به نام مشتری"}</b> {a.receiver_phone && <span className="num" dir="ltr">{toFaDigits(a.receiver_phone)}</span>}
                     <br />
                     {a.province} {a.city}، {a.address}
                     {a.postal_code && <small className="muted"> · کد پستی <span className="num">{toFaDigits(a.postal_code)}</span></small>}

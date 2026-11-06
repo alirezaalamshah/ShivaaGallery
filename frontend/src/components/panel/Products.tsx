@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
@@ -70,15 +71,8 @@ export function ProductsList() {
             <span className="sr-only">جستجو</span>
             <input id="product-search" className="input" placeholder="نام محصول یا کد انبار" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </label>
-          <select id="product-cat" className="input" style={{ width: "auto" }} value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} aria-label="دسته">
-            <option value="">همه‌ی دسته‌ها</option>
-            {cats && categoryOptions(cats).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <select id="product-active" className="input" style={{ width: "auto" }} value={active} onChange={(e) => { setActive(e.target.value); setPage(1); }} aria-label="نمایش">
-            <option value="">نمایش: همه</option>
-            <option value="true">در سایت</option>
-            <option value="false">پنهان</option>
-          </select>
+          <Select id="product-cat" label="دسته" value={category} options={[{ value: "", label: "همه‌ی دسته‌ها" }, ...(cats ? categoryOptions(cats).map((c) => ({ value: c.id, label: c.label })) : [])]} fit onChange={(v) => { setCategory(v); setPage(1); }} />
+          <Select id="product-active" label="نمایش" value={active} options={[{ value: "", label: "نمایش: همه" }, { value: "true", label: "در سایت" }, { value: "false", label: "پنهان" }]} fit onChange={(v) => { setActive(v); setPage(1); }} />
           <button type="button" className={s.tab} aria-pressed={stock === "out"} onClick={() => { setStock(stock ? "" : "out"); setPage(1); }}>دارای سایز تمام‌شده</button>
         </div>
 

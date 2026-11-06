@@ -40,6 +40,7 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1); /* a sheet that glides in and settles, with no bounce */
   --radius: 16px;
   --hdr: 64px;
   --bnav: 62px;

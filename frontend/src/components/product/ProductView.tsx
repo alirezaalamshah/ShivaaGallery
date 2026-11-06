@@ -120,7 +120,8 @@ export function ProductView({ product, initialColor }: { product: ProductDetail;
       toast({ text: "همه‌ی موجودی این رنگ و سایز در سبد شماست.", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
       return;
     }
-    flyToCart(from, color.hex, () => {
+    const photo = slidesRef.current?.querySelectorAll("img")[slide];
+    flyToCart(from, photo, () => {
       cart.add(item, 1, variant.left ?? undefined);
       toast({ text: "به سبد خرید اضافه شد", action: { label: "مشاهده‌ی سبد", href: "/cart" } });
     });

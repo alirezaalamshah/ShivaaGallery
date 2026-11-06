@@ -14,7 +14,7 @@ const RESUME_AFTER = 2500;
 
 /**
  * Category arches. On phones the row drifts slowly on its own and loops
- * seamlessly; touching it pauses the drift so the customer can swipe freely.
+ * seamlessly; a swipe always wins, and the drift carries on from where the swipe stopped.
  * On wider screens it is a plain grid.
  */
 export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
@@ -40,7 +40,6 @@ export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
       raf = 0;
       if (!mobile.matches || !visible) return;
       if (now < pausedUntil) {
-        pos = Math.abs(el.scrollLeft);
         nap = window.setTimeout(start, pausedUntil - now);
         return;
       }
@@ -60,6 +59,14 @@ export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
       pausedUntil = performance.now() + RESUME_AFTER;
       start();
     };
+    // The customer's swipe carries on after the finger lifts, so the drift follows the row itself
+    // and waits for it to settle. Only a position it did not set itself counts as theirs.
+    const onScroll = () => {
+      const at = Math.abs(el.scrollLeft);
+      if (Math.abs(at - pos) < 2) return;
+      pos = at;
+      pausedUntil = Math.max(pausedUntil, performance.now() + RESUME_AFTER);
+    };
     const onResize = () => {
       half = el.scrollWidth / 2;
       start();
@@ -71,6 +78,7 @@ export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
     io.observe(el);
     mobile.addEventListener("change", onResize);
     addEventListener("resize", onResize);
+    el.addEventListener("scroll", onScroll, { passive: true });
     el.addEventListener("pointerdown", pause, { passive: true });
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("pointerup", resume, { passive: true });
@@ -81,6 +89,7 @@ export function CategoryRail({ categories }: { categories: CategoryNode[] }) {
       io.disconnect();
       mobile.removeEventListener("change", onResize);
       removeEventListener("resize", onResize);
+      el.removeEventListener("scroll", onScroll);
       el.removeEventListener("pointerdown", pause);
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("pointerup", resume);

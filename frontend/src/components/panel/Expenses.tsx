@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
@@ -78,9 +79,7 @@ export function Expenses() {
 
       <Card>
         <div className={s.toolbar} style={{ marginBottom: 0 }}>
-          <select className="input" aria-label="بازه‌ی زمانی" value={range} onChange={(e) => setRange(e.target.value as RangeValue)} style={{ width: "auto" }}>
-            {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
+          <Select label="بازه‌ی زمانی" value={range} options={RANGES} fit onChange={(v) => setRange(v as RangeValue)} />
           {range === "custom" && (
             <>
               <DateInput label="از" placeholder="از" value={custom.from} max={custom.to || undefined} clearable onChange={(v) => setCustom({ ...custom, from: v })} style={{ width: "auto" }} />
@@ -134,9 +133,7 @@ export function Expenses() {
               <DateInput value={draft.day} max={isoDay(new Date())} invalid={!!errors.day} onChange={(v) => setDraft({ ...draft, day: v })} />
             </Field>
             <Field label="دسته" error={errors.category}>
-              <select className="input" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-                {data.categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+              <Select label="دسته" value={draft.category} options={data.categories} onChange={(v) => setDraft({ ...draft, category: v })} />
             </Field>
             <Field label={`مبلغ (${store.currency_label})`} error={errors.amount}>
               <MoneyInput id="expense-amount" value={draft.amount} onChange={(v) => setDraft({ ...draft, amount: v })} placeholder="۰" />

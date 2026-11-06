@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
+import { Select } from "@/components/Select";
 import { call, fieldErrors } from "@/lib/client";
 import { toEnDigits, toFaDigits } from "@/lib/format";
-import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
+import { cityOptions, OTHER_CITY, PROVINCE_OPTIONS, PROVINCES, provinceOf } from "@/lib/iran";
 import type { Address } from "@/lib/types";
 
 import styles from "./Account.module.css";
@@ -29,7 +30,7 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (form.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
+    if (form.receiver_name.trim() && form.receiver_name.trim().length < 3) errs.receiver_name = "نام تحویل‌گیرنده را کامل بنویس.";
     if (!form.province) errs.province = "استان را انتخاب کن.";
     if (!form.city.trim()) errs.city = "شهر را انتخاب کن.";
     if (form.address.trim().length < 10) errs.address = "آدرس را کامل بنویس.";
@@ -50,9 +51,9 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
   return (
     <form className={styles.form} onSubmit={save} noValidate>
       <label className="field">
-        <span className="label">نام تحویل‌گیرنده</span>
+        <span className="label">نام تحویل‌گیرنده (اختیاری)</span>
         <input className="input" autoComplete="name" value={form.receiver_name} onChange={set("receiver_name")} aria-invalid={!!errors.receiver_name} autoFocus />
-        {errors.receiver_name && <span className="err">{errors.receiver_name}</span>}
+        {errors.receiver_name ? <span className="err">{errors.receiver_name}</span> : <span className="hint">اگر خالی بماند، سفارش به نام خودت ثبت می‌شود.</span>}
       </label>
       <label className="field">
         <span className="label">موبایل تحویل‌گیرنده (اختیاری)</span>
@@ -62,45 +63,40 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
       <div className="row2">
         <label className="field">
           <span className="label">استان</span>
-          <select
-            className="input"
+          <Select
+            label="استان"
             value={form.province}
-            aria-invalid={!!errors.province}
-            onChange={(e) => {
-              setForm({ ...form, province: e.target.value, city: "" });
+            options={PROVINCE_OPTIONS}
+            invalid={!!errors.province}
+            onChange={(v) => {
+              setForm({ ...form, province: v, city: "" });
               setCustomCity(false);
               setErrors((er) => ({ ...er, province: "", city: "" }));
             }}
-          >
-            <option value="">انتخاب استان</option>
-            {PROVINCE_NAMES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+          />
           {errors.province && <span className="err">{errors.province}</span>}
         </label>
         <label className="field">
           <span className="label">شهر</span>
-          <select
-            className="input"
+          <Select
+            label="شهر"
+            value={customCity ? OTHER_CITY : form.city}
+            options={cityOptions(form.province)}
             disabled={!form.province}
-            value={customCity ? "__other" : form.city}
-            aria-invalid={!!errors.city}
-            onChange={(e) => {
-              const other = e.target.value === "__other";
+            invalid={!!errors.city}
+            onChange={(v) => {
+              const other = v === OTHER_CITY;
               setCustomCity(other);
-              setForm({ ...form, city: other ? "" : e.target.value });
+              setForm({ ...form, city: other ? "" : v });
               setErrors((er) => ({ ...er, city: "" }));
             }}
-          >
-            <option value="">{form.province ? "انتخاب شهر" : "اول استان را انتخاب کن"}</option>
-            {(PROVINCES[form.province] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
-            {form.province && <option value="__other">شهر دیگر…</option>}
-          </select>
+          />
           {errors.city && !customCity && <span className="err">{errors.city}</span>}
         </label>
       </div>
       {customCity && (
         <label className="field">
-          <span className="label">نام شهر</span>
+          <span className="label">نام شهر یا روستا</span>
           <input className="input" value={form.city} onChange={set("city")} aria-invalid={!!errors.city} />
           {errors.city && <span className="err">{errors.city}</span>}
         </label>

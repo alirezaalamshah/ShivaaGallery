@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
 import { faDateTime, faNum, latinCode, toEnDigits, toFaDigits } from "@/lib/format";
@@ -11,7 +12,7 @@ import { DateTimeInput } from "./DateInput";
 import { adminCall, refreshSite, useAdmin } from "./hooks";
 import type { Paged } from "./types";
 import { PhotoCropper } from "./PhotoCropper";
-import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, Pager, Switch, SwitchRow } from "./ui";
+import { Card, ConfirmButton, Empty, Field, Modal, MoneyInput, PageHead, Pager, SaveBar, Switch, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
 /* ---------- inventory ledger ---------- */
@@ -222,10 +223,7 @@ export function Discounts() {
           <div className={s.formGrid}>
             <Field label="کد (حروف بزرگ انگلیسی و عدد)" error={errors.code} hint="حروف کوچک و حروفی که با کیبورد فارسی تایپ شوند خودکار به حروف بزرگ انگلیسی تبدیل می‌شوند؛ مشتری هم همین‌طور تایپ می‌کند."><input id="dc-code" className="input ltr" value={draft.code} onChange={(e) => setDraft({ ...draft, code: latinCode(e.target.value) })} autoFocus autoComplete="off" spellCheck={false} placeholder="مثلاً YALDA20" /></Field>
             <Field label="نوع">
-              <select id="dc-kind" className="input" value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Discount["kind"] })}>
-                <option value="percent">درصدی</option>
-                <option value="fixed">مبلغ ثابت</option>
-              </select>
+              <Select id="dc-kind" label="نوع" value={draft.kind} options={[{ value: "percent", label: "درصدی" }, { value: "fixed", label: "مبلغ ثابت" }]} onChange={(v) => setDraft({ ...draft, kind: v as Discount["kind"] })} />
             </Field>
             <Field label={draft.kind === "percent" ? "درصد تخفیف" : "مبلغ تخفیف (تومان)"} error={errors.value}><MoneyInput id="dc-value" value={draft.value} onChange={(v) => setDraft({ ...draft, value: v })} /></Field>
             {draft.kind === "percent" && <Field label="سقف مبلغ تخفیف (اختیاری)"><MoneyInput id="dc-max" value={draft.max_amount} onChange={(v) => setDraft({ ...draft, max_amount: v })} /></Field>}
@@ -269,8 +267,12 @@ export function StoreSettings() {
   const [logoCrop, setLogoCrop] = useState<File[] | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [touched, setTouched] = useState(false);
   if (!data) return <PageHead title="تنظیمات فروشگاه" sub="در حال بارگذاری…" />;
-  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setData({ ...data, [k]: v });
+  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => {
+    setData({ ...data, [k]: v });
+    setTouched(true);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -287,6 +289,7 @@ export function StoreSettings() {
       setData(await adminCall<Settings>("/store", { method: "PATCH", body: { socials: data.socials.filter((x) => x.handle.trim()) } }));
       setLogo(null);
       setErrors({});
+      setTouched(false);
       await refreshSite();
       toast({ text: "تنظیمات ذخیره شد. سایت به‌روز شد." });
     } catch (e) {
@@ -363,9 +366,7 @@ export function StoreSettings() {
                   const put = (next: Partial<Social>) => set("socials", data.socials.map((y, j) => (j === i ? { ...y, ...next } : y)));
                   return (
                     <li key={i}>
-                      <select className="input" aria-label={`شبکه‌ی ردیف ${faNum(i + 1)}`} value={x.network} onChange={(e) => put({ network: e.target.value })}>
-                        {data.social_networks.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
-                      </select>
+                      <Select label={`شبکه‌ی ردیف ${faNum(i + 1)}`} value={x.network} options={data.social_networks} onChange={(v) => put({ network: v })} />
                       <input
                         className="input ltr"
                         aria-label={`آیدی ردیف ${faNum(i + 1)}`}
@@ -435,10 +436,7 @@ export function StoreSettings() {
             {data.returns_enabled && (
               <div className={s.formGrid} style={{ marginTop: 10 }}>
                 <Field label="نوع">
-                  <select id="st-rtype" className="input" value={data.returns_type} onChange={(e) => set("returns_type", e.target.value as Settings["returns_type"])}>
-                    <option value="refund">بازگشت وجه یا تعویض</option>
-                    <option value="exchange">فقط تعویض سایز</option>
-                  </select>
+                  <Select id="st-rtype" label="نوع" value={data.returns_type} options={[{ value: "refund", label: "بازگشت وجه یا تعویض" }, { value: "exchange", label: "فقط تعویض سایز" }]} onChange={(v) => set("returns_type", v as Settings["returns_type"])} />
                 </Field>
                 <Field label="مهلت (روز)">
                   <input id="st-rdays" className="input ltr num" inputMode="numeric" value={toFaDigits(data.returns_days)} onChange={(e) => set("returns_days", Number(e.target.value.replace(/[^\d۰-۹]/g, "").replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))) || 0)} />
@@ -467,6 +465,7 @@ export function StoreSettings() {
           </Card>
         </div>
       </div>
+      {(touched || logo) && <SaveBar saving={saving} onSave={save} />}
       {logoCrop && <PhotoCropper files={logoCrop} aspect={1} outWidth={600} onCancel={() => setLogoCrop(null)} onDone={(out) => { setLogoCrop(null); if (out[0]) setLogo(out[0]); }} />}
     </>
   );

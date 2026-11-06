@@ -246,6 +246,16 @@ class CustomerLookupTests(TillFixture):
         self.assertEqual((res["found"], res["name"], res["purchases"]), (True, "نرگس", 1))
         self.assertFalse(self.client.get("/api/admin/pos/customer/?phone=09129999999").json()["found"])
 
+    def test_an_order_placed_with_no_name_does_not_make_the_mobile_a_name(self):
+        from apps.orders.models import Order
+
+        phone = "09125550001"
+        user = get_user_model().objects.create_user(phone)
+        Order.objects.create(user=user, phone=phone, receiver_name=phone, city="دزفول", address="خیابان یک", shipping_fee=0, subtotal=1, total=1, status=Order.Status.PAID)
+        self.client.force_login(self.seller)
+        res = self.client.get(f"/api/admin/pos/customer/?phone={phone}").json()
+        self.assertEqual((res["name"], res["purchases"]), ("", 1))
+
 
 class TillCloseTests(TillFixture):
     def test_expected_cash_and_next_days_opening(self):

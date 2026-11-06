@@ -11,7 +11,7 @@ from apps.core.models import Banner, StoreSettings
 from apps.core.serializers import BannerSerializer
 
 from .filters import ProductFilter
-from .models import Category, Color, Product, ProductImage, SizeSystem, Variant
+from .models import Category, Color, Product, ProductImage, Size, SizeSystem, Variant
 from .search import PersianSearchFilter
 from .serializers import CategoryTreeSerializer, ColorSerializer, ProductDetailSerializer, ProductListSerializer
 
@@ -96,12 +96,16 @@ class FacetViewSet(viewsets.ViewSet):
     """Colors and sizes to offer as filters."""
 
     def list(self, request):
-        systems = SizeSystem.objects.prefetch_related("sizes")
+        # Only what is on sale: the store keeps far more colors and sizes than it stocks.
+        on_sale = Variant.objects.filter(is_active=True, stock__gt=0, product__is_active=True)
+        colors = Color.objects.filter(pk__in=on_sale.values("color"))
+        sizes = Size.objects.filter(pk__in=on_sale.values("size"))
+        systems = SizeSystem.objects.prefetch_related(Prefetch("sizes", queryset=sizes))
         return Response({
-            "colors": ColorSerializer(Color.objects.all(), many=True).data,
+            "colors": ColorSerializer(colors, many=True).data,
             "size_systems": [
                 {"id": s.id, "name": s.name, "sizes": [{"id": z.id, "label": z.label} for z in s.sizes.all()]}
-                for s in systems
+                for s in systems if s.sizes.all()
             ],
         })
 

@@ -27,12 +27,14 @@ export function AnnouncementBar({ items }: { items: Item[] }) {
   const body = (
     <>
       <b>{a.title}</b>
-      {a.text && <span>{a.text}</span>}
+      {a.text && <span className={styles.text}>{a.text}</span>}
     </>
   );
   const line = a.link ? <Link href={a.link}>{body}</Link> : body;
+  // The bar keeps one height through the rotation, so the page under it does not jump.
+  const tall = items.some((x) => x.text) ? styles.tall : "";
   return (
-    <div className={`${styles.bar} ${styles[a.tone] ?? ""} ${styles[a.effect] ?? ""}`} role="region" aria-label="اطلاعیه‌ها" data-motion>
+    <div className={`${styles.bar} ${tall} ${styles[a.tone] ?? ""} ${styles[a.effect] ?? ""}`} role="region" aria-label="اطلاعیه‌ها" data-motion>
       {a.effect === "flow" ? (
         <p key={a.id} className={`${styles.item} ${styles.run}`}>
           <span>{line}</span>

@@ -54,12 +54,14 @@ export function Modal({ title, onClose, children, footer, wide = false }: { titl
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [onClose]);
+  useEffect(() => {
     document.documentElement.style.overflow = "hidden";
     return () => {
-      removeEventListener("keydown", onKey);
       document.documentElement.style.overflow = "";
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className={s.scrim} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`${s.modal} ${wide ? s.modalWide : ""}`} role="dialog" aria-modal="true" aria-label={title}>
@@ -72,6 +74,18 @@ export function Modal({ title, onClose, children, footer, wide = false }: { titl
         {children}
         {footer && <div className={s.modalFoot}>{footer}</div>}
       </div>
+    </div>
+  );
+}
+
+/** Floats at the bottom of a long form while there is something to save, so nobody scrolls back for the button. */
+export function SaveBar({ note = "تغییرات ذخیره نشده", label = "ذخیره", saving, onSave }: { note?: React.ReactNode; label?: string; saving: boolean; onSave: () => void }) {
+  return (
+    <div className={s.saveBar} role="status">
+      <span>{note}</span>
+      <button type="button" className={s.btn} onClick={onSave} disabled={saving}>
+        <Icon name="check" /> {saving ? "در حال ذخیره…" : label}
+      </button>
     </div>
   );
 }

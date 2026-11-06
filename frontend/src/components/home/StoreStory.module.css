@@ -8,16 +8,16 @@
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 56px;
+  gap: 48px;
   align-items: center;
-  padding-block: 88px;
+  padding-block: 56px;
 }
 
 /* collage of three arch photos around a turning dotted ring */
 .collage {
   position: relative;
   aspect-ratio: 1;
-  width: min(100%, 500px);
+  width: min(100%, 400px);
   margin-inline: auto;
 }
 
@@ -117,9 +117,9 @@
 .copy h2 {
   font-family: var(--f-display);
   font-weight: 600;
-  font-size: clamp(2rem, 4.6vw, 3.4rem);
+  font-size: clamp(1.7rem, 3.6vw, 2.8rem);
   line-height: 1.3;
-  margin: 10px 0 16px;
+  margin: 8px 0 12px;
 }
 
 .gold {
@@ -150,7 +150,7 @@
 
 .facts {
   list-style: none;
-  margin: 22px 0 26px;
+  margin: 18px 0 22px;
   padding: 0;
   display: grid;
   gap: 10px;
@@ -186,15 +186,58 @@
   color: var(--accent-hi);
 }
 
+/* Photos and text stay side by side for as long as they fit, so the section stays short. */
 @media (max-width: 899px) {
   .grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
     gap: 28px;
-    padding-block: 56px;
+    padding-block: 44px;
+  }
+}
+
+/* Phones: a small collage over a short version of the story, about one screen in all. */
+@media (max-width: 639px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding-block: 32px;
   }
 
   .collage {
-    width: min(100%, 380px);
+    width: 200px;
+  }
+
+  .copy p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.9;
+  }
+
+  .facts {
+    margin: 12px 0 16px;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  /* The button below already opens the page. */
+  .factInsta {
+    display: none;
+  }
+
+  .cta {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .cta > * {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 }
 

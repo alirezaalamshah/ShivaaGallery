@@ -27,7 +27,6 @@ export function AccountView() {
   const [favorites, setFavorites] = useState<ProductSummary[]>([]);
   const [removing, setRemoving] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | "new" | null>(null);
-  const [editName, setEditName] = useState(false);
   const toast = useToast();
   const signedIn = me?.role === "customer";
 
@@ -80,24 +79,28 @@ export function AccountView() {
   return (
     <div className={styles.page}>
       <header className={styles.head}>
-        <div>
-          <span className="latin">My account</span>
-          <h1 className="page-title">{me.name || "حساب من"}</h1>
-          <span className={`${styles.phone} num`} dir="ltr">{toFaDigits(me.phone ?? "")}</span>
-          {!editName && (
-            <button type="button" className={styles.linkBtn} onClick={() => setEditName(true)}>
-              {me.name ? "ویرایش نام" : "نامت را اضافه کن"}
-            </button>
-          )}
+        <div className={styles.who}>
+          <span className={styles.avatar} aria-hidden="true">{me.name?.trim().charAt(0) || <Icon name="user" />}</span>
+          <div>
+            <span className="latin">My account</span>
+            <h1 className="page-title">{me.name || "حساب من"}</h1>
+            <span className={`${styles.phone} num`} dir="ltr">{toFaDigits(me.phone ?? "")}</span>
+          </div>
         </div>
         <button type="button" className="btn btn-ghost" onClick={logout}>خروج</button>
       </header>
 
-      {editName && <NameForm me={me} onDone={(m) => { if (m) { setMe(m); toast({ text: "نام ذخیره شد" }); } setEditName(false); }} />}
+      <nav className={styles.stats} aria-label="بخش‌های حساب">
+        <a href="#orders"><b className="num">{orders ? faNum(orders.length) : "…"}</b>سفارش</a>
+        <a href="#favorites"><b className="num">{faNum(favorites.length)}</b>علاقه‌مندی</a>
+        <a href="#addresses"><b className="num">{faNum(addresses.length)}</b>آدرس</a>
+      </nav>
 
-      {(me.birthday || store.birthday_discount > 0) && <BirthdayCard me={me} percent={store.birthday_discount} onSaved={(m) => { setMe(m); toast({ text: "تاریخ تولدت ثبت شد" }); }} />}
+      <ProfileCard me={me} onSaved={(m) => { setMe(m); toast({ text: "اطلاعاتت ذخیره شد" }); }} />
 
-      <section>
+      <BirthdayCard me={me} percent={store.birthday_discount} onSaved={(m) => { setMe(m); toast({ text: "تاریخ تولدت ثبت شد" }); }} />
+
+      <section id="orders">
         <h2 className={styles.h2}>سفارش‌ها</h2>
         {orders === null ? (
           <div className={styles.skeleton} />
@@ -141,7 +144,7 @@ export function AccountView() {
         )}
       </section>
 
-      <section>
+      <section id="addresses">
         <div className={styles.secHead}>
           <h2 className={styles.h2}>آدرس‌های ذخیره‌شده</h2>
           {editing === null && (
@@ -170,7 +173,7 @@ export function AccountView() {
             ) : (
               <li key={a.id}>
                 <span>
-                  <b>{a.receiver_name} · {a.province ? `${a.province}، ` : ""}{a.city}</b>
+                  <b>{a.receiver_name ? `${a.receiver_name} · ` : ""}{a.province ? `${a.province}، ` : ""}{a.city}</b>
                   <small>{a.address}{a.postal_code && <> · کد پستی <span className="num">{toFaDigits(a.postal_code)}</span></>}</small>
                 </span>
                 {removing === a.id ? (
@@ -210,6 +213,28 @@ export function AccountView() {
   );
 }
 
+/** What the store knows about the customer, shown plainly with a way to change it. */
+function ProfileCard({ me, onSaved }: { me: Me; onSaved: (me: Me) => void }) {
+  const [editing, setEditing] = useState(false);
+  return (
+    <section>
+      <div className={styles.secHead}>
+        <h2 className={styles.h2}>اطلاعات من</h2>
+        {!editing && <button type="button" className={styles.linkBtn} onClick={() => setEditing(true)}>{me.name ? "ویرایش" : "تکمیل اطلاعات"}</button>}
+      </div>
+      {editing ? (
+        <NameForm me={me} onDone={(m) => { if (m) onSaved(m); setEditing(false); }} />
+      ) : (
+        <dl className={styles.info}>
+          <div><dt>نام</dt><dd>{me.first_name || <i>ثبت نشده</i>}</dd></div>
+          <div><dt>نام خانوادگی</dt><dd>{me.last_name || <i>ثبت نشده</i>}</dd></div>
+          <div><dt>شماره موبایل</dt><dd className="num" dir="ltr">{toFaDigits(me.phone ?? "")}</dd></div>
+        </dl>
+      )}
+    </section>
+  );
+}
+
 /** The customer gives their birthday once, for the birthday-week discount; after that it only shows. */
 function BirthdayCard({ me, percent, onSaved }: { me: Me; percent: number; onSaved: (me: Me) => void }) {
   const [day, setDay] = useState("");
@@ -241,7 +266,7 @@ function BirthdayCard({ me, percent, onSaved }: { me: Me; percent: number; onSav
     <section className={styles.birthday}>
       <span className={styles.cake} aria-hidden="true">🎂</span>
       <div>
-        <b>تاریخ تولدت را ثبت کن و در هفته‌ی تولدت {faNum(percent)}٪ تخفیف بگیر</b>
+        <b>{percent > 0 ? `تاریخ تولدت را ثبت کن و در هفته‌ی تولدت ${faNum(percent)}٪ تخفیف بگیر` : "تاریخ تولدت را ثبت کن"}</b>
         <small>فقط یک بار ثبت می‌شود و بعد قابل تغییر نیست؛ پس با دقت انتخاب کن.</small>
         <div className={styles.birthdayRow}>
           <DateInput value={day} onChange={setDay} max={isoDay(new Date())} placeholder="روز تولد" label="تاریخ تولد" />

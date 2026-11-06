@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useStore } from "@/components/StoreProvider";
 import { call } from "@/lib/client";
 import { faDate, faNum } from "@/lib/format";
@@ -88,18 +89,13 @@ export function ReturnBox({ order, onChange }: { order: Order; onChange: (o: Ord
             {order.items.map((i) => (
               <div key={i.id} className={styles.returnItem}>
                 <span>{i.product_name}، {i.color_name}، سایز <span className="num">{i.size_label}</span></span>
-                <select className="input" aria-label={`تعداد ${i.product_name}`} value={qty[i.id] ?? 0} onChange={(e) => setQty({ ...qty, [i.id]: Number(e.target.value) })}>
-                  {Array.from({ length: i.qty + 1 }, (_, n) => <option key={n} value={n}>{n === 0 ? "برنمی‌گردد" : `${faNum(n)} عدد`}</option>)}
-                </select>
+                <Select label={`تعداد ${i.product_name}`} value={qty[i.id] ?? 0} options={Array.from({ length: i.qty + 1 }, (_, n) => ({ value: n, label: n === 0 ? "برنمی‌گردد" : `${faNum(n)} عدد` }))} onChange={(v) => setQty({ ...qty, [i.id]: Number(v) })} />
               </div>
             ))}
           </fieldset>
           <label className="field">
             <span className="label">دلیل</span>
-            <select className="input" value={reason} onChange={(e) => setReason(e.target.value)}>
-              <option value="">انتخاب کن</option>
-              {REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+            <Select label="دلیل" value={reason} options={[{ value: "", label: "انتخاب کن" }, ...REASONS]} onChange={setReason} />
           </label>
           {store.returns.type !== "exchange" && (
             <div className={styles.wants} role="radiogroup" aria-label="درخواست">

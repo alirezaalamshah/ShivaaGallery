@@ -1,8 +1,10 @@
 import shutil
 import tempfile
+from io import StringIO
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from apps.inventory.models import StockMovement
@@ -192,3 +194,37 @@ class CategoryApiTests(CatalogFixture):
         data = self.client.get("/api/facets/").json()
         self.assertEqual([c["name"] for c in data["colors"]], ["مشکی", "بژ"])
         self.assertEqual([z["label"] for z in data["size_systems"][0]["sizes"]], ["S", "M"])
+
+    def test_facets_leave_out_what_is_not_on_sale(self):
+        Color.objects.create(name="یاسی", hex="#BFA2D6")
+        SizeSystem.objects.create(name="کفش").sizes.create(label="38")
+        Variant.objects.filter(pk=self.dress_beige_s.pk).update(is_active=False)
+        data = self.client.get("/api/facets/").json()
+        self.assertEqual([c["name"] for c in data["colors"]], ["مشکی"])
+        self.assertEqual([s["name"] for s in data["size_systems"]], ["حروفی"])
+        self.assertEqual([z["label"] for z in data["size_systems"][0]["sizes"]], ["M"])
+
+
+class SeedAttributesTests(TestCase):
+    def test_adds_what_is_missing_and_keeps_what_exists(self):
+        navy = Color.objects.create(name="سرمه ای", hex="#123456", sort=0)
+        letters = SizeSystem.objects.create(name="حروفی")
+        s = Size.objects.create(system=letters, label="S", sort=0)
+        own = Size.objects.create(system=letters, label="بزرگ", sort=1)
+
+        call_command("seed_attributes", stdout=StringIO())
+
+        navy.refresh_from_db()
+        self.assertEqual(navy.hex, "#123456")
+        self.assertFalse(Color.objects.filter(name="سرمه‌ای").exists())
+        self.assertTrue(Color.objects.filter(name="سفید").exists())
+        labels = [z.label for z in letters.sizes.all()]
+        self.assertEqual(labels[:3], ["XS", "S", "M"])
+        self.assertEqual(labels[-1], own.label)
+        self.assertEqual(Size.objects.get(pk=s.pk).label, "S")
+
+    def test_second_run_adds_nothing(self):
+        call_command("seed_attributes", stdout=StringIO())
+        colors, sizes = Color.objects.count(), Size.objects.count()
+        call_command("seed_attributes", stdout=StringIO())
+        self.assertEqual((Color.objects.count(), Size.objects.count()), (colors, sizes))

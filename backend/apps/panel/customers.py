@@ -60,7 +60,8 @@ def _customers_by_phone():
     for o in Order.objects.order_by("created_at").values("phone", "receiver_name", "city"):
         if o["phone"] in rows:
             rows[o["phone"]]["city"] = o["city"] or rows[o["phone"]]["city"]
-            rows[o["phone"]]["_order_name"] = o["receiver_name"]
+            if o["receiver_name"] != o["phone"]:  # an order placed with no name carries the mobile instead
+                rows[o["phone"]]["_order_name"] = o["receiver_name"]
     for s in Sale.objects.exclude(customer_phone="").exclude(customer_name="").order_by("created_at").values("customer_phone", "customer_name"):
         if s["customer_phone"] in rows:
             rows[s["customer_phone"]]["_sale_name"] = s["customer_name"]
@@ -233,7 +234,7 @@ def customer_detail(request, phone):
         if i.variant:
             cats[i.variant.product.category.name] += i.qty
 
-    name = (note.name if note else "") or (user.get_full_name() if user else "") or next((o.receiver_name for o in orders), "") or next(
+    name = (note.name if note else "") or (user.get_full_name() if user else "") or next((o.receiver_name for o in orders if o.receiver_name != phone), "") or next(
         (s.customer_name for s in sales if s.customer_name), ""
     )
     return Response({

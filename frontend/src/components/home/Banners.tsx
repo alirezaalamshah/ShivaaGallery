@@ -7,13 +7,14 @@ import styles from "./Banners.module.css";
 
 /**
  * Campaign banners from the panel: a swipeable row on a phone, two or three across on a computer.
+ * A banner alone sits beside its text on wide screens, so it never grows with the page width.
  * Each has a color (the site's complementary color stands out most) and a motion the admin picks.
  */
 export function Banners({ banners }: { banners: Banner[] }) {
   return (
     <section className="sec" style={{ paddingTop: 0 }} aria-label="کمپین‌ها" data-motion>
       <div className="wrap">
-        <div className={styles.row} data-reveal-group>
+        <div className={`${styles.row} ${banners.length === 1 ? styles.solo : ""}`} data-reveal-group>
           {banners.map((b, i) => {
             const inner = (
               <>
@@ -31,7 +32,7 @@ export function Banners({ banners }: { banners: Banner[] }) {
                 )}
                 <span className={styles.copy}>
                   <b>{b.title}</b>
-                  {b.text && <span>{b.text}</span>}
+                  {b.text && <span className={styles.text}>{b.text}</span>}
                   {b.link && (
                     <span className={styles.cta}>
                       {b.button_label || "دیدن"} <Icon name="arrow" />

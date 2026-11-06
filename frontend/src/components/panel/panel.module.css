@@ -823,15 +823,28 @@
   animation: up 0.4s var(--ease-out);
 }
 
-.imgTile select {
-  width: 100%;
-  border: 0;
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
+.imgLoading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font-size: 12px;
-  padding: 6px 8px;
+  color: var(--muted);
+  background: linear-gradient(90deg, var(--band), var(--surface), var(--band));
+  background-size: 200% 100%;
+  animation: imgSweep 1.4s linear infinite;
+}
+
+@keyframes imgSweep {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.imgColor {
+  border-width: 1px 0 0;
+  border-radius: 0;
+  font-size: 12px;
 }
 
 .imgTools {
@@ -1010,18 +1023,25 @@
 }
 
 .modal {
+  --modal-pad: 22px;
   width: min(640px, 100%);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   background: var(--surface);
   border-radius: 22px;
-  padding: 22px;
+  padding: 22px 22px var(--modal-pad);
   box-shadow: 0 40px 90px -30px rgb(0 0 0 / 0.5);
   animation: pop-in 0.4s var(--ease-out);
 }
 
 .modalWide {
   width: min(900px, 100%);
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
 }
 
 @keyframes pop-in {
@@ -1044,13 +1064,18 @@
   flex: 1;
 }
 
+/* Stays on the dialog's bottom edge, however long the form above it scrolls. */
 .modalFoot {
+  position: sticky;
+  z-index: 2;
+  bottom: calc(var(--modal-pad) * -1);
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 16px;
+  margin: 20px -22px calc(var(--modal-pad) * -1);
+  padding: 14px 22px var(--modal-pad);
   border-top: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .empty {
@@ -1773,7 +1798,7 @@
 /* Stays at the bottom of a long form while there is something to save. */
 .saveBar {
   position: sticky;
-  bottom: 12px;
+  bottom: calc(var(--panel-nav, 0px) + 12px);
   z-index: 10;
   display: flex;
   align-items: center;
@@ -2030,27 +2055,28 @@
 
 /* Dialogs rise from the bottom like a phone's own sheets, and their buttons stay in reach. */
 @media (max-width: 560px) {
+  /* No blur here: repainting it under a moving sheet is what made phones stutter. */
   .scrim {
     place-items: end stretch;
     padding: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .modal,
   .modalWide {
-    --sheet-end: calc(14px + env(safe-area-inset-bottom, 0px));
+    --modal-pad: calc(14px + env(safe-area-inset-bottom, 0px));
     width: 100%;
     max-height: 92dvh;
-    padding: 18px 16px var(--sheet-end);
+    padding: 18px 16px var(--modal-pad);
     border-radius: 22px 22px 0 0;
-    animation: up 0.3s var(--ease-out);
+    overscroll-behavior: contain;
+    animation: sheet-up 0.38s var(--ease-sheet);
   }
 
   .modalFoot {
-    position: sticky;
-    bottom: calc(var(--sheet-end) * -1);
     margin-inline: -16px;
-    padding: 12px 16px var(--sheet-end);
-    background: var(--surface);
+    padding: 12px 16px var(--modal-pad);
   }
 
   .modalFoot > * {

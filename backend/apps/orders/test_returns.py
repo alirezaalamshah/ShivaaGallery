@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core.models import StoreSettings
 
 from .models import Order, OrderEvent, ReturnRequest
-from .services import change_status, place_order
+from .services import change_return_status, change_status, place_order
 from .tests import OrderFixture
 
 User = get_user_model()
@@ -34,6 +34,16 @@ class ReturnTests(OrderFixture):
         self.assertEqual(res.status_code, 201, res.content)
         self.assertEqual(res.json()["returns"][0]["status"], "pending")
         self.assertEqual(self.ask().status_code, 409)  # one open request per order
+
+    def test_each_status_sends_a_word_that_fits_the_pattern(self):
+        with mock.patch.object(StoreSettings, "notify_phones", return_value=["09355958047"]):
+            with mock.patch("apps.orders.services.send_sms") as sms, self.captureOnCommitCallbacks(execute=True):
+                self.ask()
+        sms.assert_called_once_with("09355958047", "return_status", self.order.number, "در انتظار بررسی")
+        req = ReturnRequest.objects.get(order=self.order)
+        with mock.patch("apps.orders.services.send_sms") as sms, self.captureOnCommitCallbacks(execute=True):
+            change_return_status(req, "rejected")
+        sms.assert_called_once_with(self.order.phone, "return_status", self.order.number, "ردشده")
 
     def test_window_closes_after_the_return_days(self):
         OrderEvent.objects.filter(order=self.order, status="delivered").update(created_at=timezone.now() - timedelta(days=8))

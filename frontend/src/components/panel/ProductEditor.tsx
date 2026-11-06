@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { ApiError, fieldErrors } from "@/lib/client";
 import { faNum, toEnDigits } from "@/lib/format";
@@ -16,7 +17,7 @@ import { PhotoCropper } from "./PhotoCropper";
 import { cellKey, PriceMatrix, type Prices } from "./PriceMatrix";
 import { categoryOptions } from "./Products";
 import type { AdminCategory, AdminColor, AdminProduct, AdminSizeSystem } from "./types";
-import { Card, ConfirmButton, Field, MoneyInput, PageHead, SwitchRow } from "./ui";
+import { Card, ConfirmButton, Field, MoneyInput, PageHead, SaveBar, SwitchRow } from "./ui";
 import s from "./panel.module.css";
 
 type Basic = { name: string; category: number | null; description: string; details: string; price: number | null; cost_price: number | null; is_active: boolean; is_featured: boolean };
@@ -26,6 +27,9 @@ const key = cellKey;
 const MAX_STOCK = 999;
 // An earlier panel stored "available" as 9999 instead of a count.
 const LEGACY_STOCK = 9999;
+
+/** A cropped photo on its way to the server. Without `busy` it waits for the first save of a new product. */
+type Photo = { id: number; file: File; url: string; color: number | null; busy: boolean };
 
 const stockOf = (p: AdminProduct) => Object.fromEntries(p.variants.map((v) => [key(v.color, v.size), v.stock]));
 
@@ -48,14 +52,16 @@ export function ProductEditor({ id }: { id?: string }) {
   const [prices, setPrices] = useState<Prices>({});
   const [sales, setSales] = useState<Prices>({});
   const [systemId, setSystemId] = useState<number | null>(null);
-  const [pending, setPending] = useState<File[]>([]);
+  const [pending, setPending] = useState<Photo[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [toCrop, setToCrop] = useState<File[] | null>(null);
   const [priceTab, setPriceTab] = useState<"price" | "sale">("sale");
   const fileInput = useRef<HTMLInputElement>(null);
+  const photoCount = useRef(0);
+  // A new product already created by a save that failed later, so saving again does not make a second one.
+  const created = useRef<number | null>(null);
   const loaded = useRef(false);
   // What the page looked like when it was loaded or last saved, to warn about unsaved changes.
   const [savedSnap, setSavedSnap] = useState<string | null>(null);
@@ -90,8 +96,10 @@ export function ProductEditor({ id }: { id?: string }) {
   }, [cats, form.category]);
   const system = systems?.find((x) => x.id === (systemId ?? categorySystem)) ?? systems?.find((x) => x.sizes.some((z) => picked.sizes.includes(z.id!))) ?? systems?.[0];
 
-  const toggle = (kind: "colors" | "sizes", value: number) =>
+  const toggle = (kind: "colors" | "sizes", value: number) => {
     setPicked((p) => ({ ...p, [kind]: p[kind].includes(value) ? p[kind].filter((x) => x !== value) : [...p[kind], value] }));
+    if (kind === "colors") setPending((list) => list.map((p) => (p.color === value ? { ...p, color: null } : p)));
+  };
 
   const set = <K extends keyof Basic>(k: K, v: Basic[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -110,7 +118,14 @@ export function ProductEditor({ id }: { id?: string }) {
   const ownPrices = sellable.filter((k) => prices[k] != null).length;
   const onSale = sellable.filter((k) => sales[k] != null).length;
 
-  const snapshot = JSON.stringify([form, picked, stock, prices, sales, pending.length]);
+  const uploading = pending.some((p) => p.busy);
+  // The colors a photo can belong to: this product's, plus the one it already has if that was since removed.
+  const photoColors = (own: number | null) => [
+    { value: "", label: "همه‌ی رنگ‌ها" },
+    ...(colors?.filter((c) => picked.colors.includes(c.id) || c.id === own).map((c) => ({ value: c.id, label: c.name })) ?? []),
+  ];
+
+  const snapshot = JSON.stringify([form, picked, stock, prices, sales, pending.filter((p) => !p.busy).map((p) => p.color)]);
   useEffect(() => {
     if (snapAt && snapAt !== snapTaken.current) {
       snapTaken.current = snapAt;
@@ -119,39 +134,47 @@ export function ProductEditor({ id }: { id?: string }) {
   }, [snapAt, snapshot]);
   const dirty = savedSnap !== null && snapshot !== savedSnap;
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !uploading) return;
     const stay = (e: BeforeUnloadEvent) => e.preventDefault();
     addEventListener("beforeunload", stay);
     return () => removeEventListener("beforeunload", stay);
-  }, [dirty]);
+  }, [dirty, uploading]);
 
-  const upload = async (productId: number, files: File[]) => {
+  // One photo per request, so each card fills as soon as its own photo has arrived.
+  const sendPhoto = async (productId: number, photo: Photo) => {
     const fd = new FormData();
-    files.forEach((f) => fd.append("files", f));
-    return adminCall<AdminProduct>(`/products/${productId}/images`, { method: "POST", form: fd });
+    fd.append("files", photo.file);
+    if (photo.color) fd.append("color", String(photo.color));
+    const saved = await adminCall<AdminProduct>(`/products/${productId}/images`, { method: "POST", form: fd });
+    URL.revokeObjectURL(photo.url);
+    setProduct(saved);
+    setPending((list) => list.filter((p) => p.id !== photo.id));
+    return saved;
   };
 
   /** Picked photos go through the cropper first; cropped files continue below. */
   const onFiles = (files: FileList | File[]) => {
     const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (list.length) setToCrop(list);
+    if (!list.length) return;
+    if (uploading) toast({ text: "صبر کنید آپلود قبلی تمام شود." });
+    else setToCrop(list);
   };
 
   const onCropped = async (list: File[]) => {
     setToCrop(null);
     if (!list.length) return;
-    if (isNew || !product) {
-      setPending((p) => [...p, ...list]);
-      return;
-    }
-    setUploading(true);
+    const busy = !isNew && !!product;
+    const photos = list.map((file) => ({ id: ++photoCount.current, file, url: URL.createObjectURL(file), color: null, busy }));
+    setPending((p) => [...p, ...photos]);
+    if (!busy) return;
     try {
-      setProduct(await upload(product.id, list));
-      refreshSite();
+      for (const photo of photos) await sendPhoto(product.id, photo);
     } catch (e) {
+      // Whatever did not arrive stays on the page; saving sends it again.
+      setPending((p) => p.map((x) => ({ ...x, busy: false })));
       toast({ text: e instanceof Error ? e.message : "آپلود عکس ممکن نشد." });
     } finally {
-      setUploading(false);
+      refreshSite();
     }
   };
 
@@ -160,10 +183,10 @@ export function ProductEditor({ id }: { id?: string }) {
     const imgs = [...product.images];
     if (action === "delete") {
       await adminCall(`/product-images/${imageId}`, { method: "DELETE" });
-      setProduct({ ...product, images: imgs.filter((x) => x.id !== imageId) });
+      setProduct((cur) => cur && { ...cur, images: cur.images.filter((x) => x.id !== imageId) });
     } else if (action === "color") {
       await adminCall(`/product-images/${imageId}`, { method: "PATCH", body: { color: value } });
-      setProduct({ ...product, images: imgs.map((x) => (x.id === imageId ? { ...x, color: value ?? null } : x)) });
+      setProduct((cur) => cur && { ...cur, images: cur.images.map((x) => (x.id === imageId ? { ...x, color: value ?? null } : x)) });
     } else {
       const i = imgs.findIndex((x) => x.id === imageId);
       const j = action === "right" ? i - 1 : i + 1;
@@ -193,13 +216,15 @@ export function ProductEditor({ id }: { id?: string }) {
     setSaving(true);
     try {
       const body = { ...form, details: form.details.split("\n").map((x) => x.trim()).filter(Boolean) };
-      let saved = isNew
-        ? await adminCall<AdminProduct>("/products", { method: "POST", body })
-        : await adminCall<AdminProduct>(`/products/${id}`, { method: "PATCH", body });
-      if (pending.length) {
-        saved = await upload(saved.id, pending);
-        setPending([]);
-      }
+      const target = id ?? created.current;
+      let saved = target
+        ? await adminCall<AdminProduct>(`/products/${target}`, { method: "PATCH", body })
+        : await adminCall<AdminProduct>("/products", { method: "POST", body });
+      created.current = saved.id;
+      // A product arriving now must not refill the form: its colors and sizes are only sent below.
+      loaded.current = true;
+      setPending((list) => list.map((p) => ({ ...p, busy: true })));
+      for (const photo of pending) saved = await sendPhoto(saved.id, photo);
       const changed = cells.filter((k) => (stock[k] ?? 0) !== (base[k] ?? 0));
       const stockBody = Object.fromEntries(changed.map((k) => [k, stock[k] ?? 0]));
       const stockBase = Object.fromEntries(changed.filter((k) => k in base).map((k) => [k, base[k]]));
@@ -226,7 +251,6 @@ export function ProductEditor({ id }: { id?: string }) {
       setPrices(Object.fromEntries(saved.variants.map((v) => [key(v.color, v.size), v.price_override])));
       setSales(Object.fromEntries(saved.variants.map((v) => [key(v.color, v.size), v.sale_price])));
       setProduct(saved);
-      setPending([]);
       setSnapAt((n) => n + 1);
       refreshSite();
       toast({ text: isNew ? "محصول ساخته شد" : "تغییرات ذخیره شد", action: { label: "مشاهده در سایت", href: `/p/${saved.slug}` } });
@@ -235,6 +259,7 @@ export function ProductEditor({ id }: { id?: string }) {
       setErrors(fieldErrors(e));
       toast({ text: e instanceof Error ? e.message : "ذخیره نشد." });
     } finally {
+      setPending((list) => list.map((p) => ({ ...p, busy: false })));
       setSaving(false);
     }
   };
@@ -257,7 +282,7 @@ export function ProductEditor({ id }: { id?: string }) {
         <Link href="/panel/products" className={`${s.btn} ${s.btnGhost}`}><Icon name="back" /> محصولات</Link>
         {!isNew && product && <a href={`/p/${product.slug}`} target="_blank" rel="noopener" className={`${s.btn} ${s.btnGhost}`}>مشاهده در سایت</a>}
         {canEdit && (
-          <button type="button" className={s.btn} onClick={save} disabled={saving}>
+          <button type="button" className={s.btn} onClick={save} disabled={saving || uploading}>
             <Icon name="check" /> {saving ? "در حال ذخیره…" : "ذخیره"}
           </button>
         )}
@@ -271,10 +296,7 @@ export function ProductEditor({ id }: { id?: string }) {
                 <input id="p-name" className="input" value={form.name} onChange={(e) => set("name", e.target.value)} aria-invalid={!!errors.name} placeholder="مثلاً مانتو مجلسی کرپ «شب»" />
               </Field>
               <Field label="دسته" error={errors.category}>
-                <select id="p-cat" className="input" value={form.category ?? ""} onChange={(e) => { set("category", e.target.value ? Number(e.target.value) : null); setSystemId(null); }} aria-invalid={!!errors.category}>
-                  <option value="">انتخاب کنید</option>
-                  {cats && categoryOptions(cats).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                </select>
+                <Select id="p-cat" label="دسته" value={form.category ?? ""} options={[{ value: "", label: "انتخاب کنید" }, ...(cats ? categoryOptions(cats).map((c) => ({ value: c.id, label: c.label })) : [])]} invalid={!!errors.category} onChange={(v) => { set("category", v ? Number(v) : null); setSystemId(null); }} />
               </Field>
               <div />
               <Field label="توضیحات" full>
@@ -286,60 +308,7 @@ export function ProductEditor({ id }: { id?: string }) {
             </div>
           </Card>
 
-          <Card title="۲. عکس‌ها" actions={<span className="muted">{faNum((product?.images.length ?? 0) + pending.length)} عکس</span>}>
-            <button
-              type="button"
-              className={`${s.drop} ${dragOver ? s.dropOn : ""}`}
-              onClick={() => fileInput.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}
-              style={{ width: "100%" }}
-            >
-              <Icon name="plus" />
-              <b>{uploading ? "در حال آپلود…" : "عکس‌ها را این‌جا بکشید یا کلیک کنید"}</b>
-              <span>چند عکس را با هم انتخاب کنید؛ هر عکس را در قاب سایت تنظیم می‌کنید و سبک و یک‌اندازه آپلود می‌شود. عکس اول، عکس اصلی محصول است.</span>
-            </button>
-            <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) onFiles(e.target.files); e.target.value = ""; }} />
-            {(product?.images.length || pending.length) ? (
-              <div className={s.images}>
-                {product?.images.map((im, i) => (
-                  <div key={im.id} className={s.imgTile}>
-                    <div style={{ position: "relative", aspectRatio: "3/4" }}>
-                      <Image src={im.image} alt="" fill sizes="140px" style={{ objectFit: "cover" }} />
-                    </div>
-                    {i === 0 && <span className={s.cover}>عکس اصلی</span>}
-                    <div className={s.imgTools}>
-                      <span style={{ display: "flex", gap: 4 }}>
-                        <button type="button" aria-label="جابه‌جایی به راست" onClick={() => imageAction("right", im.id)}><Icon name="back" /></button>
-                        <button type="button" aria-label="جابه‌جایی به چپ" onClick={() => imageAction("left", im.id)}><Icon name="arrow" /></button>
-                      </span>
-                      <button type="button" aria-label="حذف عکس" onClick={() => imageAction("delete", im.id)}><Icon name="trash" /></button>
-                    </div>
-                    <select aria-label="رنگ این عکس" value={im.color ?? ""} onChange={(e) => imageAction("color", im.id, e.target.value ? Number(e.target.value) : null)}>
-                      <option value="">همه‌ی رنگ‌ها</option>
-                      {colors?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                ))}
-                {pending.map((f, i) => (
-                  <div key={`${f.name}-${i}`} className={s.imgTile}>
-                    <div style={{ position: "relative", aspectRatio: "3/4" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a file not uploaded yet */}
-                      <img src={URL.createObjectURL(f)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                    </div>
-                    <div className={s.imgTools}>
-                      <span />
-                      <button type="button" aria-label="حذف عکس" onClick={() => setPending((p) => p.filter((_, j) => j !== i))}><Icon name="trash" /></button>
-                    </div>
-                    <select disabled aria-label="رنگ این عکس"><option>بعد از ذخیره</option></select>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </Card>
-
-          <Card title="۳. رنگ‌ها، سایزها و موجودی" actions={cells.length ? <span className="muted num">موجودی کل: {legacy ? "؟" : faNum(totalStock)}</span> : undefined}>
+          <Card title="۲. رنگ‌ها، سایزها و موجودی" actions={cells.length ? <span className="muted num">موجودی کل: {legacy ? "؟" : faNum(totalStock)}</span> : undefined}>
             <div style={{ display: "grid", gap: 16 }}>
               <div>
                 <div className="label" style={{ marginBottom: 8 }}>رنگ‌هایی که این مدل دارد</div>
@@ -355,9 +324,7 @@ export function ProductEditor({ id }: { id?: string }) {
               <div>
                 <div className="label" style={{ marginBottom: 8, display: "flex", gap: 10, alignItems: "center" }}>
                   سایزها
-                  <select aria-label="سایزبندی" className="input" style={{ width: "auto", minHeight: 34, padding: "2px 10px", fontSize: 13 }} value={system?.id ?? ""} onChange={(e) => setSystemId(Number(e.target.value))}>
-                    {systems?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                  </select>
+                  <Select compact fit label="سایزبندی" value={system?.id ?? ""} options={systems?.map((x) => ({ value: x.id, label: x.name })) ?? []} onChange={(v) => setSystemId(Number(v))} />
                 </div>
                 <div className={s.chipset}>
                   {system?.sizes.map((z) => (
@@ -424,14 +391,72 @@ export function ProductEditor({ id }: { id?: string }) {
             </div>
           </Card>
 
+          <Card title="۳. عکس‌ها" actions={<span className="muted">{faNum((product?.images.length ?? 0) + pending.length)} عکس</span>}>
+            <button
+              type="button"
+              className={`${s.drop} ${dragOver ? s.dropOn : ""}`}
+              onClick={() => { if (!uploading) fileInput.current?.click(); }}
+              aria-disabled={uploading}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); onFiles(e.dataTransfer.files); }}
+              style={{ width: "100%" }}
+            >
+              <Icon name="plus" />
+              <b>{uploading ? "در حال آپلود…" : "عکس‌ها را این‌جا بکشید یا کلیک کنید"}</b>
+              <span>چند عکس را با هم انتخاب کنید؛ هر عکس را در قاب سایت تنظیم می‌کنید و سبک و یک‌اندازه آپلود می‌شود. عکس اول، عکس اصلی محصول است.</span>
+            </button>
+            {!colorsInOrder.length && <p className="hint">اگر هر رنگ عکس خودش را دارد، اول رنگ‌ها را در بخش ۲ انتخاب کنید تا بتوانید برای هر عکس رنگش را مشخص کنید.</p>}
+            <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) onFiles(e.target.files); e.target.value = ""; }} />
+            {(product?.images.length || pending.length) ? (
+              <div className={s.images}>
+                {product?.images.map((im, i) => (
+                  <div key={im.id} className={s.imgTile}>
+                    <div style={{ position: "relative", aspectRatio: "3/4" }}>
+                      <Image src={im.image} alt="" fill sizes="140px" style={{ objectFit: "cover" }} />
+                    </div>
+                    {i === 0 && <span className={s.cover}>عکس اصلی</span>}
+                    <div className={s.imgTools}>
+                      <span style={{ display: "flex", gap: 4 }}>
+                        <button type="button" disabled={uploading} aria-label="جابه‌جایی به راست" onClick={() => imageAction("right", im.id)}><Icon name="back" /></button>
+                        <button type="button" disabled={uploading} aria-label="جابه‌جایی به چپ" onClick={() => imageAction("left", im.id)}><Icon name="arrow" /></button>
+                      </span>
+                      <button type="button" disabled={uploading} aria-label="حذف عکس" onClick={() => imageAction("delete", im.id)}><Icon name="trash" /></button>
+                    </div>
+                    <Select compact disabled={uploading} className={s.imgColor} label="رنگ این عکس" value={im.color ?? ""} options={photoColors(im.color)} onChange={(v) => imageAction("color", im.id, v ? Number(v) : null)} />
+                  </div>
+                ))}
+                {pending.map((p) => (
+                  <div key={p.id} className={s.imgTile} aria-busy={p.busy}>
+                    <div style={{ position: "relative", aspectRatio: "3/4" }}>
+                      {p.busy ? (
+                        <div className={s.imgLoading}>در حال آپلود…</div>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element -- local preview of a file not uploaded yet
+                        <img src={p.url} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                      )}
+                    </div>
+                    {!p.busy && (
+                      <div className={s.imgTools}>
+                        <span />
+                        <button type="button" aria-label="حذف عکس" onClick={() => { URL.revokeObjectURL(p.url); setPending((list) => list.filter((x) => x.id !== p.id)); }}><Icon name="trash" /></button>
+                      </div>
+                    )}
+                    <Select compact disabled={p.busy} className={s.imgColor} label="رنگ این عکس" value={p.color ?? ""} options={photoColors(p.color)} onChange={(v) => setPending((list) => list.map((x) => (x.id === p.id ? { ...x, color: v ? Number(v) : null } : x)))} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </Card>
+
           <Card
             title="۴. حراج و قیمت جدا (اختیاری)"
             actions={sellable.length ? <span className="muted num">{faNum(onSale)} حراج · {faNum(ownPrices)} قیمت جدا</span> : undefined}
           >
             {!cells.length ? (
-              <p className="hint">اول در بخش ۳ رنگ‌ها و سایزها را انتخاب کنید.</p>
+              <p className="hint">اول در بخش ۲ رنگ‌ها و سایزها را انتخاب کنید.</p>
             ) : !sellable.length ? (
-              <p className="hint">هیچ رنگ و سایزی موجودی ندارد. اول موجودی را در بخش ۳ وارد کنید؛ قیمت و حراج فقط برای سایزهای موجود تعریف می‌شود.</p>
+              <p className="hint">هیچ رنگ و سایزی موجودی ندارد. اول موجودی را در بخش ۲ وارد کنید؛ قیمت و حراج فقط برای سایزهای موجود تعریف می‌شود.</p>
             ) : (
               <>
                 <p className="hint" style={{ marginTop: 0 }}>
@@ -522,12 +547,12 @@ export function ProductEditor({ id }: { id?: string }) {
         </div>
       </div>
       {canEdit && (dirty || isNew) && (
-        <div className={s.saveBar} role="status">
-          <span>{isNew ? "محصول هنوز ساخته نشده" : "تغییرات ذخیره نشده"}{cells.length ? <small className="num"> · {faNum(colorsInOrder.length)} رنگ، {faNum(sizesInOrder.length)} سایز، موجودی {legacy ? "؟" : faNum(totalStock)}</small> : null}</span>
-          <button type="button" className={s.btn} onClick={save} disabled={saving}>
-            <Icon name="check" /> {saving ? "در حال ذخیره…" : isNew ? "ساخت محصول" : "ذخیره"}
-          </button>
-        </div>
+        <SaveBar
+          label={isNew ? "ساخت محصول" : "ذخیره"}
+          saving={saving || uploading}
+          onSave={save}
+          note={<>{isNew ? "محصول هنوز ساخته نشده" : "تغییرات ذخیره نشده"}{cells.length ? <small className="num"> · {faNum(colorsInOrder.length)} رنگ، {faNum(sizesInOrder.length)} سایز، موجودی {legacy ? "؟" : faNum(totalStock)}</small> : null}</>}
+        />
       )}
       {toCrop && <PhotoCropper files={toCrop} aspect={3 / 4} outWidth={1200} onDone={onCropped} onCancel={() => setToCrop(null)} />}
     </>
