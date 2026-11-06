@@ -2,6 +2,9 @@ const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 
 export const faNum = (n: number) => n.toLocaleString("fa-IR");
 
+/** A number with its sign, which stays on the number's left inside right-to-left text. */
+export const signed = (sign: "+" | "−", n: number) => `\u2066${sign}${faNum(n)}\u2069`;
+
 export const toFaDigits = (s: string | number) => String(s).replace(/\d/g, (d) => FA_DIGITS[+d]);
 
 export const toEnDigits = (s: string) =>

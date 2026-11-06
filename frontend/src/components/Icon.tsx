@@ -8,6 +8,7 @@ const PATHS = {
   arrow: <path d="M19 12H5M11 6l-6 6 6 6" />,
   back: <path d="M5 12h14M13 6l6 6-6 6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
   trash: <path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" />,

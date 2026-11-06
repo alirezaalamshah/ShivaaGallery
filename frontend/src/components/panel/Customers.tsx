@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { navStart } from "@/components/NavProgress";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { fieldErrors } from "@/lib/client";
@@ -55,8 +56,19 @@ const ORDERINGS = [
   { value: "purchases", label: "بیشترین دفعات" },
 ];
 
+/** Opens a table row's page on a click anywhere in it. Links keep their own click, and selecting text (a phone number to copy) opens nothing. */
+function useOpenRow() {
+  const router = useRouter();
+  return (e: MouseEvent, href: string) => {
+    if ((e.target as HTMLElement).closest("a,button") || window.getSelection()?.toString()) return;
+    navStart();
+    router.push(href);
+  };
+}
+
 /** Everyone who bought online or at the shop (with a mobile), or made an account, one row per mobile. */
 export function Customers() {
+  const openRow = useOpenRow();
   const store = useStore();
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
@@ -115,7 +127,7 @@ export function Customers() {
               </thead>
               <tbody>
                 {data.results.map((c) => (
-                  <tr key={c.phone} className={s.rowLink}>
+                  <tr key={c.phone} className={s.rowLink} onClick={(e) => openRow(e, `/panel/customers/${c.phone}`)}>
                     <td>
                       <Link href={`/panel/customers/${c.phone}`} className={s.cellStack}>
                         <b>
@@ -223,6 +235,7 @@ const tops = (list: { label: string; count: number }[]) => (list.length ? list.m
 
 /** One customer: who they are, everything they bought online and at the shop, and the shop's private note. */
 export function CustomerDetail({ phone }: { phone: string }) {
+  const openRow = useOpenRow();
   const store = useStore();
   const toast = useToast();
   const { data, setData, error } = useAdmin<Detail>(`/customers/${phone}`);
@@ -296,7 +309,7 @@ export function CustomerDetail({ phone }: { phone: string }) {
                   <thead><tr><th>سفارش</th><th>تاریخ</th><th>عدد</th><th>مبلغ</th><th>وضعیت</th></tr></thead>
                   <tbody>
                     {data.orders.map((o) => (
-                      <tr key={o.id} className={s.rowLink}>
+                      <tr key={o.id} className={s.rowLink} onClick={(e) => openRow(e, `/panel/orders/${o.id}`)}>
                         <td><Link href={`/panel/orders/${o.id}`} className="num" dir="ltr">#{toFaDigits(o.number)}</Link></td>
                         <td className="muted">{faDateTime(o.created_at)}</td>
                         <td className="num">{faNum(o.item_count)}</td>

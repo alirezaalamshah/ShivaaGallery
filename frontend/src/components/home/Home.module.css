@@ -115,6 +115,8 @@
     display: flex;
     gap: 14px;
     overflow-x: auto;
+    overflow-y: hidden; /* otherwise the row also scrolls up and down under a thumb */
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
     padding-bottom: 8px;
     margin-inline: -16px;

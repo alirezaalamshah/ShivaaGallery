@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
 import { ApiError } from "@/lib/client";
-import { faDate, faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import { faDate, faNum, signed, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { useCan } from "../access";
 import { DateInput } from "../DateInput";
@@ -426,7 +426,7 @@ export function Register({ returning = false }: { returning?: boolean }) {
       <aside ref={ticketRef} className={p.ticket} aria-label="فاکتور">
         <h2>
           {kind === "sale" ? "فاکتور فروش" : `فاکتور ${KIND_LABEL[kind]}`} <small className="num">{pieces ? `${faNum(pieces)} عدد` : ""}</small>
-          {canReturn && (
+          {returning && (
             <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${p.backBtn}`} onClick={() => setPicking(true)}>
               <Icon name="ret" /> {ticket.back.length ? "کالای پس‌آورده‌ی دیگر" : "مرجوعی یا تعویض"}
             </button>
@@ -475,7 +475,13 @@ export function Register({ returning = false }: { returning?: boolean }) {
             <p className={p.emptyTicket}>
               <Icon name="bag" />
               کالا را از فهرست انتخاب کنید یا کد آن را اسکن کنید.
-              {canReturn && <small>برای پس گرفتن یا عوض کردن کالای فروخته‌شده، «مرجوعی یا تعویض» را بزنید.</small>}
+              {canReturn && (
+                <small>
+                  {returning
+                    ? "برای پس گرفتن یا عوض کردن کالای فروخته‌شده، «مرجوعی یا تعویض» را بزنید."
+                    : "برای پس گرفتن یا عوض کردن کالای فروخته‌شده، تب «مرجوعی و تعویض» را باز کنید."}
+                </small>
+              )}
             </p>
           )
         )}
@@ -495,7 +501,7 @@ export function Register({ returning = false }: { returning?: boolean }) {
                     <b className="num">{faNum(l.qty)}</b>
                     <button type="button" aria-label="یکی بیشتر" disabled={l.qty >= l.max} onClick={() => setBackQty(l.item, l.qty + 1)}><Icon name="plus" /></button>
                   </span>
-                  <span className={`${p.linePrice} num`}>{faNum(l.unit * l.qty)}−</span>
+                  <span className={`${p.linePrice} num`}>{signed("−", l.unit * l.qty)}</span>
                 </li>
               ))}
             </ul>
@@ -517,9 +523,9 @@ export function Register({ returning = false }: { returning?: boolean }) {
             </span>
           </div>
           )}
-          {discount > 0 && <div className={p.minor}><span>{birthday ? `تخفیف تولد (${faNum(offer!.percent)}٪)` : "مبلغ تخفیف"}</span><span className="num">− {faNum(discount)}</span></div>}
+          {discount > 0 && <div className={p.minor}><span>{birthday ? `تخفیف تولد (${faNum(offer!.percent)}٪)` : "مبلغ تخفیف"}</span><span className="num">{signed("−", discount)}</span></div>}
           {!!maxDiscount && !birthday && <div className={`${p.minor} ${overLimit ? p.warn : ""}`}><span>سقف تخفیف شما</span><span className="num">{faNum(maxDiscount)}٪</span></div>}
-          {returned > 0 && <div className={p.minor}><span>کالاهای پس‌گرفته</span><span className="num">− {faNum(returned)}</span></div>}
+          {returned > 0 && <div className={p.minor}><span>کالاهای پس‌گرفته</span><span className="num">{signed("−", returned)}</span></div>}
           <div className={`${p.total} ${refund ? p.refund : ""}`}>
             <span>{refund ? "پرداخت به مشتری" : kind === "sale" ? "مبلغ قابل پرداخت" : "مابه‌التفاوت قابل دریافت"}</span>
             <b className="num">{faNum(Math.abs(total))} <small>{store.currency_label}</small></b>

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
-import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDate, faDateTime, faNum, signed, toFaDigits } from "@/lib/format";
 
 import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
@@ -159,7 +159,7 @@ function SaleModal({ sale, canVoid, onClose, onVoided }: { sale: Sale; canVoid: 
             {sale.returns.map((r, n) => (
               <li key={n}>
                 <span>{r.product_name}، {r.color_name}، سایز <span className="num">{r.size_label}</span> × <span className="num">{faNum(r.qty)}</span> · از فاکتور <span className="num" dir="ltr">{toFaDigits(r.from_sale)}</span></span>
-                <b className="num">− {faNum(r.line_total)}</b>
+                <b className="num">{signed("−", r.line_total)}</b>
               </li>
             ))}
           </ul>
@@ -167,8 +167,8 @@ function SaleModal({ sale, canVoid, onClose, onVoided }: { sale: Sale; canVoid: 
       )}
       <dl className={s.kv}>
         {sale.subtotal > 0 && <><dt>جمع کالاها</dt><dd className="num">{faNum(sale.subtotal)}</dd></>}
-        {sale.discount > 0 && <><dt>{sale.birthday_discount ? "تخفیف تولد" : "تخفیف"}</dt><dd className="num">− {faNum(sale.discount)}</dd></>}
-        {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">− {faNum(sale.returned_total)}</dd></>}
+        {sale.discount > 0 && <><dt>{sale.birthday_discount ? "تخفیف تولد" : "تخفیف"}</dt><dd className="num">{signed("−", sale.discount)}</dd></>}
+        {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">{signed("−", sale.returned_total)}</dd></>}
         <dt>{sale.total < 0 ? "پرداخت به مشتری" : "مبلغ کل"}</dt><dd className="num"><b>{faNum(Math.abs(sale.total))} {store.currency_label}</b></dd>
         <dt>پرداخت</dt><dd>{payText(sale)}</dd>
       </dl>

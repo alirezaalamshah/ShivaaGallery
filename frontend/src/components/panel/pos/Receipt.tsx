@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { useStore } from "@/components/StoreProvider";
-import { faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDateTime, faNum, signed, toFaDigits } from "@/lib/format";
 
 import { useAdmin } from "../hooks";
 import p from "./pos.module.css";
@@ -65,7 +65,7 @@ export function Receipt({ id }: { id: string }) {
               <tr key={n}>
                 <td>{r.product_name}<small>{r.color_name}، سایز {r.size_label} · از فاکتور {toFaDigits(r.from_sale)}</small></td>
                 <td className="num">{faNum(r.qty)}</td>
-                <td className="num">{faNum(r.line_total)}−</td>
+                <td className="num">{signed("−", r.line_total)}</td>
               </tr>
             ))}
           </tbody>
@@ -74,7 +74,7 @@ export function Receipt({ id }: { id: string }) {
       <dl>
         {sale.subtotal > 0 && <><dt>جمع کالاها</dt><dd className="num">{faNum(sale.subtotal)}</dd></>}
         {sale.discount > 0 && <><dt>{sale.birthday_discount ? "تخفیف تولد" : "تخفیف"}</dt><dd className="num">{faNum(sale.discount)}</dd></>}
-        {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">{faNum(sale.returned_total)}−</dd></>}
+        {sale.returned_total > 0 && <><dt>کالاهای پس‌گرفته</dt><dd className="num">{signed("−", sale.returned_total)}</dd></>}
         <dt className={p.receiptTotal}>{sale.total < 0 ? "پرداخت به مشتری" : "مبلغ کل"} ({store.currency_label})</dt><dd className={`num ${p.receiptTotal}`}>{faNum(Math.abs(sale.total))}</dd>
         <dt>پرداخت</dt><dd>{payText(sale)}</dd>
       </dl>

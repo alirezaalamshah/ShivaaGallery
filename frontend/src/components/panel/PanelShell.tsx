@@ -43,6 +43,14 @@ const NAV: { group: string; items: { href: string; label: string; icon: IconName
   ] },
 ];
 
+/** The phone's tab bar: the pages used all day. Everything else opens from «منو». */
+const TABS: { href: string; label: string; icon: IconName; badge?: keyof Badges }[] = [
+  { href: "/panel", label: "داشبورد", icon: "home" },
+  { href: "/panel/pos", label: "صندوق", icon: "card" },
+  { href: "/panel/orders", label: "سفارش‌ها", icon: "bag", badge: "orders_open" },
+  { href: "/panel/products", label: "محصولات", icon: "grid" },
+];
+
 /** Menu pages in order; a user who may not open a page lands on the first one they may. */
 export const MENU = NAV.flatMap((g) => g.items.map((it) => it.href));
 
@@ -56,7 +64,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const allowed = canOpen(me, path);
   const home = homeOf(me, MENU);
   const isLogin = path === "/panel/login";
-  const navs = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState(false);
+  const content = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isLogin || !me) return;
@@ -69,13 +78,38 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     adminCall<Badges>("/badges").then(setBadges).catch(() => {});
   }, [me, path]);
 
-  // On phones the menu is one row that scrolls sideways; keep the open page in view.
   useEffect(() => {
-    const row = navs.current;
-    const on = row?.querySelector<HTMLElement>("[aria-current=page]");
-    if (!row || !on || row.scrollWidth <= row.clientWidth) return;
-    row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
-  }, [path, me]);
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    addEventListener("keydown", onKey);
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      removeEventListener("keydown", onKey);
+      document.documentElement.style.overflow = "";
+    };
+  }, [menu]);
+
+  // On phones each table row is a card, and each card needs its column's title. Every list in the
+  // panel gets this here, also the rows that arrive after the page has opened.
+  useEffect(() => {
+    const root = content.current;
+    if (!root) return;
+    const label = () => {
+      for (const table of root.querySelectorAll("table")) {
+        const titles = [...table.querySelectorAll("thead th")].map((th) => th.textContent?.trim() ?? "");
+        for (const row of table.querySelectorAll("tbody tr")) {
+          if (row.querySelector("[colspan]")) continue;
+          [...row.children].forEach((cell, i) => {
+            if (titles[i]) cell.setAttribute("data-label", titles[i]);
+          });
+        }
+      }
+    };
+    label();
+    const watch = new MutationObserver(label);
+    watch.observe(root, { childList: true, subtree: true });
+    return () => watch.disconnect();
+  }, [path, me, allowed]);
 
   if (isLogin) return <>{children}</>;
   if (isPanelUser(me) && !home) {
@@ -94,6 +128,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   if (path.endsWith("/print")) return <>{children}</>;
 
   const active = (href: string) => (href === "/panel" ? path === "/panel" : path.startsWith(href));
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((it) => canOpen(me, it.href)) })).filter((g) => g.items.length);
 
   return (
     <div className={s.shell}>
@@ -108,8 +143,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             <small>{role === "admin" ? "پنل مدیریت" : "پنل فروشگاه"}</small>
           </span>
         </div>
-        <div className={s.navs} ref={navs}>
-          {NAV.map((g) => ({ ...g, items: g.items.filter((it) => canOpen(me, it.href)) })).filter((g) => g.items.length).map((g) => (
+        <div className={s.navs}>
+          {groups.map((g) => (
             <nav key={g.group} aria-label={g.group} style={{ display: "contents" }}>
               <div className={s.navGroup}>{g.group}</div>
               {g.items.map((it) => (
@@ -145,10 +180,45 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
-        <div className={s.content} key={path}>
+        <div className={s.content} key={path} ref={content}>
           {children}
         </div>
       </div>
+      {menu && (
+        <div className={s.menuSheet} id="panel-menu" role="dialog" aria-modal="true" aria-label="منوی پنل">
+          {groups.map((g) => (
+            <nav key={g.group} aria-label={g.group}>
+              <h2>{g.group}</h2>
+              <div className={s.menuGrid}>
+                {g.items.map((it) => (
+                  <Link key={it.href} href={it.href} className={s.menuItem} aria-current={active(it.href) ? "page" : undefined} onClick={() => setMenu(false)}>
+                    <Icon name={it.icon} />
+                    {it.label}
+                    {it.badge && !!badges[it.badge] && <span className={`${s.navBadge} num`}>{faNum(badges[it.badge]!)}</span>}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          ))}
+          <h2>فروشگاه آنلاین</h2>
+          <div className={s.menuGrid}>
+            <a href="/" target="_blank" rel="noopener" className={s.menuItem}><Icon name="arrow" /> مشاهده‌ی سایت</a>
+          </div>
+        </div>
+      )}
+      <nav className={s.bottomNav} aria-label="دسترسی سریع">
+        {TABS.filter((t) => canOpen(me, t.href)).map((t) => (
+          <Link key={t.href} href={t.href} className={s.bottomItem} aria-current={!menu && active(t.href) ? "page" : undefined} onClick={() => setMenu(false)}>
+            <Icon name={t.icon} />
+            {t.label}
+            {t.badge && !!badges[t.badge] && <span className={`${s.navBadge} num`}>{faNum(badges[t.badge]!)}</span>}
+          </Link>
+        ))}
+        <button type="button" className={s.bottomItem} aria-expanded={menu} aria-controls="panel-menu" onClick={() => setMenu(!menu)}>
+          <Icon name={menu ? "close" : "menu"} />
+          منو
+        </button>
+      </nav>
     </div>
   );
 }

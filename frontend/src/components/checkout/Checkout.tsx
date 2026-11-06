@@ -12,7 +12,7 @@ import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
 import { ApiError, call, fieldErrors } from "@/lib/client";
-import { faNum, latinCode, toEnDigits, toFaDigits } from "@/lib/format";
+import { faNum, latinCode, signed, toEnDigits, toFaDigits } from "@/lib/format";
 import { PROVINCE_NAMES, PROVINCES, provinceOf } from "@/lib/iran";
 import type { Address, Order, Quote, ShippingMethod } from "@/lib/types";
 
@@ -425,7 +425,7 @@ export function Checkout() {
               </ul>
               <div className={styles.row}><span>جمع کالاها</span><b className="num">{faNum(quote?.subtotal ?? cart.subtotal)}</b></div>
               <div className={styles.row}><span>هزینه‌ی ارسال</span><b className="num">{faNum(quote?.shipping_fee ?? 0)}</b></div>
-              {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>{quote.discount_kind === "birthday" ? "تخفیف تولد" : "تخفیف"}</span><b className="num">{faNum(quote.discount)}−</b></div>}
+              {!!quote?.discount && <div className={`${styles.row} ${styles.off}`}><span>{quote.discount_kind === "birthday" ? "تخفیف تولد" : "تخفیف"}</span><b className="num">{signed("−", quote.discount)}</b></div>}
             </div>
           </div>
           <button type="button" className={styles.place} onClick={place} disabled={placing || unavailable.length > 0}>

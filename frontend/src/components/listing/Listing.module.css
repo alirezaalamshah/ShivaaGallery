@@ -185,3 +185,11 @@
 .gap {
   color: var(--faint);
 }
+
+@media (max-width: 860px) {
+  .sort select,
+  .swatch,
+  .priceRow input {
+    height: 42px;
+  }
+}

@@ -431,6 +431,23 @@ h3 {
   animation: shake 0.45s;
 }
 
+/* iPhones zoom the whole page into any field under 16px and do not zoom back out. */
+@media (max-width: 860px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .chip {
+    height: 42px;
+  }
+
+  .link-more {
+    min-height: 42px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -485,6 +502,7 @@ h3 {
 
 textarea.input {
   min-height: 92px;
+  field-sizing: content; /* grows with its text, so a phone never scrolls inside a scrolling page */
   resize: vertical;
   line-height: 1.7;
 }

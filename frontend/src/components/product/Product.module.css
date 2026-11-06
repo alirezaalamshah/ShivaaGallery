@@ -567,3 +567,9 @@
 .sz[aria-checked="true"] .szOff {
   color: var(--accent-hi);
 }
+
+@media (max-width: 860px) {
+  .guideBtn {
+    min-height: 42px;
+  }
+}

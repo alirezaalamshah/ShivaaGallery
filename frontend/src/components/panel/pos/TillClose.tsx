@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
-import { faDate, faDateTime, faNum } from "@/lib/format";
+import { faDate, faDateTime, faNum, signed } from "@/lib/format";
 
 import { DateInput } from "../DateInput";
 import { isoDay } from "../dates";
@@ -82,7 +82,7 @@ export function TillClose() {
           <dl className={p.drawerSum}>
             <div><dt>موجودی اول روز</dt><dd className="num">{faNum(d.opening_cash)}</dd></div>
             <div><dt>نقد خالص فروش ({faNum(d.sale_count)} فاکتور)</dt><dd className="num">{faNum(d.cash_sales)}</dd></div>
-            {d.cash_expenses > 0 && <div><dt>هزینه‌های پرداخت‌شده از صندوق</dt><dd className="num">− {faNum(d.cash_expenses)}</dd></div>}
+            {d.cash_expenses > 0 && <div><dt>هزینه‌های پرداخت‌شده از صندوق</dt><dd className="num">{signed("−", d.cash_expenses)}</dd></div>}
             <div className={p.expected}><dt>نقد که باید در صندوق باشد</dt><dd className="num"><b>{faNum(d.expected_cash)}</b> {store.currency_label}</dd></div>
             <div><dt>کارت‌خوان</dt><dd className="num">{faNum(d.card_total)}</dd></div>
             <div><dt>کارت به کارت</dt><dd className="num">{faNum(d.transfer_total)}</dd></div>

@@ -614,9 +614,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .more {
+    min-height: 44px;
+  }
+
   .mobileBar {
     position: fixed;
-    inset: auto 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    inset: auto 12px calc(var(--panel-nav, 0px) + 10px);
     z-index: 20;
     display: flex;
     justify-content: space-between;

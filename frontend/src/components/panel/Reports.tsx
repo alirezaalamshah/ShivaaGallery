@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { useStore } from "@/components/StoreProvider";
-import { faDate, faNum } from "@/lib/format";
+import { faDate, faNum, signed } from "@/lib/format";
 
 import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
@@ -207,7 +207,7 @@ function Statement({ pnl, onOpen }: { pnl: Pnl; onOpen: (line: Line) => void }) 
           {label}
           {opts.hint && <small>{opts.hint}</small>}
         </span>
-        <span className={`num ${value < 0 ? "err" : ""}`}>{opts.minus && value ? "− " : ""}{faNum(value)}</span>
+        <span className={`num ${value < 0 ? "err" : ""}`}>{opts.minus && value ? signed("−", value) : faNum(value)}</span>
         <Icon name="chev" />
       </button>
     </li>
@@ -337,7 +337,7 @@ function Formula({ line, pnl, currency, onOpen }: { line: Line; pnl: Pnl; curren
   const part = (l: Line, label: string, value: number, sign: "+" | "−") => (
     <li key={l}>
       <button type="button" onClick={() => onOpen(l)}>
-        <span>{sign} {label}</span><span className="num">{faNum(value)}</span><Icon name="chev" />
+        <span>{label}</span><span className="num">{signed(sign, value)}</span><Icon name="chev" />
       </button>
     </li>
   );

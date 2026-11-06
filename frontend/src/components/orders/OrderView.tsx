@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
-import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDate, faDateTime, faNum, signed, toFaDigits } from "@/lib/format";
 import type { Order, OrderStatus } from "@/lib/types";
 
 import styles from "./Order.module.css";
@@ -119,7 +119,7 @@ export function OrderView({ order, celebrate = false, actions }: { order: Order;
           <div><span>جمع کالاها</span><b className="num">{faNum(order.subtotal)}</b></div>
           <div><span>ارسال · {order.shipping_name}</span><b className="num">{faNum(order.shipping_fee)}</b></div>
           {order.discount_amount > 0 && (
-            <div className={styles.off}><span>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</span><b className="num">{faNum(order.discount_amount)}−</b></div>
+            <div className={styles.off}><span>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</span><b className="num">{signed("−", order.discount_amount)}</b></div>
           )}
           <div className={styles.grand}><span>مبلغ کل</span><b className="num">{faNum(order.total)} {currency_label}</b></div>
         </div>

@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { navStart } from "@/components/NavProgress";
-import { faDate, faDateTime, faNum, toFaDigits } from "@/lib/format";
+import { faDate, faDateTime, faNum, signed, toFaDigits } from "@/lib/format";
 
 import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
@@ -196,7 +196,7 @@ export function OrderDetail({ id }: { id: string }) {
             <dl className={s.kv} style={{ marginTop: 16, justifyContent: "end" }}>
               <dt>جمع کالاها</dt><dd className="num">{faNum(order.subtotal)}</dd>
               <dt>ارسال ({order.shipping_name})</dt><dd className="num">{faNum(order.shipping_fee)}</dd>
-              {order.discount_amount > 0 && (<><dt>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</dt><dd className={`num ${s.danger}`}>{faNum(order.discount_amount)}−</dd></>)}
+              {order.discount_amount > 0 && (<><dt>{order.birthday_discount ? "تخفیف تولد" : `تخفیف ${order.discount_code}`}</dt><dd className={`num ${s.danger}`}>{signed("−", order.discount_amount)}</dd></>)}
               <dt><b>مبلغ کل</b></dt><dd className="num"><b>{faNum(order.total)} {store.currency_label}</b></dd>
             </dl>
           </Card>

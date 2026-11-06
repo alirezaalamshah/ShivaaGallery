@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { ProductMedia } from "@/components/ProductMedia";
 import { useStore } from "@/components/StoreProvider";
 import { useToast } from "@/components/Toast";
-import { faDate, faDateTime, faNum, toEnDigits, toFaDigits } from "@/lib/format";
+import { faDate, faDateTime, faNum, signed, toEnDigits, toFaDigits } from "@/lib/format";
 
 import { DateInput } from "./DateInput";
 import { RANGES, rangeOf, type RangeValue } from "./dates";
@@ -129,7 +129,7 @@ function StockList({ initialFilter }: { initialFilter: Filter }) {
         method: "POST",
         body: { note: countNote, lines: changed.map(([id, c]) => ({ variant: Number(id), counted: c.counted, shown: c.shown })) },
       });
-      toast({ text: `انبارگردانی ثبت شد: ${faNum(res.changed)} سایز اصلاح شد (${faNum(res.plus)}+ / ${faNum(res.minus)}−)` });
+      toast({ text: `انبارگردانی ثبت شد: ${faNum(res.changed)} سایز اصلاح شد (${signed("+", res.plus)} / ${signed("−", res.minus)})` });
       if (res.skipped.length) toast({ text: `در این فاصله فروش داشتند و دوباره بشمارید: ${res.skipped.join("، ")}` });
       setCounts(null);
       reload();
@@ -302,7 +302,7 @@ function StockList({ initialFilter }: { initialFilter: Filter }) {
             <b className="num">{faNum(changed.length)}</b> سایز اختلاف دارد
             {changed.length > 0 && (
               <small className="num">
-                {" "}({faNum(changed.reduce((n, [, c]) => n + Math.max((c.counted ?? 0) - c.shown, 0), 0))}+ / {faNum(changed.reduce((n, [, c]) => n + Math.max(c.shown - (c.counted ?? 0), 0), 0))}−)
+                {" "}({signed("+", changed.reduce((n, [, c]) => n + Math.max((c.counted ?? 0) - c.shown, 0), 0))} / {signed("−", changed.reduce((n, [, c]) => n + Math.max(c.shown - (c.counted ?? 0), 0), 0))})
               </small>
             )}
           </span>
@@ -371,7 +371,7 @@ function MoveModal({ product, color, size, onClose, onDone }: { product: Product
       onClose={onClose}
       footer={
         <>
-          <button type="button" className={`${s.btn} ${mode === "out" ? s.btnDanger : ""}`} disabled={busy} onClick={save}>
+          <button type="button" className={`${s.btn} ${mode === "out" ? s.btnDangerSolid : ""}`} disabled={busy} onClick={save}>
             {busy ? "در حال ثبت…" : mode === "in" ? `افزودن ${faNum(n)} عدد` : `کسر ${faNum(n)} عدد`}
           </button>
           <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={onClose}>انصراف</button>

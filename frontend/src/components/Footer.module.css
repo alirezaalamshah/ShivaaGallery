@@ -335,3 +335,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Links close together need room for a thumb. */
+@media (max-width: 860px) {
+  .ftr nav a,
+  .sale,
+  .credit {
+    display: inline-block;
+    padding-block: 9px;
+  }
+}
